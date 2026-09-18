@@ -1,0 +1,11 @@
+# Extra dependencies layered on top of requirements.txt inside
+# bit-voice:mark1 (Dockerfile.voice, Python 3.11-slim). This is what
+# gives the Hub a working wake word detector.
+#
+# setuptools must stay pinned below 81: webrtcvad's legacy setup.py build
+# breaks under setuptools>=81 (missing `install_layout` on the modern
+# distutils install command). Verified locally on 2026-09-18 — do not
+# bump without re-testing `pip install webrtcvad` under the new pin.
+setuptools>=69,<81
+wheel
+openwakeword>=0.6.0

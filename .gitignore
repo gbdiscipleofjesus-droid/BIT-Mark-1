@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv-bit-hub/
+.venv-bit-voice/
+*.egg-info/
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+firmware/include/secrets.h
+
+# Trained wake word model — a binary artifact from external training,
+# never committed to source control. See bit_hub/backend/models/wake/README.md.
+bit_hub/backend/models/wake/*.onnx
+bit_hub/backend/models/wake/*.tflite
+
+# OS/editor
+.DS_Store
+*.swp

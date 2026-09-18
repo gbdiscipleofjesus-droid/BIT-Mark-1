@@ -1,0 +1,32 @@
+# bit-voice:mark1 — the Hub image with a working wake word detector.
+#
+# Python 3.11 is required here (not the 3.12 used by .venv-bit-hub for
+# local dev): openWakeWord depends on tflite-runtime, which has no
+# compatible wheel for Linux cp312. Build with:
+#
+#   docker build -f bit_hub/Dockerfile.voice -t bit-voice:mark1 .
+#   docker run --rm -p 8000:8000 -e BIT_WAKE_THRESHOLD=0.5 bit-voice:mark1
+#
+FROM python:3.11.16-slim
+
+# webrtcvad and onnxruntime/tflite-runtime need a C/C++ toolchain to build
+# from source on platforms without prebuilt wheels.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY bit_hub/requirements.txt bit_hub/requirements-voice.txt ./
+# setuptools/webrtcvad pin lives at the top of requirements.txt; install
+# that first so it's in place before requirements-voice.txt pulls in
+# openwakeword's own dependency chain.
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r requirements-voice.txt
+
+COPY bit_hub/backend ./bit_hub/backend
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000
+
+CMD ["uvicorn", "bit_hub.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

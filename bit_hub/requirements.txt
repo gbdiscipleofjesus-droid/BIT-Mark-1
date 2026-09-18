@@ -1,0 +1,23 @@
+# BIT Hub venv (.venv-bit-hub), Python 3.12.
+#
+# This is the fast local dev/test environment: FastAPI + webrtcvad run
+# fine here. openWakeWord is deliberately NOT listed — it depends on
+# tflite-runtime, which has no compatible wheel for Linux cp312. Running
+# `bit_hub/backend/main.py` from this venv works end-to-end except that
+# WakeWordDetector.load() will log a warning and stay disabled (no
+# openwakeword to import). That's expected: use bit-voice:mark1 (built
+# from Dockerfile.voice, Python 3.11) to run the Hub with a working wake
+# word.
+#
+# setuptools must be installed/pinned BEFORE webrtcvad (pip processes
+# this file top-to-bottom): webrtcvad's legacy setup.py build breaks
+# under setuptools>=81 (missing `install_layout` on the modern distutils
+# install command), independent of the target Python version. Verified
+# locally on 2026-09-18 — do not bump without re-testing `pip install
+# webrtcvad` under the new pin.
+setuptools>=69,<81
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+webrtcvad>=2.0.10
+numpy>=1.26,<3.0
+pytest>=8.0,<9.0
