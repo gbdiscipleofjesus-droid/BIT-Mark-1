@@ -1,0 +1,15 @@
+{
+  "name": "BIT Mark 1",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "pip install --user platformio && ~/.local/bin/pio --version",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "platformio.platformio-ide",
+        "ms-python.python"
+      ]
+    }
+  }
+}

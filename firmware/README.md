@@ -20,6 +20,18 @@ this as "hardware ready." Validate in order:
 3. Work through the bring-up checklist below before trusting any single
    subsystem.
 
+A `.devcontainer/devcontainer.json` now installs PlatformIO's CLI
+automatically when a Codespace is created/rebuilt on this repo. If
+you're on a Codespace that predates that file (or `pio` still isn't
+found), install it manually:
+
+```bash
+pip install --user platformio
+pio run
+```
+
+
+
 ## Two known gaps, deliberately left as TODOs
 
 Both are marked `TODO` at the call site rather than guessed at, per this
