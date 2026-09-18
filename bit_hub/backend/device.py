@@ -13,6 +13,7 @@ from .voice.end_of_utterance import EndOfUtteranceDetector
 from .voice.stream import AudioStreamBuffer
 from .voice.vad import VoiceActivityDetector
 from .voice.wake import WakeWordDetector
+from .ai.gemini_live import GeminiLiveClient
 
 
 @dataclass
@@ -30,6 +31,7 @@ class VoiceSession:
     eou: EndOfUtteranceDetector = field(default_factory=EndOfUtteranceDetector)
     window: ConversationWindow = field(default_factory=ConversationWindow)
     wake: WakeWordDetector = field(default_factory=WakeWordDetector)
+    gemini: GeminiLiveClient = field(default_factory=GeminiLiveClient)
 
     def touch(self) -> None:
         self.last_seen = time.monotonic()

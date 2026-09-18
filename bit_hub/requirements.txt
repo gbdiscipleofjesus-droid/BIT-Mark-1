@@ -21,3 +21,11 @@ uvicorn[standard]>=0.27,<1.0
 webrtcvad>=2.0.10
 numpy>=1.26,<3.0
 pytest>=8.0,<9.0
+pytest-asyncio>=0.24,<1.0
+
+# Phase 8 — Gemini Live. Verified installable/importable at 2.24.0 on
+# 2026-09-18 (see bit_hub/backend/ai/gemini_live.py for the exact
+# classes/signatures this was checked against). GEMINI_API_KEY and
+# GEMINI_LIVE_MODEL are read from the environment at runtime — never
+# commit real values for either.
+google-genai>=2.24,<3.0

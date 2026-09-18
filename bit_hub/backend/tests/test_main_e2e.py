@@ -35,6 +35,7 @@ import uvicorn
 from websockets.sync.client import connect as ws_connect
 
 from bit_hub.backend import main as main_module
+from bit_hub.backend.ai.gemini_live import AudioChunk
 from bit_hub.backend.voice.audio import VAD_FRAME_BYTES, VoiceState
 
 RECV_TIMEOUT = 5.0
@@ -195,5 +196,102 @@ def test_ping_pong_control_frame(live_server):
     device_id = "test-device-3"
     with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
         recv_json(ws)
+        ws.send(json.dumps({"type": "ping"}))
+        assert recv_json(ws) == {"type": "pong"}
+
+
+def test_force_listen_bypasses_wake_word(live_server):
+    """No trained wake model exists yet (dossier), so force_listen is the
+    documented stand-in until hey_bit.onnx is calibrated — must trigger
+    LISTENING without any wake.triggered() call."""
+    device_id = "test-device-force-listen"
+    with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
+        assert recv_json(ws) == {"type": "state", "value": "WAITING_WAKE_WORD"}
+
+        ws.send(json.dumps({"type": "force_listen"}))
+        assert recv_json(ws) == {"type": "state", "value": "LISTENING"}
+
+        session = main_module.registry.get(device_id)
+        assert session.state == VoiceState.LISTENING
+        assert session.stream.is_recording is True
+
+
+def test_force_listen_ignored_outside_waiting_state(live_server):
+    device_id = "test-device-force-listen-2"
+    with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
+        recv_json(ws)  # WAITING_WAKE_WORD
+        ws.send(json.dumps({"type": "force_listen"}))
+        recv_json(ws)  # LISTENING
+
+        # Already listening; a second force_listen must be a no-op. Prove
+        # it by sending one, then a ping, and getting pong immediately
+        # rather than a stray duplicate state message first.
+        ws.send(json.dumps({"type": "force_listen"}))
+        ws.send(json.dumps({"type": "ping"}))
+        assert recv_json(ws) == {"type": "pong"}
+
+
+class FakeGeminiClient:
+    """Duck-types the bits of GeminiLiveClient that main.py touches."""
+
+    def __init__(self, chunks: list[AudioChunk]):
+        self.available = True
+        self._chunks = chunks
+
+    async def respond(self, pcm16_mono_16khz: bytes):
+        for chunk in self._chunks:
+            yield chunk
+
+
+def test_gemini_response_audio_streamed_back_during_processing(live_server):
+    device_id = "test-device-gemini"
+    with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
+        recv_json(ws)  # WAITING_WAKE_WORD
+        force_wake_trigger(device_id)
+        ws.send(silence(1))
+        recv_json(ws)  # LISTENING
+
+        session = main_module.registry.get(device_id)
+        session.gemini = FakeGeminiClient(
+            [AudioChunk(data=b"first-chunk", mime_type="audio/pcm;rate=24000"),
+             AudioChunk(data=b"second-chunk", mime_type="audio/pcm;rate=24000")]
+        )
+
+        force_speech(device_id, speech_frames=5)
+        ws.send(silence(45))
+
+        assert recv_json(ws) == {"type": "state", "value": "PROCESSING"}
+        assert ws.recv(timeout=RECV_TIMEOUT) == b"first-chunk"
+        assert ws.recv(timeout=RECV_TIMEOUT) == b"second-chunk"
+        assert recv_json(ws) == {"type": "state", "value": "LISTENING"}
+
+
+def test_gemini_failure_does_not_crash_session(live_server):
+    """A Gemini/network error must degrade to "no reply", not take down
+    the WebSocket connection."""
+    device_id = "test-device-gemini-fail"
+    with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
+        recv_json(ws)
+        force_wake_trigger(device_id)
+        ws.send(silence(1))
+        recv_json(ws)  # LISTENING
+
+        session = main_module.registry.get(device_id)
+
+        class FailingGeminiClient:
+            available = True
+
+            async def respond(self, pcm16_mono_16khz: bytes):
+                raise RuntimeError("simulated Gemini outage")
+                yield  # pragma: no cover - makes this an async generator
+
+        session.gemini = FailingGeminiClient()
+
+        force_speech(device_id, speech_frames=5)
+        ws.send(silence(45))
+
+        assert recv_json(ws) == {"type": "state", "value": "PROCESSING"}
+        # Falls through to the follow-up window instead of dropping the connection.
+        assert recv_json(ws) == {"type": "state", "value": "LISTENING"}
         ws.send(json.dumps({"type": "ping"}))
         assert recv_json(ws) == {"type": "pong"}

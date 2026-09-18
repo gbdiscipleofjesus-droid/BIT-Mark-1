@@ -12,6 +12,13 @@ Runs in the Hub's own Python 3.12 venv (bit_hub/requirements.txt:
 FastAPI + uvicorn only). openWakeWord/webrtcvad run inside the separate
 bit-voice:mark1 Docker image (Python 3.11) — see bit_hub/Dockerfile.voice
 and voice/wake.py, voice/vad.py for why they can't share this venv.
+
+Wake word detection has no trained model yet (bit_hub/backend/models/wake/
+is empty — see its README), so entering LISTENING currently requires a
+client-sent `{"type": "force_listen"}` control message instead of a real
+"Hey BIT" trigger (see handle_control). Swap this for real wake-word
+gating once hey_bit.onnx exists and a threshold is calibrated — nothing
+else in this state machine needs to change.
 """
 
 from __future__ import annotations
@@ -60,10 +67,11 @@ async def begin_listening(session: VoiceSession) -> None:
 
 
 async def begin_processing(session: VoiceSession) -> None:
-    """End of utterance detected: hand the captured audio off for a
-    response. Gemini Live integration lands in Phase 8; until then this
-    is a stub that immediately reopens the follow-up window so the
-    pipeline is fully exercisable end-to-end today."""
+    """End of utterance detected: hand the captured audio off to Gemini
+    Live and stream the spoken response back over the WebSocket as
+    binary frames (see docs/PROTOCOL.md — binary frames are
+    bidirectional: device->Hub is mic audio, Hub->device is response
+    audio during PROCESSING)."""
     utterance = session.stream.stop_recording()
     logger.info(
         "device=%s captured utterance: %d bytes, %.2fs",
@@ -71,9 +79,30 @@ async def begin_processing(session: VoiceSession) -> None:
     )
     await set_voice_state(session, VoiceState.PROCESSING)
 
-    # TODO(Phase 8 - Gemini Live): send `utterance` to Gemini Live and
-    # stream the spoken response back over the WebSocket before calling
-    # finish_voice_response(). Not implemented yet — PENDIENTE per plan.
+    if not session.gemini.available:
+        logger.warning(
+            "device=%s GEMINI_API_KEY/GEMINI_LIVE_MODEL not set; "
+            "skipping response synthesis",
+            session.device_id,
+        )
+    else:
+        try:
+            chunk_count = 0
+            response_bytes = 0
+            async for chunk in session.gemini.respond(utterance):
+                await session.websocket.send_bytes(chunk.data)
+                chunk_count += 1
+                response_bytes += len(chunk.data)
+            logger.info(
+                "device=%s Gemini response: %d chunks, %d bytes",
+                session.device_id, chunk_count, response_bytes,
+            )
+        except Exception:
+            # A Gemini/network failure must not take down the voice
+            # session — log it and fall through to reopening the
+            # follow-up window, same as if there were simply no reply.
+            logger.exception("device=%s Gemini Live request failed", session.device_id)
+
     await finish_voice_response(session)
 
 
@@ -137,6 +166,20 @@ async def handle_control(session: VoiceSession, text: str) -> None:
     msg_type = message.get("type")
     if msg_type == "ping":
         await session.websocket.send_text(json.dumps({"type": "pong"}))
+    elif msg_type == "force_listen":
+        # Manual bypass for wake word detection — there's no trained
+        # hey_bit.onnx yet (see voice/models/wake/README.md), so this is
+        # how LISTENING gets triggered for now. Only valid while waiting;
+        # ignored otherwise so it can't interrupt an in-progress turn.
+        # Remove/gate this once real wake word detection is calibrated.
+        if session.state == VoiceState.WAITING_WAKE_WORD:
+            logger.info("device=%s force_listen (wake word bypass)", session.device_id)
+            await begin_listening(session)
+        else:
+            logger.debug(
+                "device=%s force_listen ignored, state=%s",
+                session.device_id, session.state.value,
+            )
     else:
         logger.debug("device=%s control message: %s", session.device_id, message)
 

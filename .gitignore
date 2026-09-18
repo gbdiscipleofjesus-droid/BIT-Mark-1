@@ -16,6 +16,10 @@ firmware/include/secrets.h
 bit_hub/backend/models/wake/*.onnx
 bit_hub/backend/models/wake/*.tflite
 
+# Secrets — never commit real API keys/credentials
+.env
+bit_hub/.env
+
 # OS/editor
 .DS_Store
 *.swp

@@ -46,6 +46,48 @@ python3 -m venv .venv-bit-voice
 .venv-bit-voice/bin/python -m pytest backend/tests -q
 ```
 
+## Phase 8 — Gemini Live, and testing without a wake word
+
+The wake word has no trained model yet, so `{"type": "force_listen"}` is
+the temporary stand-in for triggering LISTENING (see `docs/PROTOCOL.md`
+and `backend/main.py`'s module docstring) — swap it for real wake-word
+gating once `hey_bit.onnx` exists and a threshold is calibrated; nothing
+else needs to change.
+
+Set `GEMINI_API_KEY` and `GEMINI_LIVE_MODEL` (copy `.env.example` to
+`.env` — gitignored) before PROCESSING will actually get a spoken
+response; without them it just logs a warning and falls through to the
+follow-up window, same as before Phase 8 existed. `GEMINI_LIVE_MODEL`
+has no built-in default on purpose — get the current Live API model ID
+from Google's docs, not from stale code.
+
+Quick manual smoke test against a running Hub, no firmware/hardware
+needed (needs `websockets`, already a transitive dep). The real
+`webrtcvad` is doing the listening here — silence never arms
+`min_speech_ms`, so you need actual speech, not zero bytes: record a
+few seconds of yourself talking as 16-bit PCM, mono, 16 kHz raw (e.g.
+`ffmpeg -i in.wav -f s16le -ar 16000 -ac 1 speech.raw`), then:
+
+```python
+import asyncio, json
+from pathlib import Path
+from websockets.asyncio.client import connect
+
+async def main():
+    pcm = Path("speech.raw").read_bytes()
+    async with connect("ws://localhost:8000/ws/stream?device_id=test") as ws:
+        print(await ws.recv())                          # WAITING_WAKE_WORD
+        await ws.send(json.dumps({"type": "force_listen"}))
+        print(await ws.recv())                          # LISTENING
+        for i in range(0, len(pcm), 640):                # 20ms chunks
+            await ws.send(pcm[i:i + 640])
+        await ws.send(b"\x00\x00" * 320 * 40)             # ~800ms silence to trip end-of-utterance
+        while True:
+            print(await ws.recv())                       # PROCESSING, audio chunks (if Gemini configured), LISTENING
+
+asyncio.run(main())
+```
+
 ## Layout
 
 ```
@@ -53,6 +95,8 @@ bit_hub/
   backend/
     main.py            FastAPI app, /ws/stream, voice state machine
     device.py           DeviceRegistry + per-connection VoiceSession
+    ai/
+      gemini_live.py     Phase 8: per-utterance Gemini Live client
     voice/
       audio.py          AudioFrame, decode_audio_packet, PCM/frame constants
       stream.py         AudioStreamBuffer (pre-roll + utterance capture)
@@ -63,6 +107,6 @@ bit_hub/
     models/wake/        hey_bit.onnx goes here (not committed)
     tests/              pytest unit tests for everything above
   Dockerfile.voice
-  requirements.txt       Hub venv (3.12): fastapi, uvicorn, webrtcvad, numpy
+  requirements.txt       Hub venv (3.12): fastapi, uvicorn, webrtcvad, numpy, google-genai
   requirements-voice.txt Extra layer for Dockerfile.voice: openwakeword
 ```

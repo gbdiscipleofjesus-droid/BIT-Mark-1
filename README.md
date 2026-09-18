@@ -26,7 +26,7 @@ See `docs/PROTOCOL.md` for the exact wire protocol between the two.
 | 5 | Wi-Fi + Bluetooth | Software done / hardware untested |
 | 6 | BIT Hub / OmniBot | Software done |
 | 7 | Wake word + natural listening | **In progress** — see below |
-| 8 | Gemini Live | Not started |
+| 8 | Gemini Live | **In progress** — see below |
 | 9-17 | Vision, personality, memory, tools, reactions, offline, release | Not started |
 
 "Software done" never means "hardware verified" — the Waveshare board
@@ -47,6 +47,24 @@ that has to come from openWakeWord's own training pipeline (see
 can generate. Until it's placed and its scores are measured on real
 audio, `BIT_WAKE_THRESHOLD` stays unset and the wake word never
 auto-triggers — by design, not as a bug.
+
+### Phase 8 — jumped ahead of Phase 7 on purpose
+
+Normally Phase 8 waits for Phase 7 to close, but wake word training is
+blocked on external work (Colab), so Gemini Live got wired in now with
+a temporary bypass: send `{"type": "force_listen"}` over `/ws/stream`
+to enter LISTENING without a real wake trigger (see
+`docs/PROTOCOL.md`). Swapping in real wake-word gating later doesn't
+touch any of the Gemini Live code.
+
+`bit_hub/backend/ai/gemini_live.py` is implemented and unit/E2E tested
+(53 tests total) against the real installed `google-genai` 2.24.0 SDK's
+actual classes — but **never exercised against the real Gemini API**:
+this sandbox can't reach `ai.google.dev` or Google's API endpoints
+(network egress blocked), so nothing here has been confirmed to
+actually produce a real Gemini response yet. `GEMINI_API_KEY` and
+`GEMINI_LIVE_MODEL` also have no fabricated defaults — get the current
+Live API model ID from Google's docs, not from this codebase.
 
 ## Repo layout
 
