@@ -83,8 +83,10 @@ cd bit_hub
 python3 -m venv ../.venv-bit-hub && ../.venv-bit-hub/bin/pip install -r requirements.txt
 ../.venv-bit-hub/bin/python -m compileall -q backend
 
-# Full test suite (needs webrtcvad + openwakeword — see bit_hub/README.md)
-python3 -m venv ../.venv-bit-voice
+# Full test suite (needs webrtcvad + openwakeword — see bit_hub/README.md).
+# Must be Python 3.11 specifically — openwakeword's tflite-runtime
+# dependency has no wheel for 3.12+, whatever `python3` defaults to here.
+python3.11 -m venv ../.venv-bit-voice
 ../.venv-bit-voice/bin/pip install "setuptools>=69,<81" wheel
 ../.venv-bit-voice/bin/pip install -r requirements.txt -r requirements-voice.txt
 ../.venv-bit-voice/bin/python -m pytest backend/tests -q

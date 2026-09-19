@@ -37,14 +37,23 @@ auto-triggers until it's set from measured data — see
 
 The unit tests exercise `vad.py` and `wake.py`, which need `webrtcvad`
 and `openwakeword` importable. A dedicated venv with the setuptools pin
-applied covers both, mirroring what the Docker image installs:
+applied covers both, mirroring what the Docker image installs — **must
+be Python 3.11**, not whatever `python3` defaults to. `openwakeword`
+depends on `tflite-runtime`, which has no wheel at all for Python
+>=3.12 (confirmed: it fails the same way on 3.14 as on 3.12). Check
+what's available first:
 
 ```bash
-python3 -m venv .venv-bit-voice
+python3.11 --version || sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv
+python3.11 -m venv .venv-bit-voice
 .venv-bit-voice/bin/pip install "setuptools>=69,<81" wheel
 .venv-bit-voice/bin/pip install -r requirements.txt -r requirements-voice.txt
 .venv-bit-voice/bin/python -m pytest backend/tests -q
 ```
+
+If installing Python 3.11 isn't an option, use `bit-voice:mark1`
+(Docker, above) instead — same effect, guaranteed Python 3.11 inside
+the container regardless of the host's default.
 
 ## Phase 8 — Gemini Live, and testing without a wake word
 
