@@ -40,6 +40,7 @@ app = FastAPI(title="BIT Hub", version="0.1.0")
 registry = DeviceRegistry()
 
 VAD_FRAME_MS = 20
+GEMINI_RESPONSE_TIMEOUT_SECONDS = 25
 
 
 @app.get("/healthz")
@@ -86,16 +87,34 @@ async def begin_processing(session: VoiceSession) -> None:
             session.device_id,
         )
     else:
-        try:
+        async def _stream_response() -> tuple[int, int]:
             chunk_count = 0
             response_bytes = 0
             async for chunk in session.gemini.respond(utterance):
                 await session.websocket.send_bytes(chunk.data)
                 chunk_count += 1
                 response_bytes += len(chunk.data)
+            return chunk_count, response_bytes
+
+        try:
+            # Bounded, deliberately: a hung network handshake to Gemini's
+            # servers must not hang the whole voice session indefinitely
+            # (observed happening with no error at all when the connect
+            # never completes) — fail loud instead, same as any other
+            # Gemini/network error below.
+            chunk_count, response_bytes = await asyncio.wait_for(
+                _stream_response(), timeout=GEMINI_RESPONSE_TIMEOUT_SECONDS
+            )
             logger.info(
                 "device=%s Gemini response: %d chunks, %d bytes",
                 session.device_id, chunk_count, response_bytes,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "device=%s Gemini Live request timed out after %ds "
+                "(likely a network/connectivity issue reaching Gemini, "
+                "not an API error — nothing was logged before this)",
+                session.device_id, GEMINI_RESPONSE_TIMEOUT_SECONDS,
             )
         except Exception:
             # A Gemini/network failure must not take down the voice

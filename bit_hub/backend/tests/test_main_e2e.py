@@ -25,6 +25,7 @@ session's WakeWordDetector directly, exactly like real calibrated
 
 from __future__ import annotations
 
+import asyncio
 import json
 import socket
 import threading
@@ -292,6 +293,41 @@ def test_gemini_failure_does_not_crash_session(live_server):
 
         assert recv_json(ws) == {"type": "state", "value": "PROCESSING"}
         # Falls through to the follow-up window instead of dropping the connection.
+        assert recv_json(ws) == {"type": "state", "value": "LISTENING"}
+        ws.send(json.dumps({"type": "ping"}))
+        assert recv_json(ws) == {"type": "pong"}
+
+
+def test_gemini_hang_times_out_instead_of_stalling_session(live_server, monkeypatch):
+    """Regression test: a Gemini connection that never completes (observed
+    in practice — no error, no response, indefinite hang) must not stall
+    PROCESSING forever. Bounded by GEMINI_RESPONSE_TIMEOUT_SECONDS."""
+    monkeypatch.setattr(main_module, "GEMINI_RESPONSE_TIMEOUT_SECONDS", 0.2)
+
+    device_id = "test-device-gemini-hang"
+    with ws_connect(f"{live_server}/ws/stream?device_id={device_id}") as ws:
+        recv_json(ws)
+        force_wake_trigger(device_id)
+        ws.send(silence(1))
+        recv_json(ws)  # LISTENING
+
+        session = main_module.registry.get(device_id)
+
+        class HangingGeminiClient:
+            available = True
+
+            async def respond(self, pcm16_mono_16khz: bytes):
+                await asyncio.sleep(3600)  # never actually completes
+                yield  # pragma: no cover - makes this an async generator
+
+        session.gemini = HangingGeminiClient()
+
+        force_speech(device_id, speech_frames=5)
+        ws.send(silence(45))
+
+        assert recv_json(ws) == {"type": "state", "value": "PROCESSING"}
+        # Times out and falls through to the follow-up window rather than
+        # hanging indefinitely.
         assert recv_json(ws) == {"type": "state", "value": "LISTENING"}
         ws.send(json.dumps({"type": "ping"}))
         assert recv_json(ws) == {"type": "pong"}
