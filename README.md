@@ -26,7 +26,7 @@ See `docs/PROTOCOL.md` for the exact wire protocol between the two.
 | 5 | Wi-Fi + Bluetooth | Software done / hardware untested |
 | 6 | BIT Hub / OmniBot | Software done |
 | 7 | Wake word + natural listening | **In progress** — see below |
-| 8 | Gemini Live | **In progress** — see below |
+| 8 | Gemini Live | **Verified working end-to-end** (see below) — real wake word still pending from Phase 7 |
 | 9-17 | Vision, personality, memory, tools, reactions, offline, release | Not started |
 
 "Software done" never means "hardware verified" — the Waveshare board
@@ -48,7 +48,7 @@ can generate. Until it's placed and its scores are measured on real
 audio, `BIT_WAKE_THRESHOLD` stays unset and the wake word never
 auto-triggers — by design, not as a bug.
 
-### Phase 8 — jumped ahead of Phase 7 on purpose
+### Phase 8 — verified working end-to-end, jumped ahead of Phase 7 on purpose
 
 Normally Phase 8 waits for Phase 7 to close, but wake word training is
 blocked on external work (Colab), so Gemini Live got wired in now with
@@ -57,14 +57,32 @@ to enter LISTENING without a real wake trigger (see
 `docs/PROTOCOL.md`). Swapping in real wake-word gating later doesn't
 touch any of the Gemini Live code.
 
-`bit_hub/backend/ai/gemini_live.py` is implemented and unit/E2E tested
-(53 tests total) against the real installed `google-genai` 2.24.0 SDK's
-actual classes — but **never exercised against the real Gemini API**:
-this sandbox can't reach `ai.google.dev` or Google's API endpoints
-(network egress blocked), so nothing here has been confirmed to
-actually produce a real Gemini response yet. `GEMINI_API_KEY` and
-`GEMINI_LIVE_MODEL` also have no fabricated defaults — get the current
-Live API model ID from Google's docs, not from this codebase.
+`bit_hub/backend/ai/gemini_live.py` is unit/E2E tested (54 tests total)
+against the real installed `google-genai` 2.24.0 SDK's actual classes,
+**and has now been run against the real Gemini API from a live
+Codespace** (2026-09-20): real recorded speech → `force_listen` →
+VAD/end-of-utterance → Gemini Live → 14 real audio chunks (~198KB) back
+→ follow-up window reopened. The full conversational loop works.
+
+Two real bugs only showed up at that point, both fixed and covered by
+regression tests:
+- A hung Gemini connection had no timeout, so a stuck request stalled
+  the whole voice session indefinitely with no error logged at all —
+  fixed with `GEMINI_RESPONSE_TIMEOUT_SECONDS` (25s) around the call.
+- That "hang" was then root-caused to a real bug, not a network issue:
+  with `AutomaticActivityDetection.disabled=True` (correct — the Hub's
+  own VAD/EndOfUtteranceDetector already owns turn-taking), Gemini's
+  own docs say the client must send explicit `activity_start`/
+  `activity_end` signals — `audio_stream_end` alone never told Gemini a
+  turn happened, so it wire hung with nothing to respond to.
+
+Confirmed model choice: **`gemini-3.8-live`** (its own description:
+"low-latency, real-time dialogue model optimized for fluid,
+uninterrupted conversations with seamless, background async function
+calling") — picked over `-translate-`, `-extended-thinking`,
+`-transcribe-`, and Robotics-ER variants, which are for different jobs.
+No default is hardcoded in code; `GEMINI_LIVE_MODEL` must still be set
+explicitly per `bit_hub/.env.example`.
 
 ## Repo layout
 
