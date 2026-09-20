@@ -123,12 +123,20 @@ class GeminiLiveClient:
         async with self._client.aio.live.connect(
             model=self.model, config=self._connect_config()
         ) as session:
+            # AutomaticActivityDetection.disabled's own docs: "If disabled,
+            # the client must send activity signals." We disable it
+            # (the Hub's own VAD/EndOfUtteranceDetector already decides
+            # turn boundaries), so activity_start/activity_end are not
+            # optional here — without them Gemini has no way to know a
+            # turn ever started or ended, and just waits forever. Verified
+            # locally: audio_stream_end alone reproduces exactly that hang.
+            await session.send_realtime_input(activity_start=types.ActivityStart())
             for offset in range(0, len(pcm16_mono_16khz), INPUT_CHUNK_BYTES):
                 chunk = pcm16_mono_16khz[offset : offset + INPUT_CHUNK_BYTES]
                 await session.send_realtime_input(
                     audio=types.Blob(data=chunk, mime_type=INPUT_AUDIO_MIME_TYPE)
                 )
-            await session.send_realtime_input(audio_stream_end=True)
+            await session.send_realtime_input(activity_end=types.ActivityEnd())
 
             async for message in session.receive():
                 update = message.session_resumption_update

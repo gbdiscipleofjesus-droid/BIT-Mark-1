@@ -19,6 +19,10 @@ class FakeSession:
             self.sent_audio.append(kwargs["audio"].data)
         if kwargs.get("audio_stream_end"):
             self.sent_flags.append("audio_stream_end")
+        if kwargs.get("activity_start") is not None:
+            self.sent_flags.append("activity_start")
+        if kwargs.get("activity_end") is not None:
+            self.sent_flags.append("activity_end")
 
     async def receive(self):
         for message in self._messages:
@@ -114,7 +118,10 @@ async def test_respond_streams_audio_and_captures_resumption_handle():
     assert chunks[0].mime_type == "audio/pcm;rate=24000"
     assert client._resumption_handle == "handle-1"
     assert b"".join(fake_session.sent_audio) == b"\x01\x02" * 100
-    assert "audio_stream_end" in fake_session.sent_flags
+    # AutomaticActivityDetection.disabled requires explicit activity
+    # signals — audio_stream_end alone does not tell Gemini a turn
+    # happened at all, which is exactly the bug this regression-tests.
+    assert fake_session.sent_flags == ["activity_start", "activity_end"]
 
 
 @pytest.mark.asyncio
