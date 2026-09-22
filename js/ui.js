@@ -205,6 +205,8 @@ function drawHUD(ctx, w, t) {
   UI.panel(ctx, W - tw - 6, 3, tw + 3, 13, 'rgba(12,10,24,0.7)');
   drawTechIcon(ctx, W - tw - 2, 6, t);
   Font.draw(ctx, tech, W - 6, 6, UI.gold, { align: 'right' });
+  // Cánones rotos
+  { const n = canonCount(); if (n > 0) { Font.draw(ctx, 'CANON ' + n + '/5', W - 6, 20, '#ff60c0', { align: 'right', shadow: UI.ink }); } }
   // Combo
   if (w.combo.n >= 3) {
     const s = 'x' + w.combo.n;
@@ -217,7 +219,7 @@ function drawHUD(ctx, w, t) {
     ctx.fillStyle = 'rgba(12,10,24,0.75)'; ctx.fillRect(mx - 2, my - 2, mw + 4, 9);
     ctx.fillStyle = '#2a3050'; ctx.fillRect(mx, my + 2, mw, 1);
     const sx = (x) => mx + Math.round(x / w.level.width * mw);
-    ctx.fillStyle = '#4a6aa0'; ctx.fillRect(sx(2620), my + 1, sx(3520) - sx(2620), 3);
+    if (w.universe === '616') { ctx.fillStyle = '#4a6aa0'; ctx.fillRect(sx(2620), my + 1, sx(3520) - sx(2620), 3); }
     if (w.markerX) { ctx.fillStyle = Math.floor(t * 4) % 2 ? '#60e0ff' : '#2080c0'; ctx.fillRect(sx(w.markerX) - 1, my - 1, 3, 7); }
     if (w.crime) { ctx.fillStyle = Math.floor(t * 6) % 2 ? '#ff3030' : '#ffffff'; ctx.fillRect(sx(w.crime.x) - 1, my, 3, 5); }
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx(p.cx) - 1, my, 2, 5);
@@ -304,4 +306,92 @@ function drawTouch(ctx) {
     Font.draw(ctx, b.label, b.x, b.y - 3, '#ffffff', { align: 'center' });
   }
   ctx.globalAlpha = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Destellos antes de un evento canónico
+// ---------------------------------------------------------------------------
+const FLASH_WORDS = ['CANON', '¿Y SI...?', 'NO PUEDES SALVARLOS A TODOS', 'EVENTO CANÓNICO', 'TODO SE ROMPE', 'DOOM ESPERA', 'ANOMALÍA', 'OTRA VEZ NO'];
+class FlashSeq {
+  constructor(ids, onDone) {
+    this.ids = ids; this.onDone = onDone; this.t = 0; this.done = false;
+    this.intro = 0.5; this.each = 0.24;
+    this.total = this.intro + ids.length * this.each + 0.4;
+    this.last = -1;
+    Audio2.sfx('glitch');
+  }
+  update(dt) {
+    if (this.done) return;
+    this.t += dt;
+    const i = Math.floor((this.t - this.intro) / this.each);
+    if (i !== this.last && i >= 0 && i < this.ids.length) { this.last = i; Audio2.sfx(i % 2 ? 'glitch' : 'beat'); Input.rumble(0.3, 0.6, 80); }
+    if (this.t >= this.total) { this.done = true; this.onDone(); }
+  }
+  draw(ctx, t) {
+    const lt = this.t;
+    if (lt < this.intro) {
+      ctx.fillStyle = 'rgba(255,255,255,' + (lt / this.intro * 0.9).toFixed(2) + ')';
+      ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    const i = Math.min(this.ids.length - 1, Math.floor((lt - this.intro) / this.each));
+    if (lt > this.intro + this.ids.length * this.each) {
+      ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    const local = (lt - this.intro) % this.each;
+    FlashArt.draw(ctx, this.ids[i], local);
+    // interferencia
+    for (let k = 0; k < 6; k++) {
+      const y = Math.floor(hash2(i, k) * H), h = 2 + Math.floor(hash2(k, i) * 8);
+      const off = Math.round((hash2(k + i, 7) - 0.5) * 30);
+      ctx.drawImage(ctx.canvas, 0, y, W, h, off, y, W, h);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+    ctx.fillStyle = i % 2 ? 'rgba(255,0,80,0.12)' : 'rgba(0,255,220,0.10)';
+    ctx.fillRect(0, 0, W, H);
+    if (local < 0.05) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(0, 0, W, H); }
+    const word = FLASH_WORDS[Math.floor(hash2(i, 3) * FLASH_WORDS.length)];
+    if (i % 2 === 1) Font.draw(ctx, word, W / 2, 20 + Math.floor(hash2(i, 9) * 160), '#ffffff', { align: 'center', scale: 2, outline: '#000000' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Decisión (evento canónico / final)
+// ---------------------------------------------------------------------------
+class ChoiceBox {
+  constructor(title, text, options, onPick) {
+    this.title = title; this.text = text; this.options = options; this.onPick = onPick; this.t = 0; this.picked = false;
+    this.menu = new Menu(options.map((o) => ({ label: o.label, act: () => this.pick(o.id) })));
+  }
+  pick(id) {
+    if (this.picked || this.t < 0.6) return;
+    this.picked = true;
+    this.onPick(id);
+  }
+  update(dt) {
+    this.t += dt;
+    if (this.t < 0.6) { Input.takeTap(); return; }
+    this.menu.update(dt);
+  }
+  draw(ctx, t) {
+    ctx.fillStyle = 'rgba(4,2,10,0.92)'; ctx.fillRect(0, 0, W, H);
+    // grietas en los bordes
+    ctx.fillStyle = Math.floor(t * 6) % 2 ? '#60ffe0' : '#ff40c0';
+    for (let i = 0; i < 20; i++) {
+      const x = Math.floor(hash2(i, 1) * W), y = Math.floor(hash2(1, i) * H);
+      if (x > 40 && x < W - 40 && y > 30 && y < H - 30) continue;
+      ctx.fillRect(x, y, 1 + (i % 3), 1);
+    }
+    const a = Math.min(1, this.t * 2);
+    ctx.globalAlpha = a;
+    Font.draw(ctx, this.title, W / 2, 26, '#ff60c0', { align: 'center', shadow: '#000000' });
+    Font.wrap(this.text, 300).forEach((ln, i) => Font.draw(ctx, ln, W / 2, 48 + i * 11, UI.paper, { align: 'center' }));
+    const n = canonCount();
+    Font.draw(ctx, 'CÁNONES ROTOS: ' + n + '/5', W / 2, 100, '#60ffe0', { align: 'center' });
+    for (let i = 0; i < 5; i++) { ctx.fillStyle = i < n ? '#ff60c0' : '#2a2a3a'; ctx.fillRect(W / 2 - 24 + i * 10, 112, 7, 4); }
+    this.menu.draw(ctx, W / 2, 132, t, { lh: 18 });
+    ctx.globalAlpha = 1;
+  }
 }

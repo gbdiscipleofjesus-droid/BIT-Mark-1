@@ -36,7 +36,12 @@ const SUITS = [
   { id: 'stark', name: 'Traje Stark', desc: 'Regalo del señor Stark.', pal: { head: '#d82028', torso: '#d82028', torsoLow: '#1c38a8', arm: '#1c38a8', arm2: '#d82028', leg: '#1c38a8', boot: '#d82028', face: 'spider', emblem: '#140a12' } },
   { id: 'ffh', name: 'Traje mejorado', desc: 'Rojo y negro, hecho en el jet de Stark.', pal: { head: '#e01a24', torso: '#e01a24', torsoLow: '#16161c', arm: '#16161c', arm2: '#e01a24', leg: '#16161c', boot: '#e01a24', face: 'spider', emblem: '#16161c' } },
   { id: 'iron', name: 'Iron Spider', desc: 'Nanotecnología roja y dorada.', pal: { head: '#c01822', torso: '#c01822', torsoLow: '#e0b030', arm: '#c01822', arm2: '#e0b030', leg: '#c01822', boot: '#e0b030', face: 'spider', emblem: '#e0b030' } },
+  { id: 'raimi', name: 'Traje clásico (96283)', desc: 'Regalo de Tierra-96283. Telarañas en relieve.', pal: { head: '#c8141e', torso: '#c8141e', torsoLow: '#1a2a8a', arm: '#c8141e', arm2: '#c8141e', leg: '#1a2a8a', boot: '#c8141e', face: 'spider', emblem: '#140a12', eye: '#d8e4f0' } },
+  { id: 'tasm', name: 'Traje de Tierra-120703', desc: 'Ojos grandes, azul eléctrico.', pal: { head: '#d81a2a', torso: '#d81a2a', torsoLow: '#1a5ac8', arm: '#1a5ac8', arm2: '#d81a2a', leg: '#1a5ac8', boot: '#d81a2a', face: 'spider', emblem: '#140a12', eye: '#ffffff' } },
+  { id: 'verse', name: 'Traje del Spider-Verse', desc: 'Negro y rojo, con estilo de cómic.', pal: { head: '#1a1a22', torso: '#1a1a22', torsoLow: '#1a1a22', arm: '#1a1a22', arm2: '#d8202c', leg: '#1a1a22', boot: '#d8202c', face: 'spider', emblem: '#d8202c', eye: '#ffffff' } },
+  { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', eye: '#ffb060' } },
 ];
+const START_SUITS = ['nwh', 'casero', 'stark', 'ffh', 'iron'];
 SUITS.forEach((s) => { s.palObj = makePal(Object.assign({ outline: '#140a12' }, s.pal)); });
 
 // ---------------- Poses ----------------
@@ -199,6 +204,17 @@ const Rig = {
         ctx.fillStyle = pal.eye;
         ctx.fillRect(Math.min(front, front + inward * 2 * u), hy + Math.round(hs * 0.35), 3 * u, u);
         break;
+      case 'venom':
+        ctx.fillStyle = pal.eye;
+        ctx.fillRect(Math.min(front, front + inward * 2 * u), hy + u, 3 * u, 2 * u);
+        ctx.fillRect(front + inward * 3 * u, hy + u, u, u);
+        ctx.fillRect(Math.min(front, front + inward * 3 * u), hy + hs - 2 * u, 4 * u, u);
+        break;
+      case 'spot':
+        ctx.fillStyle = '#101010';
+        ctx.fillRect(front + inward * u, hy + u, 2 * u, 2 * u);
+        ctx.fillRect(front + inward * 3 * u, hy + 3 * u, u, u);
+        break;
       case 'bowl':
         ctx.fillStyle = 'rgba(190,230,255,0.55)';
         ctx.fillRect(hx - u, hy - u, hs + 2 * u, hs + 2 * u);
@@ -221,7 +237,7 @@ const Portraits = {
     const c = makeCanvas(24, 24);
     const x = c.getContext('2d');
     const R = (col, a, b, w, h) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
-    const bg = { spidey: '#2a1830', peter: '#2a1830', radio: '#18202a', cleary: '#1a2430', jjj: '#301818', shocker: '#2a2a10', mason: '#1e2418', gargan: '#102a18', mysterio: '#10281c', civil: '#202838', mj: '#281a24' }[who] || '#202020';
+    const bg = { spidey: '#2a1830', peter: '#2a1830', radio: '#18202a', cleary: '#1a2430', jjj: '#301818', shocker: '#2a2a10', mason: '#1e2418', gargan: '#102a18', mysterio: '#10281c', civil: '#202838', mj: '#281a24', tobey: '#2a1810', andrew: '#0a1a2a', miles: '#2a0a2a', gwen: '#1a1030', gwens: '#1a2030', miguel: '#0a1030', harry: '#1a2010', venom: '#101018', sandman: '#2a2010', rino: '#202028', mancha: '#303030', richard: '#1a1a20', ben: '#201a14', davis: '#101820', desconocido: '#1a0a06' }[who] || '#202020';
     R(bg, 0, 0, 24, 24);
     const face = (skin) => { R('#140a12', 6, 4, 12, 17); R(skin, 7, 5, 10, 15); R(skin, 5, 10, 2, 4); R(skin, 17, 10, 2, 4); };
     switch (who) {
@@ -273,6 +289,95 @@ const Portraits = {
         face('#e8b890'); R('#4a2418', 5, 3, 14, 5); R('#4a2418', 5, 3, 3, 16); R('#4a2418', 16, 3, 3, 16);
         R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#b06060', 11, 17, 3, 1); R('#3a3a5a', 4, 21, 16, 3);
         break;
+      case 'tobey':
+        R('#140a12', 5, 3, 14, 19); R('#c8141e', 6, 4, 12, 17);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#d8e4f0', 8, 9, 2, 3); R('#d8e4f0', 14, 9, 2, 3);
+        R('#5a0a10', 11, 4, 1, 17); R('#5a0a10', 6, 13, 12, 1); R('#5a0a10', 6, 17, 12, 1); R('#5a0a10', 8, 5, 1, 16); R('#5a0a10', 15, 5, 1, 16);
+        R('#1a2a8a', 4, 21, 16, 3);
+        break;
+      case 'andrew':
+        R('#140a12', 5, 3, 14, 19); R('#d81a2a', 6, 4, 12, 17);
+        R('#140a12', 6, 7, 5, 7); R('#140a12', 13, 7, 5, 7); R('#ffffff', 7, 8, 3, 5); R('#ffffff', 14, 8, 3, 5);
+        R('#8a0a14', 11, 4, 1, 17); R('#8a0a14', 6, 16, 12, 1);
+        R('#1a5ac8', 4, 21, 16, 3);
+        break;
+      case 'miles':
+        R('#140a12', 5, 3, 14, 19); R('#1a1a22', 6, 4, 12, 17);
+        R('#d8202c', 11, 4, 1, 17); R('#d8202c', 6, 12, 12, 1); R('#d8202c', 6, 16, 12, 1); R('#d8202c', 8, 5, 1, 15); R('#d8202c', 15, 5, 1, 15);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffffff', 8, 9, 3, 3); R('#ffffff', 13, 9, 3, 3);
+        R('#1a1a22', 4, 21, 16, 3); R('#d8202c', 11, 21, 2, 3);
+        break;
+      case 'gwen':
+        R('#e8e8f0', 3, 2, 18, 22); R('#e04a9a', 5, 4, 14, 18);
+        R('#f4f4f8', 6, 5, 12, 16); R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffffff', 8, 9, 2, 3); R('#ffffff', 14, 9, 2, 3);
+        R('#d0d0d8', 11, 5, 1, 16); R('#40c0d0', 4, 21, 16, 3);
+        break;
+      case 'gwens':
+        face('#f0c8a8'); R('#f0d060', 5, 3, 14, 5); R('#f0d060', 5, 3, 3, 14); R('#f0d060', 16, 3, 3, 14); R('#2a2a2a', 6, 6, 12, 1);
+        R('#2a4a8a', 9, 11, 2, 2); R('#2a4a8a', 14, 11, 2, 2); R('#c06070', 11, 17, 3, 1); R('#3a3a5a', 4, 21, 16, 3);
+        break;
+      case 'miguel':
+        R('#140a12', 5, 3, 14, 19); R('#1a2a6a', 6, 4, 12, 17);
+        R('#d01a2a', 7, 5, 10, 3); R('#d01a2a', 10, 8, 4, 10); R('#d01a2a', 7, 16, 10, 2);
+        R('#ff3040', 7, 9, 3, 2); R('#ff3040', 14, 9, 3, 2); R('#1a2a6a', 4, 21, 16, 3); R('#d01a2a', 10, 21, 4, 3);
+        break;
+      case 'harry':
+        face('#e8c0a0'); R('#6a4020', 6, 3, 12, 5); R('#6a4020', 6, 3, 2, 8);
+        R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#a06050', 11, 17, 3, 1); R('#2a3a2a', 4, 21, 16, 3);
+        break;
+      case 'venom':
+        R('#0a0a10', 4, 2, 16, 21); R('#1a1a24', 5, 3, 14, 19);
+        R('#ffffff', 6, 6, 5, 4); R('#ffffff', 13, 6, 5, 4); R('#ffffff', 7, 10, 3, 1); R('#ffffff', 14, 10, 3, 1);
+        R('#ffffff', 7, 14, 10, 5); R('#0a0a10', 8, 15, 1, 3); R('#0a0a10', 10, 15, 1, 3); R('#0a0a10', 12, 15, 1, 3); R('#0a0a10', 14, 15, 1, 3);
+        R('#e05080', 10, 17, 4, 5); R('#ffffff', 9, 21, 6, 3);
+        break;
+      case 'sandman':
+        face('#c8a878'); R('#8a6a3a', 6, 3, 12, 3); R('#140a12', 9, 11, 2, 1); R('#140a12', 14, 11, 2, 1); R('#7a5a3a', 10, 17, 5, 1);
+        R('#4a7a3a', 3, 21, 18, 3); R('#2a4a1a', 3, 22, 18, 1);
+        break;
+      case 'rino':
+        R('#140a12', 4, 3, 16, 20); R('#6a6a72', 5, 4, 14, 18); R('#8a8a92', 5, 4, 14, 3);
+        R('#e0e0d0', 10, 0, 4, 8); R('#c0c0b0', 11, 0, 2, 3); R('#e8b890', 8, 12, 8, 7); R('#140a12', 9, 14, 2, 1); R('#140a12', 13, 14, 2, 1);
+        R('#4a4a52', 3, 21, 18, 3);
+        break;
+      case 'electro':
+        R('#0a1a3a', 0, 0, 24, 24); face('#3a8aff'); R('#a0e0ff', 7, 6, 1, 10); R('#a0e0ff', 16, 8, 1, 9); R('#a0e0ff', 9, 17, 6, 1);
+        R('#ffffff', 9, 11, 2, 2); R('#ffffff', 14, 11, 2, 2); R('#1a2a5a', 4, 21, 16, 3);
+        break;
+      case 'mancha':
+        R('#140a12', 5, 3, 14, 19); R('#f0f0f0', 6, 4, 12, 17);
+        R('#101010', 7, 5, 4, 4); R('#101010', 14, 7, 3, 3); R('#101010', 9, 12, 5, 5); R('#101010', 15, 15, 2, 3); R('#101010', 6, 17, 3, 3);
+        R('#f0f0f0', 4, 21, 16, 3); R('#101010', 9, 21, 4, 3);
+        break;
+      case 'richard':
+        face('#e0b890'); R('#4a3020', 6, 3, 12, 4); R('#202020', 8, 10, 4, 3); R('#202020', 13, 10, 4, 3); R('#202020', 12, 11, 1, 1);
+        R('#8a8a8a', 9, 11, 2, 1); R('#8a8a8a', 14, 11, 2, 1); R('#8a6050', 11, 17, 3, 1); R('#5a4a3a', 4, 21, 16, 3);
+        break;
+      case 'ben':
+        face('#e0b890'); R('#d0d0d0', 6, 3, 12, 3); R('#d0d0d0', 6, 3, 2, 8); R('#d0d0d0', 16, 3, 2, 8);
+        R('#303030', 8, 10, 4, 3); R('#303030', 13, 10, 4, 3); R('#8a6050', 10, 17, 5, 1); R('#8a5a3a', 4, 21, 16, 3);
+        break;
+      case 'davis':
+        face('#7a4a2a'); R('#1a2a4a', 5, 2, 14, 5); R('#e0c040', 11, 3, 2, 2); R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2);
+        R('#2a1a10', 9, 15, 7, 2); R('#1a2a4a', 4, 21, 16, 3);
+        break;
+      case 'doom':
+        R('#0a140a', 0, 0, 24, 24); R('#1e4a1e', 3, 1, 18, 23); R('#2a6a2a', 4, 2, 16, 4);
+        R('#8a929a', 6, 5, 12, 16); R('#6a7078', 6, 5, 12, 2); R('#101010', 8, 9, 3, 2); R('#101010', 13, 9, 3, 2);
+        R('#40ff60', 9, 9, 1, 1); R('#40ff60', 14, 9, 1, 1); R('#101010', 9, 15, 6, 1); R('#6a7078', 11, 12, 2, 3);
+        break;
+      case 'desconocido':
+        R('#140a12', 5, 3, 14, 19); R('#16141a', 6, 4, 12, 17);
+        R('#3a2014', 6, 4, 4, 6); R('#3a2014', 14, 14, 4, 5); R('#e06020', 7, 6, 1, 1); R('#e06020', 15, 16, 2, 1); R('#e06020', 12, 5, 1, 3);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffb060', 8, 9, 2, 3); R('#e8c8a0', 14, 9, 2, 3);
+        R('#2a1a14', 4, 21, 16, 3);
+        break;
+      case 'cero':
+        R('#140806', 0, 0, 24, 24);
+        face('#d8a888'); R('#2a1a10', 5, 2, 14, 5); R('#2a1a10', 5, 2, 2, 11); R('#2a1a10', 17, 2, 2, 8);
+        R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#a06050', 13, 7, 1, 4); R('#a06050', 14, 13, 3, 1);
+        R('#7a5040', 11, 17, 3, 1); R('#16141a', 4, 21, 16, 3); R('#e06020', 11, 22, 2, 2);
+        break;
       default:
         face('#e0a878'); R('#3a2416', 6, 3, 12, 4); R('#140a12', 9, 11, 2, 1); R('#140a12', 14, 11, 2, 1); R('#4a6a8a', 4, 21, 16, 3);
     }
@@ -288,6 +393,10 @@ const SKIES = {
   sunset: { bands: ['#2b1b4a', '#4a2462', '#7a2e6a', '#b8466a', '#e8735a', '#f6a65a'], far: '#5a3060', mid: '#3a2048', win: '#ffd890', sun: '#ffe0a0', stars: false },
   dusk: { bands: ['#141a40', '#232a5a', '#3a3470', '#5e3e7c', '#8a4a7c', '#b85e78'], far: '#2e2a58', mid: '#1e1c40', win: '#ffe08a', sun: null, stars: true },
   night: { bands: ['#04060f', '#070b1c', '#0b1128', '#101838', '#152046', '#1c2a58'], far: '#141c3c', mid: '#0c1128', win: '#ffd870', sun: null, moon: true, stars: true },
+  golden: { bands: ['#3a2a4a', '#6a3a4a', '#a0503a', '#d07838', '#f0a040', '#ffd070'], far: '#7a4a3a', mid: '#4a2a28', win: '#ffe0a0', sun: '#fff0b0', stars: false },
+  teal: { bands: ['#020a14', '#051626', '#082236', '#0c3046', '#124058', '#1a526a'], far: '#0e2a3a', mid: '#081a26', win: '#9af0ff', sun: null, moon: true, stars: true },
+  verse: { bands: ['#1a0830', '#3a0c50', '#6a1060', '#a01868', '#e02870', '#ff6a60'], far: '#4a1060', mid: '#260838', win: '#40f0ff', sun: null, stars: true, halftone: true },
+  ruin: { bands: ['#0a0204', '#1a0406', '#300808', '#4a0e08', '#6a1a0a', '#8a2a0c'], far: '#200808', mid: '#120406', win: '#ff7020', sun: null, stars: false, debris: true },
   rift: { bands: ['#04070a', '#07100f', '#0a1a16', '#0f2820', '#15382a', '#1c4a36'], far: '#10241e', mid: '#0a1612', win: '#b0ffb0', sun: null, moon: false, stars: true, rift: true },
 };
 
@@ -326,6 +435,23 @@ const Scenery = {
     if (def.sun) {
       x.fillStyle = def.sun; x.beginPath(); x.arc(290, 150, 20, 0, TAU); x.fill();
     }
+    if (def.halftone) {
+      for (let yy = 0; yy < H; yy += 4) for (let xx = (yy % 8 ? 2 : 0); xx < W; xx += 4) {
+        const a = 0.08 + (yy / H) * 0.12;
+        x.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
+        x.fillRect(xx, yy, 1 + (yy > H / 2 ? 1 : 0), 1);
+      }
+    }
+    if (def.debris) {
+      const r = makeRng(66);
+      for (let i = 0; i < 14; i++) {
+        const dx = r.int(0, W), dy = r.int(10, 120), s = r.int(3, 12);
+        x.fillStyle = '#1a0604'; x.fillRect(dx, dy, s, Math.ceil(s * 0.6));
+        x.fillStyle = '#ff6020'; x.fillRect(dx, dy + Math.ceil(s * 0.6) - 1, s, 1);
+      }
+      x.fillStyle = 'rgba(255,90,30,0.35)';
+      for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(r.int(40, 340), r.int(20, 80), r.int(14, 30), 0, TAU); x.fill(); }
+    }
     if (def.rift) {
       x.fillStyle = '#50ff90';
       for (let i = 0; i < 40; i++) {
@@ -340,8 +466,8 @@ const Scenery = {
   },
 
   // Tira de skyline repetible. layer: 'far' | 'mid'
-  strip(name, layer) {
-    const key = name + layer;
+  strip(name, layer, landmark = 'avengers') {
+    const key = name + layer + landmark;
     if (this.stripCache[key]) return this.stripCache[key];
     const def = SKIES[name];
     const sw = 768, sh = 160;
@@ -365,8 +491,31 @@ const Scenery = {
       }
       px += bw + r.int(0, 4);
     }
-    // Hitos del MCU en la tira lejana: Empire State y la Torre de los Vengadores
-    if (layer === 'far') {
+    // Hitos de cada universo en la tira lejana
+    if (layer === 'far' && landmark === 'ruins') {
+      x.fillStyle = def.win;
+      for (let i = 0; i < 60; i++) x.fillRect(r.int(0, sw), sh - r.int(0, 40), 1, 1);
+      x.fillStyle = col;
+      const tx = 560;
+      x.fillRect(tx, sh - 120, 30, 120); x.fillRect(tx + 4, sh - 132, 12, 12);
+      x.clearRect(tx + 18, sh - 124, 12, 20); x.clearRect(tx + 22, sh - 104, 8, 10);
+    } else if (layer === 'far' && landmark === 'oscorp') {
+      x.fillStyle = col;
+      const tx = 540;
+      x.fillRect(tx, sh - 150, 36, 150); x.fillRect(tx + 6, sh - 160, 24, 10); x.fillRect(tx + 16, sh - 176, 4, 16);
+      x.fillStyle = def.win;
+      x.fillRect(tx + 12, sh - 144, 12, 2); x.fillRect(tx + 12, sh - 134, 12, 2); x.fillRect(tx + 12, sh - 144, 2, 12); x.fillRect(tx + 22, sh - 144, 2, 12);
+      x.fillStyle = col;
+      const cx = 200;
+      x.fillRect(cx, sh - 110, 24, 110); x.fillRect(cx + 4, sh - 124, 16, 14); x.fillRect(cx + 10, sh - 136, 4, 12);
+      x.fillStyle = def.win; x.fillRect(cx + 8, sh - 120, 8, 8); x.fillStyle = col; x.fillRect(cx + 11, sh - 119, 1, 4); x.fillRect(cx + 11, sh - 116, 3, 1);
+    } else if (layer === 'far' && landmark === 'alchemax') {
+      x.fillStyle = col;
+      const tx = 520;
+      x.beginPath(); x.moveTo(tx, sh); x.lineTo(tx + 10, sh - 170); x.lineTo(tx + 40, sh - 170); x.lineTo(tx + 50, sh); x.fill();
+      x.fillStyle = def.win;
+      for (let yy = sh - 160; yy < sh - 10; yy += 12) x.fillRect(tx + 14, yy, 22, 2);
+    } else if (layer === 'far') {
       x.fillStyle = col;
       const ex = 200;
       x.fillRect(ex, sh - 130, 26, 130); x.fillRect(ex + 5, sh - 145, 16, 15); x.fillRect(ex + 9, sh - 155, 8, 10); x.fillRect(ex + 12, sh - 160, 2, 8);
@@ -381,10 +530,10 @@ const Scenery = {
     return c;
   },
 
-  drawBackground(ctx, name, camX, camY, levelH) {
+  drawBackground(ctx, name, camX, camY, levelH, landmark) {
     ctx.drawImage(this.sky(name), 0, 0);
-    const far = this.strip(name, 'far');
-    const mid = this.strip(name, 'mid');
+    const far = this.strip(name, 'far', landmark);
+    const mid = this.strip(name, 'mid', landmark);
     const yBase = H - 20 - (camY - (levelH - H)) * 0.15;
     const fx = -((camX * 0.15) % far.width);
     for (let i = -1; i < 2; i++) ctx.drawImage(far, Math.floor(fx + i * far.width), Math.floor(yBase - far.height + 10));
@@ -404,6 +553,9 @@ const BSTYLES = {
   glass: { base: '#2c4a6a', dark: '#1a2e46', ledge: '#6a8aaa', win: '#4a7aa8', lit: '#b8e0ff', frame: '#1a2e46' },
   warehouse: { base: '#3a3e44', dark: '#24272c', ledge: '#5a6068', win: '#1a1c20', lit: '#ffcc60', frame: '#2a2e34' },
   steel: { base: '#5a6470', dark: '#38404a', ledge: '#8a96a4', win: '#303844', lit: '#d0e8ff', frame: '#38404a' },
+  verse: { base: '#3a1a6a', dark: '#1a0a3a', ledge: '#ff4a8a', win: '#1a1040', lit: '#40f0ff', frame: '#140828' },
+  verse2: { base: '#1a4a7a', dark: '#0a2240', ledge: '#ffd040', win: '#0a1a30', lit: '#ff5aa0', frame: '#08142a' },
+  ruin: { base: '#2a1a18', dark: '#140a08', ledge: '#4a2a20', win: '#0a0404', lit: '#ff6a20', frame: '#1a0c0a' },
   stone: { base: '#8a8470', dark: '#5e5a4a', ledge: '#b0aa94', win: '#3a3a30', lit: '#fff0b0', frame: '#6e6a58' },
 };
 
@@ -428,7 +580,114 @@ function renderBuilding(w, h, styleName, seed, night) {
       x.fillRect(xx, yy, ww, wh);
     }
   }
+  if (styleName === 'verse' || styleName === 'verse2') {
+    x.fillStyle = 'rgba(255,255,255,0.10)';
+    for (let yy = 0; yy < h; yy += 3) for (let xx = (yy % 6 ? 1 : 0); xx < w; xx += 3) x.fillRect(xx, yy, 1, 1);
+    x.fillStyle = '#000000'; x.fillRect(0, 0, 2, h); x.fillRect(w - 2, 0, 2, h);
+  }
   x.fillStyle = st.ledge; x.fillRect(0, 0, w, 3);
   x.fillStyle = st.dark; x.fillRect(0, 3, w, 1);
+  if (styleName === 'ruin') {
+    // tejado roto y quemaduras
+    for (let xx = 0; xx < w; xx += 4) { const d = Math.floor(hash2(seed, xx) * 10); x.clearRect(xx, 0, 4, d); }
+    x.fillStyle = 'rgba(0,0,0,0.35)';
+    for (let i = 0; i < 6; i++) x.fillRect(Math.floor(hash2(i, seed) * w), Math.floor(hash2(seed, i) * h), 8, 14);
+  }
   return c;
 }
+
+// ---------------------------------------------------------------------------
+// Destellos: imágenes rápidas antes de cada evento canónico
+// ---------------------------------------------------------------------------
+const FlashArt = {
+  draw(ctx, id, t) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+    const circ = (c, x, y, r) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+    switch (id) {
+      case 'doom':
+        R('#020802', 0, 0, W, H);
+        R('#123812', 122, 10, 140, 206); R('#1e4a1e', 132, 16, 120, 30);
+        R('#7a828a', 146, 44, 92, 140); R('#9aa2aa', 146, 44, 92, 10);
+        R('#0a0a0a', 160, 82, 24, 10); R('#0a0a0a', 200, 82, 24, 10);
+        R(Math.floor(t * 20) % 2 ? '#60ff80' : '#20a040', 168, 85, 8, 4); R(Math.floor(t * 20) % 2 ? '#60ff80' : '#20a040', 208, 85, 8, 4);
+        R('#0a0a0a', 172, 140, 40, 4); R('#5a6068', 186, 96, 12, 34);
+        break;
+      case '2099':
+        R('#050818', 0, 0, W, H);
+        for (let i = 0; i < 20; i++) R('#1a2a6a', 0, i * 11, W, 1);
+        R('#1a2a6a', 150, 30, 84, 186); R('#d01a2a', 160, 40, 64, 20); R('#d01a2a', 184, 60, 16, 90); R('#d01a2a', 160, 140, 64, 16);
+        R('#ff3040', 164, 70, 18, 8); R('#ff3040', 202, 70, 18, 8);
+        R('#d01a2a', 100, 100, 50, 6); R('#d01a2a', 234, 100, 50, 6);
+        Font.draw(ctx, '2099', W / 2, 190, '#ff3040', { align: 'center', scale: 2 });
+        break;
+      case 'crack':
+        R('#ffffff', 0, 0, W, H);
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+        for (let k = 0; k < 6; k++) {
+          ctx.beginPath(); let x = W / 2, y = H / 2; ctx.moveTo(x, y);
+          for (let i = 0; i < 8; i++) { x += Math.cos(k + i * 0.7) * 30 + (hash2(k, i) - 0.5) * 30; y += Math.sin(k * 1.3 + i) * 20; ctx.lineTo(x, y); }
+          ctx.stroke();
+        }
+        break;
+      case 'harry':
+        R('#1a1008', 0, 0, W, H); R('#3a2a1a', 0, 160, W, 56);
+        R('#2a3a2a', 60, 60, 110, 16); R('#4a5a4a', 70, 56, 90, 6);
+        circ('#e8c0a0', 190, 110, 22); R('#6a4020', 170, 86, 42, 14);
+        R('#140a12', 180, 108, 5, 4); R('#140a12', 196, 108, 5, 4);
+        R('#ff4040', 0, 0, W, 2); R('#ff4040', 0, H - 2, W, 2);
+        break;
+      case 'plane':
+        R('#10141a', 0, 0, W, H);
+        for (let i = 0; i < 30; i++) R('#3a4a6a', (i * 37 + t * 400) % W, (i * 23) % H, 1, 12);
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.35);
+        R('#d8d8e0', -110, -12, 220, 24); R('#b0b0b8', -30, -60, 50, 120); R('#b0b0b8', 80, -40, 20, 40);
+        for (let i = 0; i < 8; i++) R('#2a3a5a', -90 + i * 22, -4, 10, 6);
+        ctx.restore();
+        R('#ff6020', 250, 120, 30, 20); R('#ffd040', 256, 124, 16, 10);
+        break;
+      case 'bentomb':
+        R('#0a0c14', 0, 0, W, H); R('#1a2018', 0, 170, W, 46);
+        R('#6a6a72', 142, 70, 100, 110); circ('#6a6a72', 192, 72, 50);
+        R('#4a4a52', 150, 80, 84, 90);
+        Font.draw(ctx, 'BEN PARKER', W / 2, 110, '#d0d0d8', { align: 'center' });
+        Font.draw(ctx, 'TÍO. AMIGO. HÉROE.', W / 2, 126, '#a0a0a8', { align: 'center' });
+        R('#c02020', 180, 172, 6, 6); R('#c02020', 198, 174, 6, 6);
+        break;
+      case 'clock':
+        R('#060a10', 0, 0, W, H);
+        circ('#c8c0a0', W / 2, H / 2, 80); circ('#1a1a1a', W / 2, H / 2, 72);
+        for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; R('#c8c0a0', W / 2 + Math.cos(a) * 62 - 2, H / 2 + Math.sin(a) * 62 - 2, 4, 4); }
+        ctx.strokeStyle = '#c8c0a0'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.lineTo(W / 2 + Math.cos(t * 6) * 50, H / 2 + Math.sin(t * 6) * 50); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.lineTo(W / 2, H / 2 - 36); ctx.stroke();
+        break;
+      case 'gwenfall':
+        R('#04060c', 0, 0, W, H);
+        for (let i = 0; i < 18; i++) R('#20283a', (i * 29) % W, 0, 2, H);
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(W / 2 + 4, 0); ctx.lineTo(W / 2 + 4, 70 + t * 80); ctx.stroke();
+        { const gy = 110 + t * 60; circ('#f0d060', W / 2, gy - 18, 9); R('#3a3a5a', W / 2 - 6, gy - 10, 12, 22); R('#f0c8a8', W / 2 - 14, gy - 16, 8, 3); R('#f0c8a8', W / 2 + 6, gy - 20, 8, 3); }
+        break;
+      case 'ruin':
+        R('#1a0404', 0, 0, W, H);
+        for (let i = 0; i < 12; i++) { const h = 40 + hash2(i, 3) * 120; R('#0a0202', i * 34, H - h, 28, h); R('#ff5020', i * 34 + 6, H - h + 10, 3, 3); }
+        circ('rgba(255,80,20,0.4)', 280, 60, 40);
+        break;
+      case 'alone':
+        R('#04040a', 0, 0, W, H); R('#0e0e1a', 0, 150, W, 66);
+        circ('#e8e8d0', 300, 50, 16);
+        Rig.draw(ctx, 180, 150, 1, Poses.sit(), SUITS[0].palObj, { scale: 3 });
+        break;
+      case 'spiders':
+        R('#0a0a0a', 0, 0, W, H);
+        for (let i = 0; i < 12; i++) {
+          const x = 30 + (i % 6) * 60, y = 50 + Math.floor(i / 6) * 90;
+          const cols = ['#e0202c', '#1a1a22', '#e8e8f0', '#1a2a6a', '#c8141e', '#16141a'];
+          R(cols[i % cols.length], x - 20, y - 30, 40, 60);
+          UI.spiderIcon(ctx, x - 4, y - 4, i % 2 ? '#ffffff' : '#140a12');
+        }
+        break;
+      default: R('#000000', 0, 0, W, H);
+    }
+  },
+};

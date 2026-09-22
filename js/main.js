@@ -11,15 +11,17 @@ const UPGRADES = [
 ];
 const DIFF_NAMES = ['FÁCIL', 'NORMAL', 'DIFÍCIL'];
 
+const SAVE_VERSION = 2;
 function defaultSave() {
   return {
-    v: 1, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
-    suits: ['nwh'], suit: 'nwh', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
-    cityX: 400, completed: false, started: false,
+    v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
+    suits: START_SUITS.slice(), suit: 'nwh', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
+    universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
+    completed: false, started: false,
   };
 }
 function defaultSettings() {
-  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto' };
+  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +83,8 @@ class OptionsScreen {
       { label: () => 'VIBRACIÓN DEL MANDO: ' + (s.rumble ? 'SÍ' : 'NO'), act: () => { s.rumble = !s.rumble; Game.applySettings(); if (s.rumble) Input.rumble(0.6, 0.6, 200); } },
       { label: () => 'SACUDIDA DE PANTALLA: ' + (s.shake ? 'SÍ' : 'NO'), act: () => { s.shake = !s.shake; Game.applySettings(); } },
       { label: () => 'CONTROLES TÁCTILES: ' + { auto: 'AUTO', on: 'SÍ', off: 'NO' }[s.touch], act: () => { s.touch = { auto: 'on', on: 'off', off: 'auto' }[s.touch]; Game.applySettings(); } },
+      { label: () => 'CANCIÓN DE CRÉDITOS: ' + (s.creditsSong === 'custom' && CustomSong.url ? 'TU ARCHIVO' : 'ORIGINAL'), act: () => { s.creditsSong = s.creditsSong === 'custom' ? 'original' : 'custom'; if (s.creditsSong === 'custom' && !CustomSong.url) this.msg = 'Primero carga una canción.'; Game.applySettings(); } },
+      { label: () => CustomSong.url ? 'CAMBIAR MI CANCIÓN (' + CustomSong.name.slice(0, 16) + ')' : 'CARGAR MI CANCIÓN (MP3)', act: () => CustomSong.pickFile((ok) => { if (ok) { s.creditsSong = 'custom'; Game.applySettings(); this.msg = 'Canción cargada.'; } }) },
       { label: 'PANTALLA COMPLETA', act: () => Game.toggleFullscreen() },
       { label: 'VOLVER', act: () => { this.done = true; } },
     ]);
@@ -92,8 +96,8 @@ class OptionsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'OPCIONES');
-    this.menu.draw(ctx, W / 2, 44, t, { lh: 17 });
-    Font.draw(ctx, 'Usa izquierda/derecha para ajustar', W / 2, H - 14, UI.dim, { align: 'center' });
+    this.menu.draw(ctx, W / 2, 34, t, { lh: 16 });
+    Font.draw(ctx, this.msg || 'Usa izquierda/derecha para ajustar', W / 2, H - 12, this.msg ? UI.gold : UI.dim, { align: 'center' });
   }
 }
 
@@ -248,7 +252,8 @@ class SuitsScreen {
       if (!unlocked) ctx.globalAlpha = 0.15;
       Rig.draw(ctx, 305, 150, Math.sin(t) > 0 ? 1 : -1, Poses.idle(t), pal, { scale: 4 });
       ctx.globalAlpha = 1;
-      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa la misión ' + (MISSION_SUIT.indexOf(s.id) + 1) + '.', 150);
+      const mi = MISSION_SUIT.indexOf(s.id);
+      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa ' + (mi === 0 ? 'el prólogo' : 'el capítulo ' + mi) + '.', 150);
       lines.forEach((ln, i) => Font.draw(ctx, ln, 305, 176 + i * 10, UI.paper, { align: 'center' }));
     }
   }
@@ -262,12 +267,13 @@ class PauseRoot {
       { label: 'REANUDAR', act: () => { this.res = 'close'; } },
       { label: 'TALLER', act: () => this.stack.push(new WorkshopScreen(world)) },
       { label: 'TRAJES', act: () => this.stack.push(new SuitsScreen()) },
+      { label: 'VIAJAR ENTRE UNIVERSOS', disabled: () => !city, act: () => this.stack.push(new TravelScreen(world)) },
       { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
       { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
-      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityX = world.player.x; Game.saveGame(); Game.toMenu(); } }
-        : { label: 'ABANDONAR MISIÓN', act: () => this.stack.push(new ConfirmScreen('¿Abandonar la misión? Volverás a la ciudad.', () => { Game.goCity({ x: MARKER_X[world.missionIdx] ? MARKER_X[world.missionIdx] - 100 : Game.save.cityX }); })) },
+      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.toMenu(); } }
+        : { label: 'ABANDONAR CAPÍTULO', act: () => this.stack.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[world.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) },
     ]);
-    if (Game.save.stage === 0 && !city) this.menu.items[5] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de esta misión.', () => Game.toMenu())) };
+    if (Game.save.stage === 0 && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
   }
   update(dt) {
     const r = this.menu.update(dt);
@@ -276,13 +282,38 @@ class PauseRoot {
   }
   draw(ctx, t) {
     ctx.fillStyle = 'rgba(8,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, 'PAUSA', W / 2, 26, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
-    this.menu.draw(ctx, W / 2, 70, t, { lh: 15 });
+    Font.draw(ctx, 'PAUSA', W / 2, 16, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
+    this.menu.draw(ctx, W / 2, 52, t, { lh: 15 });
     const s = Game.save;
-    const info = 'TECNOLOGÍA ' + s.tech + '   PIEZAS STARK ' + s.tokens.length + '/20   CRÍMENES ' + (s.stats.crimes || 0);
-    Font.draw(ctx, info, W / 2, 172, UI.dim, { align: 'center' });
-    if (this.world.mode === 'mission') Font.draw(ctx, 'MISIÓN ' + (this.world.missionIdx + 1) + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 186, UI.gold, { align: 'center' });
-    else if (s.stage >= 1 && s.stage <= 4) Font.draw(ctx, 'SIGUIENTE: ' + MISSIONS[s.stage].name + ' (' + MARKER_PLACE[s.stage] + ')', W / 2, 186, UI.gold, { align: 'center' });
+    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/25   CÁNONES ROTOS ' + canonCount() + '/5';
+    Font.draw(ctx, info, W / 2, 176, UI.dim, { align: 'center' });
+    const U = UNIVERSES[this.world.universe];
+    if (this.world.mode === 'mission') Font.draw(ctx, (this.world.missionIdx ? 'CAPÍTULO ' + this.world.missionIdx : 'PRÓLOGO') + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
+    else Font.draw(ctx, U.name + ' · ' + U.city, W / 2, 190, UI.gold, { align: 'center' });
+  }
+}
+
+class TravelScreen {
+  constructor(world) {
+    this.world = world;
+    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= 5));
+    const items = list.map((u) => ({
+      label: () => UNIVERSES[u].name + ' · ' + UNIVERSES[u].city + (u === world.universe ? '  (AQUÍ)' : ''),
+      disabled: () => u === world.universe,
+      act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.goCity({ universe: u }); },
+    }));
+    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
+    this.menu = new Menu(items);
+  }
+  update(dt) {
+    const r = this.menu.update(dt);
+    if (this.done) { this.done = false; return 'back'; }
+    return r;
+  }
+  draw(ctx, t) {
+    drawScreenTitle(ctx, 'VIAJAR ENTRE UNIVERSOS');
+    this.menu.draw(ctx, W / 2, 50, t, { lh: 18 });
+    Font.draw(ctx, 'Solo puedes volver a universos que ya visitaste.', W / 2, 190, UI.dim, { align: 'center' });
   }
 }
 
@@ -326,7 +357,8 @@ function drawLogo(ctx, t, y = 30) {
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   const w = Font.width(title, 4);
   ctx.fillRect(W / 2 - w / 2, y + 1, w, 2);
-  Font.draw(ctx, 'ECOS DE NUEVA YORK', W / 2, y + 36, UI.paper, { align: 'center', scale: 2, shadow: UI.blue });
+  const g = Math.floor(t * 8) % 17 === 0 ? 2 : 0;
+  Font.draw(ctx, 'ROMPECÁNONES', W / 2 + g, y + 36, '#60ffe0', { align: 'center', scale: 2, shadow: '#ff40c0' });
 }
 
 class TitleScene {
@@ -366,8 +398,8 @@ class MenuScene {
         root.menu.draw(ctx, W / 2, 100, t, { lh: 15 });
         if (Game.save.started) {
           const s = Game.save;
-          const prog = s.stage >= 5 ? 'HISTORIA COMPLETADA' : 'MISIÓN ' + (s.stage + 1) + ' DE 5';
-          Font.draw(ctx, prog + ' · PIEZAS STARK ' + s.tokens.length + '/20', W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
+          const prog = s.stage >= 5 ? 'FINALES ' + (s.endings || []).length + '/3' : s.stage === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + s.stage + ' DE 4';
+          Font.draw(ctx, prog + ' · FRAGMENTOS ' + s.tokens.length + '/25 · CÁNONES ' + canonCount() + '/5', W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
         }
         Font.draw(ctx, Audio2.ready() ? '' : 'Haz clic o pulsa una tecla para activar el sonido', W / 2, 200, '#9aa0c0', { align: 'center', shadow: UI.ink });
       },
@@ -409,7 +441,7 @@ class ResultsScene {
     this.t = 0; this.idx = idx; this.stats = stats; this.next = next;
     Audio2.music(null);
     Audio2.sfx('win');
-    this.suit = SUITS.find((s) => s.id === MISSION_SUIT[idx]);
+    this.suit = this.newSuit ? null : SUITS.find((s) => s.id === MISSION_SUIT[idx] && Game.suitJustUnlocked === s.id);
   }
   update(dt) {
     this.t += dt;
@@ -419,8 +451,8 @@ class ResultsScene {
   draw(ctx) {
     Scenery.drawBackground(ctx, 'dusk', this.t * 20, 264, 480);
     ctx.fillStyle = 'rgba(8,6,16,0.7)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, '¡MISIÓN COMPLETADA!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
-    Font.draw(ctx, 'MISIÓN ' + (this.idx + 1) + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
+    Font.draw(ctx, this.idx === 4 ? 'FIN DEL VIAJE' : '¡CAPÍTULO COMPLETADO!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
+    Font.draw(ctx, (this.idx ? 'CAPÍTULO ' + this.idx : 'PRÓLOGO') + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
     const s = this.stats;
     const mm = Math.floor(s.time / 60), ss = Math.floor(s.time % 60);
     const rows = [
@@ -446,12 +478,16 @@ class ResultsScene {
 }
 
 class CreditsScene {
-  constructor(next) { this.t = 0; this.next = next; Audio2.music('title'); }
+  constructor(next) {
+    this.t = 0; this.next = next;
+    this.custom = Game.settings.creditsSong === 'custom' && CustomSong.play();
+    Audio2.music(this.custom ? null : 'credits');
+  }
   update(dt) {
     this.t += dt;
     const tap = Input.takeTap();
     const end = this.t > STORY.credits.length * 3.2 + 2;
-    if (end || (this.t > 1.5 && (Input.confirm() || Input.back() || tap))) { Game.change(this.next); this.t = -999; }
+    if (end || (this.t > 1.5 && (Input.confirm() || Input.back() || tap))) { CustomSong.stop(); Game.change(this.next); this.t = -999; }
   }
   draw(ctx) {
     Scenery.drawBackground(ctx, 'night', this.t * 25, 264, 480);
@@ -464,6 +500,66 @@ class CreditsScene {
     Font.draw(ctx, c[0], W / 2, 80, UI.gold, { align: 'center', scale: i === 0 ? 3 : 1, shadow: UI.ink });
     Font.wrap(c[1], 300).forEach((ln, k) => Font.draw(ctx, ln, W / 2, (i === 0 ? 112 : 96) + k * 11, UI.paper, { align: 'center', shadow: UI.ink }));
     ctx.globalAlpha = 1;
+  }
+}
+
+class EndingScene {
+  constructor(ending, next) {
+    this.t = 0; this.ending = ending; this.next = next;
+    const E = STORY.endings[ending];
+    this.title = E.title;
+    Audio2.music('sad');
+    this.dialog = null;
+    this.lines = prepLines(E.lines);
+  }
+  update(dt) {
+    this.t += dt;
+    if (!this.dialog && this.t > 2.6) this.dialog = new Dialog(this.lines, () => Game.change(this.next));
+    if (this.dialog) this.dialog.update(dt);
+  }
+  draw(ctx) {
+    const e = this.ending;
+    const sky = e === 'feliz' ? 'golden' : e === 'triste' ? 'teal' : 'verse';
+    Scenery.drawBackground(ctx, sky, 100 + this.t * 5, 264, 480, e === 'neutral' ? 'alchemax' : 'avengers');
+    ctx.fillStyle = '#140e18'; ctx.fillRect(0, 178, W, 38);
+    if (e === 'triste') {
+      ctx.fillStyle = 'rgba(160,190,255,0.35)';
+      for (let i = 0; i < 60; i++) ctx.fillRect((i * 53 + this.t * 40) % W, (i * 37 + this.t * 220) % H, 1, 4);
+    }
+    if (e === 'neutral') {
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      for (let i = 0; i < 8; i++) ctx.fillRect(0, (i * 29 + this.t * 30) % H, W, 1);
+      drawSwinger(ctx, this.t * 0.7);
+    } else Rig.draw(ctx, 190, 178, 1, e === 'feliz' ? Poses.idle(this.t) : Poses.sit(), SUITS[0].palObj);
+    if (this.t < 2.6) {
+      ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0, 1 - this.t / 2.6 * 0.6) + ')'; ctx.fillRect(0, 0, W, H);
+      Font.draw(ctx, this.title, W / 2, 96, e === 'feliz' ? UI.gold : e === 'triste' ? '#8ab0ff' : '#ff60c0', { align: 'center', scale: 2, shadow: UI.ink });
+    }
+    if (this.dialog) this.dialog.draw(ctx, this.t);
+  }
+}
+
+class PostCreditsScene {
+  constructor(ending, next) {
+    this.t = 0; this.next = next;
+    Audio2.music(null);
+    this.dialog = null;
+    this.lines = STORY.postCredits[ending] || [];
+  }
+  update(dt) {
+    this.t += dt;
+    if (!this.dialog && this.t > 1.5) this.dialog = new Dialog(this.lines, () => Game.change(this.next));
+    if (this.dialog) this.dialog.update(dt);
+  }
+  draw(ctx) {
+    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+    const a = Math.min(1, this.t / 1.5);
+    ctx.globalAlpha = a;
+    FlashArt.draw(ctx, 'doom', this.t % 1);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
+    Font.draw(ctx, 'ESCENA POST-CRÉDITOS', W / 2, 8, '#6a6a80', { align: 'center' });
+    if (this.dialog) this.dialog.draw(ctx, this.t);
   }
 }
 
@@ -486,6 +582,7 @@ const Game = {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
+    CustomSong.load();
     Input.init(this.canvas);
     this.applySettings();
     window.addEventListener('resize', () => this.resize());
@@ -498,12 +595,18 @@ const Game = {
   loadAll() {
     const s = Store.get('sm_save', null);
     const base = defaultSave();
-    if (s && typeof s === 'object') {
+    if (s && typeof s === 'object' && s.v === SAVE_VERSION) {
       this.save = Object.assign(base, s);
       this.save.upgrades = Object.assign(defaultSave().upgrades, s.upgrades || {});
       this.save.stats = Object.assign(defaultSave().stats, s.stats || {});
       if (!Array.isArray(this.save.tokens)) this.save.tokens = [];
-      if (!Array.isArray(this.save.suits) || !this.save.suits.length) this.save.suits = ['nwh'];
+      if (!Array.isArray(this.save.suits) || !this.save.suits.length) this.save.suits = START_SUITS.slice();
+      for (const k of START_SUITS) if (!this.save.suits.includes(k)) this.save.suits.push(k);
+      if (!this.save.cityPos || typeof this.save.cityPos !== 'object') this.save.cityPos = {};
+      if (!this.save.canon || typeof this.save.canon !== 'object') this.save.canon = {};
+      if (!Array.isArray(this.save.visited)) this.save.visited = [];
+      if (!Array.isArray(this.save.endings)) this.save.endings = [];
+      if (!UNIVERSES[this.save.universe]) this.save.universe = '616';
       if (!SUITS.find((x) => x.id === this.save.suit)) this.save.suit = 'nwh';
       this.save.stage = clamp(parseInt(this.save.stage, 10) || 0, 0, 5);
       this.save.tech = Math.max(0, parseInt(this.save.tech, 10) || 0);
@@ -542,39 +645,61 @@ const Game = {
   },
 
   newGame() {
-    const keepSuit = null;
     this.save = defaultSave();
     this.save.started = true;
-    if (keepSuit) this.save.suit = keepSuit;
     this.saveGame();
     this.change(() => new StoryScene(STORY.intro, () => this.missionScene(0)));
   },
+  cityScene(uid, x) {
+    const u = uid || this.save.universe || '616';
+    const px = x !== undefined ? x : (this.save.cityPos[u] !== undefined ? this.save.cityPos[u] : 400);
+    return new PlayScene(new World('city', { universe: u, x: px }));
+  },
   continueGame() {
     if (this.save.stage === 0) this.change(() => this.missionScene(0));
-    else this.change(() => new PlayScene(new World('city', { x: this.save.cityX })));
+    else this.change(() => this.cityScene());
   },
   missionScene(i) { return new PlayScene(new World('mission', { mission: i })); },
   startMission(i) { this.change(() => this.missionScene(i)); },
   goCity(opts = {}) {
     if (this.save.stage === 0) { this.change(() => new MenuScene()); return; }
-    this.change(() => new PlayScene(new World('city', Object.assign({ x: this.save.cityX }, opts))));
+    this.change(() => this.cityScene(opts.universe, opts.x));
   },
-  toMenu() { this.change(() => new MenuScene()); },
+  toMenu() { CustomSong.stop(); this.change(() => new MenuScene()); },
+
+  unlockSuit(id) {
+    this.suitJustUnlocked = null;
+    if (id && !this.save.suits.includes(id)) { this.save.suits.push(id); this.suitJustUnlocked = id; }
+  },
 
   missionComplete(i, stats) {
     this.save.tech += 15;
+    const first = this.save.stage <= i;
     this.save.stage = Math.max(this.save.stage, i + 1);
-    const suit = MISSION_SUIT[i];
-    if (suit && !this.save.suits.includes(suit)) this.save.suits.push(suit);
-    const cx = i === 0 ? 400 : MARKER_X[i] - 100;
-    this.save.cityX = cx;
-    if (i === 4) this.save.completed = true;
+    this.unlockSuit(MISSION_SUIT[i]);
+    let uid, x;
+    if (first && i < 4) { uid = MISSIONS[i + 1].universe; x = 400; }
+    else { uid = MISSIONS[i].universe; x = MISSIONS[i].markerX ? MISSIONS[i].markerX - 100 : 400; }
+    this.save.universe = uid; this.save.cityPos[uid] = x;
     this.saveGame();
-    const next = () => {
-      if (i === 4) return new CreditsScene(() => new PlayScene(new World('city', { x: cx, afterMission: 4 })));
-      return new PlayScene(new World('city', { x: cx, afterMission: i }));
-    };
-    this.change(() => new ResultsScene(i, stats, next));
+    this.change(() => new ResultsScene(i, stats, () => this.cityScene(uid, x)));
+  },
+
+  finishGame(ending, stats) {
+    this.save.tech += 25;
+    this.save.stage = 5; this.save.completed = true;
+    if (!Array.isArray(this.save.endings)) this.save.endings = [];
+    if (!this.save.endings.includes(ending)) this.save.endings.push(ending);
+    if (ending === 'triste' && this.save.lastChoice === 'deshacer') {
+      for (const k of CANON_ORDER) if (this.save.canon[k] === true) this.save.canon[k] = false;
+    }
+    this.unlockSuit(MISSION_SUIT[4]);
+    this.save.universe = '616'; this.save.cityPos['616'] = 400;
+    if (!this.save.visited.includes('616')) this.save.visited.push('616');
+    this.saveGame();
+    const post = () => new PostCreditsScene(ending, () => this.cityScene('616', 400));
+    const credits = () => new CreditsScene(post);
+    this.change(() => new ResultsScene(4, stats, () => new EndingScene(ending, credits)));
   },
 
   loop(ts) {

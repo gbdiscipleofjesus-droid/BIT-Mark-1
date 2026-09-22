@@ -13,7 +13,7 @@ const CHORDS = {
   Dm: ['D', 'F', 'A'], Bb: ['Bb', 'D', 'F'], C: ['C', 'E', 'G'], A: ['A', 'C#', 'E'], F: ['F', 'A', 'C'],
   Gm: ['G', 'Bb', 'D'], Am: ['A', 'C', 'E'], Em: ['E', 'G', 'B'], G: ['G', 'B', 'D'], D: ['D', 'F#', 'A'],
   Eb: ['Eb', 'G', 'Bb'], Cm: ['C', 'Eb', 'G'], Fm: ['F', 'Ab', 'C'], Ab: ['Ab', 'C', 'Eb'], E: ['E', 'G#', 'B'],
-  Bm: ['B', 'D', 'F#'],
+  Bm: ['B', 'D', 'F#'], B: ['B', 'D#', 'F#'], 'F#m': ['F#', 'A', 'C#'],
 };
 
 // Pistas originales. lead: "nota:duración" en semicorcheas; '.' = silencio
@@ -42,11 +42,85 @@ const TRACKS = {
     lead: 'C5:2 Eb5:2 G5:2 C6:2 B5:4 G5:4 | C6:2 Bb5:2 Ab5:2 G5:2 Eb5:8 | Ab5:4 G5:4 F5:4 Eb5:4 | F5:4 G5:4 Bb5:8 | ' +
       'C6:2 .:2 C6:2 Eb6:2 D6:4 C6:4 | G5:8 Eb5:8 | F5:4 Ab5:4 C6:4 Ab5:4 | B5:8 D6:4 G5:4',
   },
+  verse: {
+    bpm: 92, chords: ['Dm', 'Am', 'Bb', 'C', 'Dm', 'Am', 'Bb', 'A'],
+    bass: 'x..x....x.x.....', arp: false, drums: { k: 'x......x..x.....', s: '....x.......x...', h: 'x.xxx.x.x.xxx.x.' },
+    lead: 'A4:2 .:2 D5:2 .:2 F5:4 E5:4 | E5:8 C5:8 | D5:2 .:2 F5:2 .:2 A5:4 G5:4 | G5:8 E5:8 | ' +
+      'A5:3 G5:3 F5:2 E5:4 D5:4 | C5:8 A4:8 | Bb4:4 D5:4 F5:4 A5:4 | A5:12 .:4',
+  },
+  ruin: {
+    bpm: 72, chords: ['Cm', 'Ab', 'Fm', 'G', 'Cm', 'Ab', 'Fm', 'G'],
+    bass: 'x.......x.......', arp: true, drums: { k: 'x...............', s: '................', h: '........x.......' },
+    lead: 'G4:8 Eb5:8 | C5:16 | F4:8 Ab4:4 C5:4 | B4:16 | G4:8 Eb5:4 D5:4 | C5:16 | Ab4:8 F4:8 | G4:16',
+  },
+  // Canción original de los créditos: vals irregular (13 pulsos) con clavecín
+  credits: {
+    bpm: 150, barSteps: 13, harp: true, arpPattern: [0, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1],
+    chords: ['Em', 'C', 'G', 'D', 'Em', 'C', 'Am', 'B', 'C', 'G', 'Am', 'F', 'C', 'G', 'F', 'G'],
+    bass: 'x.....x......', arp: true, drums: { k: 'x.....x......', s: '.........x...', h: '.............' },
+    lead: 'B4:3 G4:2 E4:3 F#4:2 G4:3 | E4:5 G4:3 C5:5 | D5:3 B4:2 G4:3 A4:2 B4:3 | A4:8 F#4:5 | ' +
+      'G4:3 B4:2 E5:3 D5:2 B4:3 | C5:5 B4:3 G4:5 | A4:3 C5:2 E5:3 D5:2 C5:3 | B4:8 D#5:5 | ' +
+      'E5:3 E5:2 G5:3 E5:2 D5:3 | D5:5 B4:3 D5:5 | C5:3 E5:2 A5:3 G5:2 E5:3 | F5:8 E5:5 | ' +
+      'G5:3 E5:2 C5:3 E5:2 G5:3 | B5:5 A5:3 G5:5 | A5:3 G5:2 F5:3 E5:2 D5:3 | D5:8 .:5',
+  },
   sad: {
     bpm: 84, chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'E'],
     bass: 'x.......x.......', arp: true, drums: null,
     lead: 'E5:8 C5:4 D5:4 | A4:16 | G4:4 C5:4 E5:4 G5:4 | D5:16 | E5:8 C5:4 A5:4 | F5:12 E5:4 | E5:4 D5:4 C5:4 D5:4 | B4:16',
   },
+};
+
+// Canción de créditos elegida por el jugador (se guarda en su navegador)
+const CustomSong = {
+  blob: null, url: null, el: null, name: '',
+  db(cb) {
+    try {
+      const req = indexedDB.open('sm_rompecanones', 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('files'); } catch (e) { /* ya existe */ } };
+      req.onsuccess = () => cb(req.result);
+      req.onerror = () => cb(null);
+    } catch (e) { cb(null); }
+  },
+  load() {
+    this.db((db) => {
+      if (!db) return;
+      try {
+        const g = db.transaction('files', 'readonly').objectStore('files').get('credits');
+        g.onsuccess = () => { if (g.result && g.result.blob) this.set(g.result.blob, g.result.name, false); };
+      } catch (e) { /* sin almacenamiento */ }
+    });
+  },
+  set(blob, name, persist = true) {
+    if (this.url) { try { URL.revokeObjectURL(this.url); } catch (e) { /* nada */ } }
+    this.blob = blob; this.name = name || 'canción';
+    this.url = URL.createObjectURL(blob);
+    if (persist) this.db((db) => { if (!db) return; try { db.transaction('files', 'readwrite').objectStore('files').put({ blob, name: this.name }, 'credits'); } catch (e) { /* sin almacenamiento */ } });
+  },
+  clear() {
+    this.stop();
+    this.blob = null; this.url = null; this.name = '';
+    this.db((db) => { if (!db) return; try { db.transaction('files', 'readwrite').objectStore('files').delete('credits'); } catch (e) { /* nada */ } });
+  },
+  pickFile(done) {
+    try {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'audio/*';
+      inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) { this.set(f, f.name); if (done) done(true); } };
+      inp.click();
+    } catch (e) { if (done) done(false); }
+  },
+  play() {
+    if (!this.url) return false;
+    try {
+      this.stop();
+      this.el = new window.Audio(this.url);
+      this.el.volume = clamp(Game.settings.music / 10, 0, 1);
+      const pr = this.el.play();
+      if (pr && pr.catch) pr.catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
+  stop() { if (this.el) { try { this.el.pause(); } catch (e) { /* nada */ } this.el = null; } },
 };
 
 const Audio2 = {
@@ -96,8 +170,9 @@ const Audio2 = {
 
   compile(def) {
     if (!def) return null;
+    const bs = def.barSteps || 16;
     const bars = def.chords.length;
-    const steps = bars * 16;
+    const steps = bars * bs;
     const lead = new Array(steps).fill(null);
     let pos = 0;
     def.lead.split(/\s+/).forEach((tok) => {
@@ -107,7 +182,7 @@ const Audio2 = {
       if (n !== '.' && pos < steps) lead[pos] = { f: noteFreq(n), d: dur };
       pos += dur;
     });
-    return { def, steps, lead, stepDur: 60 / def.bpm / 4 };
+    return { def, steps, lead, stepDur: 60 / def.bpm / 4, bs };
   },
 
   schedule() {
@@ -124,13 +199,20 @@ const Audio2 = {
 
   playStep(t, step, time) {
     const def = t.def;
-    const bar = Math.floor(step / 16), s = step % 16;
+    const bs = t.bs || 16;
+    const bar = Math.floor(step / bs), s = step % bs;
     const chord = CHORDS[def.chords[bar]] || CHORDS.C;
     const sd = t.stepDur;
     const ln = t.lead[step];
     if (ln) this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
     if (def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
-    if (def.arp && s % 2 === 0) {
+    if (def.harp) {
+      const idx = def.arpPattern[s % def.arpPattern.length];
+      const oct = s % 4 === 3 ? '5' : '4';
+      const f = noteFreq(chord[idx] + oct);
+      this.tone('square', f, time, sd * 2.2, 0.04, this.musicGain, 0.002);
+      this.tone('sawtooth', f * 2.003, time, sd * 1.2, 0.012, this.musicGain, 0.002);
+    } else if (def.arp && s % 2 === 0) {
       const n = chord[(s / 2) % 3];
       this.tone('square', noteFreq(n + '4'), time, sd * 0.8, 0.035, this.musicGain, 0.005);
     }
@@ -212,6 +294,11 @@ const Audio2 = {
       case 'fail': [392, 330, 262].forEach((f, i) => this.tone('square', f, T + i * 0.14, 0.2, 0.1)); break;
       case 'type': this.tone('square', 1200, T, 0.015, 0.03); break;
       case 'step': this.noise(T, 0.03, 0.05, 400, 'lowpass'); break;
+      case 'beat': this.tone('sine', 70, T, 0.18, 0.6, null, 0.005, 40); this.tone('sine', 62, T + 0.2, 0.2, 0.45, null, 0.005, 38); break;
+      case 'glitch':
+        this.noise(T, 0.12, 0.3, rand(800, 4000), 'bandpass');
+        for (let i = 0; i < 3; i++) this.tone('square', rand(200, 2400), T + i * 0.03, 0.03, 0.05);
+        break;
       default: break;
     }
   },

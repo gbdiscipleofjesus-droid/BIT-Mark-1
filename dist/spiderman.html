@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Spider-Man: Ecos de Nueva York</title>
+<title>Spider-Man: Rompecánones</title>
 <style>
   html, body { margin: 0; height: 100%; background: #07060e; overflow: hidden; }
   body { display: flex; align-items: center; justify-content: center; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -11,7 +11,7 @@
 </style>
 </head>
 <body>
-<canvas id="game" width="384" height="216" tabindex="0" aria-label="Spider-Man: Ecos de Nueva York"></canvas>
+<canvas id="game" width="384" height="216" tabindex="0" aria-label="Spider-Man: Rompecánones"></canvas>
 <script>
 // ---- js/util.js ----
 'use strict';
@@ -242,7 +242,7 @@ const CHORDS = {
   Dm: ['D', 'F', 'A'], Bb: ['Bb', 'D', 'F'], C: ['C', 'E', 'G'], A: ['A', 'C#', 'E'], F: ['F', 'A', 'C'],
   Gm: ['G', 'Bb', 'D'], Am: ['A', 'C', 'E'], Em: ['E', 'G', 'B'], G: ['G', 'B', 'D'], D: ['D', 'F#', 'A'],
   Eb: ['Eb', 'G', 'Bb'], Cm: ['C', 'Eb', 'G'], Fm: ['F', 'Ab', 'C'], Ab: ['Ab', 'C', 'Eb'], E: ['E', 'G#', 'B'],
-  Bm: ['B', 'D', 'F#'],
+  Bm: ['B', 'D', 'F#'], B: ['B', 'D#', 'F#'], 'F#m': ['F#', 'A', 'C#'],
 };
 
 // Pistas originales. lead: "nota:duración" en semicorcheas; '.' = silencio
@@ -271,11 +271,85 @@ const TRACKS = {
     lead: 'C5:2 Eb5:2 G5:2 C6:2 B5:4 G5:4 | C6:2 Bb5:2 Ab5:2 G5:2 Eb5:8 | Ab5:4 G5:4 F5:4 Eb5:4 | F5:4 G5:4 Bb5:8 | ' +
       'C6:2 .:2 C6:2 Eb6:2 D6:4 C6:4 | G5:8 Eb5:8 | F5:4 Ab5:4 C6:4 Ab5:4 | B5:8 D6:4 G5:4',
   },
+  verse: {
+    bpm: 92, chords: ['Dm', 'Am', 'Bb', 'C', 'Dm', 'Am', 'Bb', 'A'],
+    bass: 'x..x....x.x.....', arp: false, drums: { k: 'x......x..x.....', s: '....x.......x...', h: 'x.xxx.x.x.xxx.x.' },
+    lead: 'A4:2 .:2 D5:2 .:2 F5:4 E5:4 | E5:8 C5:8 | D5:2 .:2 F5:2 .:2 A5:4 G5:4 | G5:8 E5:8 | ' +
+      'A5:3 G5:3 F5:2 E5:4 D5:4 | C5:8 A4:8 | Bb4:4 D5:4 F5:4 A5:4 | A5:12 .:4',
+  },
+  ruin: {
+    bpm: 72, chords: ['Cm', 'Ab', 'Fm', 'G', 'Cm', 'Ab', 'Fm', 'G'],
+    bass: 'x.......x.......', arp: true, drums: { k: 'x...............', s: '................', h: '........x.......' },
+    lead: 'G4:8 Eb5:8 | C5:16 | F4:8 Ab4:4 C5:4 | B4:16 | G4:8 Eb5:4 D5:4 | C5:16 | Ab4:8 F4:8 | G4:16',
+  },
+  // Canción original de los créditos: vals irregular (13 pulsos) con clavecín
+  credits: {
+    bpm: 150, barSteps: 13, harp: true, arpPattern: [0, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1],
+    chords: ['Em', 'C', 'G', 'D', 'Em', 'C', 'Am', 'B', 'C', 'G', 'Am', 'F', 'C', 'G', 'F', 'G'],
+    bass: 'x.....x......', arp: true, drums: { k: 'x.....x......', s: '.........x...', h: '.............' },
+    lead: 'B4:3 G4:2 E4:3 F#4:2 G4:3 | E4:5 G4:3 C5:5 | D5:3 B4:2 G4:3 A4:2 B4:3 | A4:8 F#4:5 | ' +
+      'G4:3 B4:2 E5:3 D5:2 B4:3 | C5:5 B4:3 G4:5 | A4:3 C5:2 E5:3 D5:2 C5:3 | B4:8 D#5:5 | ' +
+      'E5:3 E5:2 G5:3 E5:2 D5:3 | D5:5 B4:3 D5:5 | C5:3 E5:2 A5:3 G5:2 E5:3 | F5:8 E5:5 | ' +
+      'G5:3 E5:2 C5:3 E5:2 G5:3 | B5:5 A5:3 G5:5 | A5:3 G5:2 F5:3 E5:2 D5:3 | D5:8 .:5',
+  },
   sad: {
     bpm: 84, chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'E'],
     bass: 'x.......x.......', arp: true, drums: null,
     lead: 'E5:8 C5:4 D5:4 | A4:16 | G4:4 C5:4 E5:4 G5:4 | D5:16 | E5:8 C5:4 A5:4 | F5:12 E5:4 | E5:4 D5:4 C5:4 D5:4 | B4:16',
   },
+};
+
+// Canción de créditos elegida por el jugador (se guarda en su navegador)
+const CustomSong = {
+  blob: null, url: null, el: null, name: '',
+  db(cb) {
+    try {
+      const req = indexedDB.open('sm_rompecanones', 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('files'); } catch (e) { /* ya existe */ } };
+      req.onsuccess = () => cb(req.result);
+      req.onerror = () => cb(null);
+    } catch (e) { cb(null); }
+  },
+  load() {
+    this.db((db) => {
+      if (!db) return;
+      try {
+        const g = db.transaction('files', 'readonly').objectStore('files').get('credits');
+        g.onsuccess = () => { if (g.result && g.result.blob) this.set(g.result.blob, g.result.name, false); };
+      } catch (e) { /* sin almacenamiento */ }
+    });
+  },
+  set(blob, name, persist = true) {
+    if (this.url) { try { URL.revokeObjectURL(this.url); } catch (e) { /* nada */ } }
+    this.blob = blob; this.name = name || 'canción';
+    this.url = URL.createObjectURL(blob);
+    if (persist) this.db((db) => { if (!db) return; try { db.transaction('files', 'readwrite').objectStore('files').put({ blob, name: this.name }, 'credits'); } catch (e) { /* sin almacenamiento */ } });
+  },
+  clear() {
+    this.stop();
+    this.blob = null; this.url = null; this.name = '';
+    this.db((db) => { if (!db) return; try { db.transaction('files', 'readwrite').objectStore('files').delete('credits'); } catch (e) { /* nada */ } });
+  },
+  pickFile(done) {
+    try {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'audio/*';
+      inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) { this.set(f, f.name); if (done) done(true); } };
+      inp.click();
+    } catch (e) { if (done) done(false); }
+  },
+  play() {
+    if (!this.url) return false;
+    try {
+      this.stop();
+      this.el = new window.Audio(this.url);
+      this.el.volume = clamp(Game.settings.music / 10, 0, 1);
+      const pr = this.el.play();
+      if (pr && pr.catch) pr.catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
+  stop() { if (this.el) { try { this.el.pause(); } catch (e) { /* nada */ } this.el = null; } },
 };
 
 const Audio2 = {
@@ -325,8 +399,9 @@ const Audio2 = {
 
   compile(def) {
     if (!def) return null;
+    const bs = def.barSteps || 16;
     const bars = def.chords.length;
-    const steps = bars * 16;
+    const steps = bars * bs;
     const lead = new Array(steps).fill(null);
     let pos = 0;
     def.lead.split(/\s+/).forEach((tok) => {
@@ -336,7 +411,7 @@ const Audio2 = {
       if (n !== '.' && pos < steps) lead[pos] = { f: noteFreq(n), d: dur };
       pos += dur;
     });
-    return { def, steps, lead, stepDur: 60 / def.bpm / 4 };
+    return { def, steps, lead, stepDur: 60 / def.bpm / 4, bs };
   },
 
   schedule() {
@@ -353,13 +428,20 @@ const Audio2 = {
 
   playStep(t, step, time) {
     const def = t.def;
-    const bar = Math.floor(step / 16), s = step % 16;
+    const bs = t.bs || 16;
+    const bar = Math.floor(step / bs), s = step % bs;
     const chord = CHORDS[def.chords[bar]] || CHORDS.C;
     const sd = t.stepDur;
     const ln = t.lead[step];
     if (ln) this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
     if (def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
-    if (def.arp && s % 2 === 0) {
+    if (def.harp) {
+      const idx = def.arpPattern[s % def.arpPattern.length];
+      const oct = s % 4 === 3 ? '5' : '4';
+      const f = noteFreq(chord[idx] + oct);
+      this.tone('square', f, time, sd * 2.2, 0.04, this.musicGain, 0.002);
+      this.tone('sawtooth', f * 2.003, time, sd * 1.2, 0.012, this.musicGain, 0.002);
+    } else if (def.arp && s % 2 === 0) {
       const n = chord[(s / 2) % 3];
       this.tone('square', noteFreq(n + '4'), time, sd * 0.8, 0.035, this.musicGain, 0.005);
     }
@@ -441,6 +523,11 @@ const Audio2 = {
       case 'fail': [392, 330, 262].forEach((f, i) => this.tone('square', f, T + i * 0.14, 0.2, 0.1)); break;
       case 'type': this.tone('square', 1200, T, 0.015, 0.03); break;
       case 'step': this.noise(T, 0.03, 0.05, 400, 'lowpass'); break;
+      case 'beat': this.tone('sine', 70, T, 0.18, 0.6, null, 0.005, 40); this.tone('sine', 62, T + 0.2, 0.2, 0.45, null, 0.005, 38); break;
+      case 'glitch':
+        this.noise(T, 0.12, 0.3, rand(800, 4000), 'bandpass');
+        for (let i = 0; i < 3; i++) this.tone('square', rand(200, 2400), T + i * 0.03, 0.03, 0.05);
+        break;
       default: break;
     }
   },
@@ -825,7 +912,12 @@ const SUITS = [
   { id: 'stark', name: 'Traje Stark', desc: 'Regalo del señor Stark.', pal: { head: '#d82028', torso: '#d82028', torsoLow: '#1c38a8', arm: '#1c38a8', arm2: '#d82028', leg: '#1c38a8', boot: '#d82028', face: 'spider', emblem: '#140a12' } },
   { id: 'ffh', name: 'Traje mejorado', desc: 'Rojo y negro, hecho en el jet de Stark.', pal: { head: '#e01a24', torso: '#e01a24', torsoLow: '#16161c', arm: '#16161c', arm2: '#e01a24', leg: '#16161c', boot: '#e01a24', face: 'spider', emblem: '#16161c' } },
   { id: 'iron', name: 'Iron Spider', desc: 'Nanotecnología roja y dorada.', pal: { head: '#c01822', torso: '#c01822', torsoLow: '#e0b030', arm: '#c01822', arm2: '#e0b030', leg: '#c01822', boot: '#e0b030', face: 'spider', emblem: '#e0b030' } },
+  { id: 'raimi', name: 'Traje clásico (96283)', desc: 'Regalo de Tierra-96283. Telarañas en relieve.', pal: { head: '#c8141e', torso: '#c8141e', torsoLow: '#1a2a8a', arm: '#c8141e', arm2: '#c8141e', leg: '#1a2a8a', boot: '#c8141e', face: 'spider', emblem: '#140a12', eye: '#d8e4f0' } },
+  { id: 'tasm', name: 'Traje de Tierra-120703', desc: 'Ojos grandes, azul eléctrico.', pal: { head: '#d81a2a', torso: '#d81a2a', torsoLow: '#1a5ac8', arm: '#1a5ac8', arm2: '#d81a2a', leg: '#1a5ac8', boot: '#d81a2a', face: 'spider', emblem: '#140a12', eye: '#ffffff' } },
+  { id: 'verse', name: 'Traje del Spider-Verse', desc: 'Negro y rojo, con estilo de cómic.', pal: { head: '#1a1a22', torso: '#1a1a22', torsoLow: '#1a1a22', arm: '#1a1a22', arm2: '#d8202c', leg: '#1a1a22', boot: '#d8202c', face: 'spider', emblem: '#d8202c', eye: '#ffffff' } },
+  { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', eye: '#ffb060' } },
 ];
+const START_SUITS = ['nwh', 'casero', 'stark', 'ffh', 'iron'];
 SUITS.forEach((s) => { s.palObj = makePal(Object.assign({ outline: '#140a12' }, s.pal)); });
 
 // ---------------- Poses ----------------
@@ -988,6 +1080,17 @@ const Rig = {
         ctx.fillStyle = pal.eye;
         ctx.fillRect(Math.min(front, front + inward * 2 * u), hy + Math.round(hs * 0.35), 3 * u, u);
         break;
+      case 'venom':
+        ctx.fillStyle = pal.eye;
+        ctx.fillRect(Math.min(front, front + inward * 2 * u), hy + u, 3 * u, 2 * u);
+        ctx.fillRect(front + inward * 3 * u, hy + u, u, u);
+        ctx.fillRect(Math.min(front, front + inward * 3 * u), hy + hs - 2 * u, 4 * u, u);
+        break;
+      case 'spot':
+        ctx.fillStyle = '#101010';
+        ctx.fillRect(front + inward * u, hy + u, 2 * u, 2 * u);
+        ctx.fillRect(front + inward * 3 * u, hy + 3 * u, u, u);
+        break;
       case 'bowl':
         ctx.fillStyle = 'rgba(190,230,255,0.55)';
         ctx.fillRect(hx - u, hy - u, hs + 2 * u, hs + 2 * u);
@@ -1010,7 +1113,7 @@ const Portraits = {
     const c = makeCanvas(24, 24);
     const x = c.getContext('2d');
     const R = (col, a, b, w, h) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
-    const bg = { spidey: '#2a1830', peter: '#2a1830', radio: '#18202a', cleary: '#1a2430', jjj: '#301818', shocker: '#2a2a10', mason: '#1e2418', gargan: '#102a18', mysterio: '#10281c', civil: '#202838', mj: '#281a24' }[who] || '#202020';
+    const bg = { spidey: '#2a1830', peter: '#2a1830', radio: '#18202a', cleary: '#1a2430', jjj: '#301818', shocker: '#2a2a10', mason: '#1e2418', gargan: '#102a18', mysterio: '#10281c', civil: '#202838', mj: '#281a24', tobey: '#2a1810', andrew: '#0a1a2a', miles: '#2a0a2a', gwen: '#1a1030', gwens: '#1a2030', miguel: '#0a1030', harry: '#1a2010', venom: '#101018', sandman: '#2a2010', rino: '#202028', mancha: '#303030', richard: '#1a1a20', ben: '#201a14', davis: '#101820', desconocido: '#1a0a06' }[who] || '#202020';
     R(bg, 0, 0, 24, 24);
     const face = (skin) => { R('#140a12', 6, 4, 12, 17); R(skin, 7, 5, 10, 15); R(skin, 5, 10, 2, 4); R(skin, 17, 10, 2, 4); };
     switch (who) {
@@ -1062,6 +1165,95 @@ const Portraits = {
         face('#e8b890'); R('#4a2418', 5, 3, 14, 5); R('#4a2418', 5, 3, 3, 16); R('#4a2418', 16, 3, 3, 16);
         R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#b06060', 11, 17, 3, 1); R('#3a3a5a', 4, 21, 16, 3);
         break;
+      case 'tobey':
+        R('#140a12', 5, 3, 14, 19); R('#c8141e', 6, 4, 12, 17);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#d8e4f0', 8, 9, 2, 3); R('#d8e4f0', 14, 9, 2, 3);
+        R('#5a0a10', 11, 4, 1, 17); R('#5a0a10', 6, 13, 12, 1); R('#5a0a10', 6, 17, 12, 1); R('#5a0a10', 8, 5, 1, 16); R('#5a0a10', 15, 5, 1, 16);
+        R('#1a2a8a', 4, 21, 16, 3);
+        break;
+      case 'andrew':
+        R('#140a12', 5, 3, 14, 19); R('#d81a2a', 6, 4, 12, 17);
+        R('#140a12', 6, 7, 5, 7); R('#140a12', 13, 7, 5, 7); R('#ffffff', 7, 8, 3, 5); R('#ffffff', 14, 8, 3, 5);
+        R('#8a0a14', 11, 4, 1, 17); R('#8a0a14', 6, 16, 12, 1);
+        R('#1a5ac8', 4, 21, 16, 3);
+        break;
+      case 'miles':
+        R('#140a12', 5, 3, 14, 19); R('#1a1a22', 6, 4, 12, 17);
+        R('#d8202c', 11, 4, 1, 17); R('#d8202c', 6, 12, 12, 1); R('#d8202c', 6, 16, 12, 1); R('#d8202c', 8, 5, 1, 15); R('#d8202c', 15, 5, 1, 15);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffffff', 8, 9, 3, 3); R('#ffffff', 13, 9, 3, 3);
+        R('#1a1a22', 4, 21, 16, 3); R('#d8202c', 11, 21, 2, 3);
+        break;
+      case 'gwen':
+        R('#e8e8f0', 3, 2, 18, 22); R('#e04a9a', 5, 4, 14, 18);
+        R('#f4f4f8', 6, 5, 12, 16); R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffffff', 8, 9, 2, 3); R('#ffffff', 14, 9, 2, 3);
+        R('#d0d0d8', 11, 5, 1, 16); R('#40c0d0', 4, 21, 16, 3);
+        break;
+      case 'gwens':
+        face('#f0c8a8'); R('#f0d060', 5, 3, 14, 5); R('#f0d060', 5, 3, 3, 14); R('#f0d060', 16, 3, 3, 14); R('#2a2a2a', 6, 6, 12, 1);
+        R('#2a4a8a', 9, 11, 2, 2); R('#2a4a8a', 14, 11, 2, 2); R('#c06070', 11, 17, 3, 1); R('#3a3a5a', 4, 21, 16, 3);
+        break;
+      case 'miguel':
+        R('#140a12', 5, 3, 14, 19); R('#1a2a6a', 6, 4, 12, 17);
+        R('#d01a2a', 7, 5, 10, 3); R('#d01a2a', 10, 8, 4, 10); R('#d01a2a', 7, 16, 10, 2);
+        R('#ff3040', 7, 9, 3, 2); R('#ff3040', 14, 9, 3, 2); R('#1a2a6a', 4, 21, 16, 3); R('#d01a2a', 10, 21, 4, 3);
+        break;
+      case 'harry':
+        face('#e8c0a0'); R('#6a4020', 6, 3, 12, 5); R('#6a4020', 6, 3, 2, 8);
+        R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#a06050', 11, 17, 3, 1); R('#2a3a2a', 4, 21, 16, 3);
+        break;
+      case 'venom':
+        R('#0a0a10', 4, 2, 16, 21); R('#1a1a24', 5, 3, 14, 19);
+        R('#ffffff', 6, 6, 5, 4); R('#ffffff', 13, 6, 5, 4); R('#ffffff', 7, 10, 3, 1); R('#ffffff', 14, 10, 3, 1);
+        R('#ffffff', 7, 14, 10, 5); R('#0a0a10', 8, 15, 1, 3); R('#0a0a10', 10, 15, 1, 3); R('#0a0a10', 12, 15, 1, 3); R('#0a0a10', 14, 15, 1, 3);
+        R('#e05080', 10, 17, 4, 5); R('#ffffff', 9, 21, 6, 3);
+        break;
+      case 'sandman':
+        face('#c8a878'); R('#8a6a3a', 6, 3, 12, 3); R('#140a12', 9, 11, 2, 1); R('#140a12', 14, 11, 2, 1); R('#7a5a3a', 10, 17, 5, 1);
+        R('#4a7a3a', 3, 21, 18, 3); R('#2a4a1a', 3, 22, 18, 1);
+        break;
+      case 'rino':
+        R('#140a12', 4, 3, 16, 20); R('#6a6a72', 5, 4, 14, 18); R('#8a8a92', 5, 4, 14, 3);
+        R('#e0e0d0', 10, 0, 4, 8); R('#c0c0b0', 11, 0, 2, 3); R('#e8b890', 8, 12, 8, 7); R('#140a12', 9, 14, 2, 1); R('#140a12', 13, 14, 2, 1);
+        R('#4a4a52', 3, 21, 18, 3);
+        break;
+      case 'electro':
+        R('#0a1a3a', 0, 0, 24, 24); face('#3a8aff'); R('#a0e0ff', 7, 6, 1, 10); R('#a0e0ff', 16, 8, 1, 9); R('#a0e0ff', 9, 17, 6, 1);
+        R('#ffffff', 9, 11, 2, 2); R('#ffffff', 14, 11, 2, 2); R('#1a2a5a', 4, 21, 16, 3);
+        break;
+      case 'mancha':
+        R('#140a12', 5, 3, 14, 19); R('#f0f0f0', 6, 4, 12, 17);
+        R('#101010', 7, 5, 4, 4); R('#101010', 14, 7, 3, 3); R('#101010', 9, 12, 5, 5); R('#101010', 15, 15, 2, 3); R('#101010', 6, 17, 3, 3);
+        R('#f0f0f0', 4, 21, 16, 3); R('#101010', 9, 21, 4, 3);
+        break;
+      case 'richard':
+        face('#e0b890'); R('#4a3020', 6, 3, 12, 4); R('#202020', 8, 10, 4, 3); R('#202020', 13, 10, 4, 3); R('#202020', 12, 11, 1, 1);
+        R('#8a8a8a', 9, 11, 2, 1); R('#8a8a8a', 14, 11, 2, 1); R('#8a6050', 11, 17, 3, 1); R('#5a4a3a', 4, 21, 16, 3);
+        break;
+      case 'ben':
+        face('#e0b890'); R('#d0d0d0', 6, 3, 12, 3); R('#d0d0d0', 6, 3, 2, 8); R('#d0d0d0', 16, 3, 2, 8);
+        R('#303030', 8, 10, 4, 3); R('#303030', 13, 10, 4, 3); R('#8a6050', 10, 17, 5, 1); R('#8a5a3a', 4, 21, 16, 3);
+        break;
+      case 'davis':
+        face('#7a4a2a'); R('#1a2a4a', 5, 2, 14, 5); R('#e0c040', 11, 3, 2, 2); R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2);
+        R('#2a1a10', 9, 15, 7, 2); R('#1a2a4a', 4, 21, 16, 3);
+        break;
+      case 'doom':
+        R('#0a140a', 0, 0, 24, 24); R('#1e4a1e', 3, 1, 18, 23); R('#2a6a2a', 4, 2, 16, 4);
+        R('#8a929a', 6, 5, 12, 16); R('#6a7078', 6, 5, 12, 2); R('#101010', 8, 9, 3, 2); R('#101010', 13, 9, 3, 2);
+        R('#40ff60', 9, 9, 1, 1); R('#40ff60', 14, 9, 1, 1); R('#101010', 9, 15, 6, 1); R('#6a7078', 11, 12, 2, 3);
+        break;
+      case 'desconocido':
+        R('#140a12', 5, 3, 14, 19); R('#16141a', 6, 4, 12, 17);
+        R('#3a2014', 6, 4, 4, 6); R('#3a2014', 14, 14, 4, 5); R('#e06020', 7, 6, 1, 1); R('#e06020', 15, 16, 2, 1); R('#e06020', 12, 5, 1, 3);
+        R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffb060', 8, 9, 2, 3); R('#e8c8a0', 14, 9, 2, 3);
+        R('#2a1a14', 4, 21, 16, 3);
+        break;
+      case 'cero':
+        R('#140806', 0, 0, 24, 24);
+        face('#d8a888'); R('#2a1a10', 5, 2, 14, 5); R('#2a1a10', 5, 2, 2, 11); R('#2a1a10', 17, 2, 2, 8);
+        R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#a06050', 13, 7, 1, 4); R('#a06050', 14, 13, 3, 1);
+        R('#7a5040', 11, 17, 3, 1); R('#16141a', 4, 21, 16, 3); R('#e06020', 11, 22, 2, 2);
+        break;
       default:
         face('#e0a878'); R('#3a2416', 6, 3, 12, 4); R('#140a12', 9, 11, 2, 1); R('#140a12', 14, 11, 2, 1); R('#4a6a8a', 4, 21, 16, 3);
     }
@@ -1077,6 +1269,10 @@ const SKIES = {
   sunset: { bands: ['#2b1b4a', '#4a2462', '#7a2e6a', '#b8466a', '#e8735a', '#f6a65a'], far: '#5a3060', mid: '#3a2048', win: '#ffd890', sun: '#ffe0a0', stars: false },
   dusk: { bands: ['#141a40', '#232a5a', '#3a3470', '#5e3e7c', '#8a4a7c', '#b85e78'], far: '#2e2a58', mid: '#1e1c40', win: '#ffe08a', sun: null, stars: true },
   night: { bands: ['#04060f', '#070b1c', '#0b1128', '#101838', '#152046', '#1c2a58'], far: '#141c3c', mid: '#0c1128', win: '#ffd870', sun: null, moon: true, stars: true },
+  golden: { bands: ['#3a2a4a', '#6a3a4a', '#a0503a', '#d07838', '#f0a040', '#ffd070'], far: '#7a4a3a', mid: '#4a2a28', win: '#ffe0a0', sun: '#fff0b0', stars: false },
+  teal: { bands: ['#020a14', '#051626', '#082236', '#0c3046', '#124058', '#1a526a'], far: '#0e2a3a', mid: '#081a26', win: '#9af0ff', sun: null, moon: true, stars: true },
+  verse: { bands: ['#1a0830', '#3a0c50', '#6a1060', '#a01868', '#e02870', '#ff6a60'], far: '#4a1060', mid: '#260838', win: '#40f0ff', sun: null, stars: true, halftone: true },
+  ruin: { bands: ['#0a0204', '#1a0406', '#300808', '#4a0e08', '#6a1a0a', '#8a2a0c'], far: '#200808', mid: '#120406', win: '#ff7020', sun: null, stars: false, debris: true },
   rift: { bands: ['#04070a', '#07100f', '#0a1a16', '#0f2820', '#15382a', '#1c4a36'], far: '#10241e', mid: '#0a1612', win: '#b0ffb0', sun: null, moon: false, stars: true, rift: true },
 };
 
@@ -1115,6 +1311,23 @@ const Scenery = {
     if (def.sun) {
       x.fillStyle = def.sun; x.beginPath(); x.arc(290, 150, 20, 0, TAU); x.fill();
     }
+    if (def.halftone) {
+      for (let yy = 0; yy < H; yy += 4) for (let xx = (yy % 8 ? 2 : 0); xx < W; xx += 4) {
+        const a = 0.08 + (yy / H) * 0.12;
+        x.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
+        x.fillRect(xx, yy, 1 + (yy > H / 2 ? 1 : 0), 1);
+      }
+    }
+    if (def.debris) {
+      const r = makeRng(66);
+      for (let i = 0; i < 14; i++) {
+        const dx = r.int(0, W), dy = r.int(10, 120), s = r.int(3, 12);
+        x.fillStyle = '#1a0604'; x.fillRect(dx, dy, s, Math.ceil(s * 0.6));
+        x.fillStyle = '#ff6020'; x.fillRect(dx, dy + Math.ceil(s * 0.6) - 1, s, 1);
+      }
+      x.fillStyle = 'rgba(255,90,30,0.35)';
+      for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(r.int(40, 340), r.int(20, 80), r.int(14, 30), 0, TAU); x.fill(); }
+    }
     if (def.rift) {
       x.fillStyle = '#50ff90';
       for (let i = 0; i < 40; i++) {
@@ -1129,8 +1342,8 @@ const Scenery = {
   },
 
   // Tira de skyline repetible. layer: 'far' | 'mid'
-  strip(name, layer) {
-    const key = name + layer;
+  strip(name, layer, landmark = 'avengers') {
+    const key = name + layer + landmark;
     if (this.stripCache[key]) return this.stripCache[key];
     const def = SKIES[name];
     const sw = 768, sh = 160;
@@ -1154,8 +1367,31 @@ const Scenery = {
       }
       px += bw + r.int(0, 4);
     }
-    // Hitos del MCU en la tira lejana: Empire State y la Torre de los Vengadores
-    if (layer === 'far') {
+    // Hitos de cada universo en la tira lejana
+    if (layer === 'far' && landmark === 'ruins') {
+      x.fillStyle = def.win;
+      for (let i = 0; i < 60; i++) x.fillRect(r.int(0, sw), sh - r.int(0, 40), 1, 1);
+      x.fillStyle = col;
+      const tx = 560;
+      x.fillRect(tx, sh - 120, 30, 120); x.fillRect(tx + 4, sh - 132, 12, 12);
+      x.clearRect(tx + 18, sh - 124, 12, 20); x.clearRect(tx + 22, sh - 104, 8, 10);
+    } else if (layer === 'far' && landmark === 'oscorp') {
+      x.fillStyle = col;
+      const tx = 540;
+      x.fillRect(tx, sh - 150, 36, 150); x.fillRect(tx + 6, sh - 160, 24, 10); x.fillRect(tx + 16, sh - 176, 4, 16);
+      x.fillStyle = def.win;
+      x.fillRect(tx + 12, sh - 144, 12, 2); x.fillRect(tx + 12, sh - 134, 12, 2); x.fillRect(tx + 12, sh - 144, 2, 12); x.fillRect(tx + 22, sh - 144, 2, 12);
+      x.fillStyle = col;
+      const cx = 200;
+      x.fillRect(cx, sh - 110, 24, 110); x.fillRect(cx + 4, sh - 124, 16, 14); x.fillRect(cx + 10, sh - 136, 4, 12);
+      x.fillStyle = def.win; x.fillRect(cx + 8, sh - 120, 8, 8); x.fillStyle = col; x.fillRect(cx + 11, sh - 119, 1, 4); x.fillRect(cx + 11, sh - 116, 3, 1);
+    } else if (layer === 'far' && landmark === 'alchemax') {
+      x.fillStyle = col;
+      const tx = 520;
+      x.beginPath(); x.moveTo(tx, sh); x.lineTo(tx + 10, sh - 170); x.lineTo(tx + 40, sh - 170); x.lineTo(tx + 50, sh); x.fill();
+      x.fillStyle = def.win;
+      for (let yy = sh - 160; yy < sh - 10; yy += 12) x.fillRect(tx + 14, yy, 22, 2);
+    } else if (layer === 'far') {
       x.fillStyle = col;
       const ex = 200;
       x.fillRect(ex, sh - 130, 26, 130); x.fillRect(ex + 5, sh - 145, 16, 15); x.fillRect(ex + 9, sh - 155, 8, 10); x.fillRect(ex + 12, sh - 160, 2, 8);
@@ -1170,10 +1406,10 @@ const Scenery = {
     return c;
   },
 
-  drawBackground(ctx, name, camX, camY, levelH) {
+  drawBackground(ctx, name, camX, camY, levelH, landmark) {
     ctx.drawImage(this.sky(name), 0, 0);
-    const far = this.strip(name, 'far');
-    const mid = this.strip(name, 'mid');
+    const far = this.strip(name, 'far', landmark);
+    const mid = this.strip(name, 'mid', landmark);
     const yBase = H - 20 - (camY - (levelH - H)) * 0.15;
     const fx = -((camX * 0.15) % far.width);
     for (let i = -1; i < 2; i++) ctx.drawImage(far, Math.floor(fx + i * far.width), Math.floor(yBase - far.height + 10));
@@ -1193,6 +1429,9 @@ const BSTYLES = {
   glass: { base: '#2c4a6a', dark: '#1a2e46', ledge: '#6a8aaa', win: '#4a7aa8', lit: '#b8e0ff', frame: '#1a2e46' },
   warehouse: { base: '#3a3e44', dark: '#24272c', ledge: '#5a6068', win: '#1a1c20', lit: '#ffcc60', frame: '#2a2e34' },
   steel: { base: '#5a6470', dark: '#38404a', ledge: '#8a96a4', win: '#303844', lit: '#d0e8ff', frame: '#38404a' },
+  verse: { base: '#3a1a6a', dark: '#1a0a3a', ledge: '#ff4a8a', win: '#1a1040', lit: '#40f0ff', frame: '#140828' },
+  verse2: { base: '#1a4a7a', dark: '#0a2240', ledge: '#ffd040', win: '#0a1a30', lit: '#ff5aa0', frame: '#08142a' },
+  ruin: { base: '#2a1a18', dark: '#140a08', ledge: '#4a2a20', win: '#0a0404', lit: '#ff6a20', frame: '#1a0c0a' },
   stone: { base: '#8a8470', dark: '#5e5a4a', ledge: '#b0aa94', win: '#3a3a30', lit: '#fff0b0', frame: '#6e6a58' },
 };
 
@@ -1217,10 +1456,117 @@ function renderBuilding(w, h, styleName, seed, night) {
       x.fillRect(xx, yy, ww, wh);
     }
   }
+  if (styleName === 'verse' || styleName === 'verse2') {
+    x.fillStyle = 'rgba(255,255,255,0.10)';
+    for (let yy = 0; yy < h; yy += 3) for (let xx = (yy % 6 ? 1 : 0); xx < w; xx += 3) x.fillRect(xx, yy, 1, 1);
+    x.fillStyle = '#000000'; x.fillRect(0, 0, 2, h); x.fillRect(w - 2, 0, 2, h);
+  }
   x.fillStyle = st.ledge; x.fillRect(0, 0, w, 3);
   x.fillStyle = st.dark; x.fillRect(0, 3, w, 1);
+  if (styleName === 'ruin') {
+    // tejado roto y quemaduras
+    for (let xx = 0; xx < w; xx += 4) { const d = Math.floor(hash2(seed, xx) * 10); x.clearRect(xx, 0, 4, d); }
+    x.fillStyle = 'rgba(0,0,0,0.35)';
+    for (let i = 0; i < 6; i++) x.fillRect(Math.floor(hash2(i, seed) * w), Math.floor(hash2(seed, i) * h), 8, 14);
+  }
   return c;
 }
+
+// ---------------------------------------------------------------------------
+// Destellos: imágenes rápidas antes de cada evento canónico
+// ---------------------------------------------------------------------------
+const FlashArt = {
+  draw(ctx, id, t) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+    const circ = (c, x, y, r) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+    switch (id) {
+      case 'doom':
+        R('#020802', 0, 0, W, H);
+        R('#123812', 122, 10, 140, 206); R('#1e4a1e', 132, 16, 120, 30);
+        R('#7a828a', 146, 44, 92, 140); R('#9aa2aa', 146, 44, 92, 10);
+        R('#0a0a0a', 160, 82, 24, 10); R('#0a0a0a', 200, 82, 24, 10);
+        R(Math.floor(t * 20) % 2 ? '#60ff80' : '#20a040', 168, 85, 8, 4); R(Math.floor(t * 20) % 2 ? '#60ff80' : '#20a040', 208, 85, 8, 4);
+        R('#0a0a0a', 172, 140, 40, 4); R('#5a6068', 186, 96, 12, 34);
+        break;
+      case '2099':
+        R('#050818', 0, 0, W, H);
+        for (let i = 0; i < 20; i++) R('#1a2a6a', 0, i * 11, W, 1);
+        R('#1a2a6a', 150, 30, 84, 186); R('#d01a2a', 160, 40, 64, 20); R('#d01a2a', 184, 60, 16, 90); R('#d01a2a', 160, 140, 64, 16);
+        R('#ff3040', 164, 70, 18, 8); R('#ff3040', 202, 70, 18, 8);
+        R('#d01a2a', 100, 100, 50, 6); R('#d01a2a', 234, 100, 50, 6);
+        Font.draw(ctx, '2099', W / 2, 190, '#ff3040', { align: 'center', scale: 2 });
+        break;
+      case 'crack':
+        R('#ffffff', 0, 0, W, H);
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+        for (let k = 0; k < 6; k++) {
+          ctx.beginPath(); let x = W / 2, y = H / 2; ctx.moveTo(x, y);
+          for (let i = 0; i < 8; i++) { x += Math.cos(k + i * 0.7) * 30 + (hash2(k, i) - 0.5) * 30; y += Math.sin(k * 1.3 + i) * 20; ctx.lineTo(x, y); }
+          ctx.stroke();
+        }
+        break;
+      case 'harry':
+        R('#1a1008', 0, 0, W, H); R('#3a2a1a', 0, 160, W, 56);
+        R('#2a3a2a', 60, 60, 110, 16); R('#4a5a4a', 70, 56, 90, 6);
+        circ('#e8c0a0', 190, 110, 22); R('#6a4020', 170, 86, 42, 14);
+        R('#140a12', 180, 108, 5, 4); R('#140a12', 196, 108, 5, 4);
+        R('#ff4040', 0, 0, W, 2); R('#ff4040', 0, H - 2, W, 2);
+        break;
+      case 'plane':
+        R('#10141a', 0, 0, W, H);
+        for (let i = 0; i < 30; i++) R('#3a4a6a', (i * 37 + t * 400) % W, (i * 23) % H, 1, 12);
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.35);
+        R('#d8d8e0', -110, -12, 220, 24); R('#b0b0b8', -30, -60, 50, 120); R('#b0b0b8', 80, -40, 20, 40);
+        for (let i = 0; i < 8; i++) R('#2a3a5a', -90 + i * 22, -4, 10, 6);
+        ctx.restore();
+        R('#ff6020', 250, 120, 30, 20); R('#ffd040', 256, 124, 16, 10);
+        break;
+      case 'bentomb':
+        R('#0a0c14', 0, 0, W, H); R('#1a2018', 0, 170, W, 46);
+        R('#6a6a72', 142, 70, 100, 110); circ('#6a6a72', 192, 72, 50);
+        R('#4a4a52', 150, 80, 84, 90);
+        Font.draw(ctx, 'BEN PARKER', W / 2, 110, '#d0d0d8', { align: 'center' });
+        Font.draw(ctx, 'TÍO. AMIGO. HÉROE.', W / 2, 126, '#a0a0a8', { align: 'center' });
+        R('#c02020', 180, 172, 6, 6); R('#c02020', 198, 174, 6, 6);
+        break;
+      case 'clock':
+        R('#060a10', 0, 0, W, H);
+        circ('#c8c0a0', W / 2, H / 2, 80); circ('#1a1a1a', W / 2, H / 2, 72);
+        for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; R('#c8c0a0', W / 2 + Math.cos(a) * 62 - 2, H / 2 + Math.sin(a) * 62 - 2, 4, 4); }
+        ctx.strokeStyle = '#c8c0a0'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.lineTo(W / 2 + Math.cos(t * 6) * 50, H / 2 + Math.sin(t * 6) * 50); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.lineTo(W / 2, H / 2 - 36); ctx.stroke();
+        break;
+      case 'gwenfall':
+        R('#04060c', 0, 0, W, H);
+        for (let i = 0; i < 18; i++) R('#20283a', (i * 29) % W, 0, 2, H);
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(W / 2 + 4, 0); ctx.lineTo(W / 2 + 4, 70 + t * 80); ctx.stroke();
+        { const gy = 110 + t * 60; circ('#f0d060', W / 2, gy - 18, 9); R('#3a3a5a', W / 2 - 6, gy - 10, 12, 22); R('#f0c8a8', W / 2 - 14, gy - 16, 8, 3); R('#f0c8a8', W / 2 + 6, gy - 20, 8, 3); }
+        break;
+      case 'ruin':
+        R('#1a0404', 0, 0, W, H);
+        for (let i = 0; i < 12; i++) { const h = 40 + hash2(i, 3) * 120; R('#0a0202', i * 34, H - h, 28, h); R('#ff5020', i * 34 + 6, H - h + 10, 3, 3); }
+        circ('rgba(255,80,20,0.4)', 280, 60, 40);
+        break;
+      case 'alone':
+        R('#04040a', 0, 0, W, H); R('#0e0e1a', 0, 150, W, 66);
+        circ('#e8e8d0', 300, 50, 16);
+        Rig.draw(ctx, 180, 150, 1, Poses.sit(), SUITS[0].palObj, { scale: 3 });
+        break;
+      case 'spiders':
+        R('#0a0a0a', 0, 0, W, H);
+        for (let i = 0; i < 12; i++) {
+          const x = 30 + (i % 6) * 60, y = 50 + Math.floor(i / 6) * 90;
+          const cols = ['#e0202c', '#1a1a22', '#e8e8f0', '#1a2a6a', '#c8141e', '#16141a'];
+          R(cols[i % cols.length], x - 20, y - 30, 40, 60);
+          UI.spiderIcon(ctx, x - 4, y - 4, i % 2 ? '#ffffff' : '#140a12');
+        }
+        break;
+      default: R('#000000', 0, 0, W, H);
+    }
+  },
+};
 
 </script>
 <script>
@@ -1249,6 +1595,7 @@ class Level {
     this.spawns = [];
     this.arenas = [];
     this.tips = [];
+    this.canons = [];
     this.checkpoints = [];
     this.tokens = [];
     this.groundSegs = []; // {x0,x1,type}
@@ -1402,18 +1749,28 @@ class Level {
 
   // ---------------- Dibujo ----------------
   draw(ctx, cx, cy, t) {
-    const x0 = cx - 40, x1 = cx + W + 40;
-    // agua
+    const x0 = cx - 60, x1 = cx + W + 60;
+    // agua o vacío
     if (this.water) {
       const wy = Math.round(this.water - cy);
       if (wy < H) {
-        ctx.fillStyle = this.sky === 'rift' ? '#0a2a2a' : (this.night ? '#0c1838' : '#1c4a7a');
-        ctx.fillRect(0, wy, W, H - wy);
-        ctx.fillStyle = this.sky === 'rift' ? '#2a6a50' : (this.night ? '#2a4a80' : '#4a8ac0');
-        for (let i = 0; i < 40; i++) {
-          const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (W + 40)) - 20;
-          const yy = wy + 3 + (i * 7) % Math.max(1, H - wy);
-          ctx.fillRect(W - xx, yy, 6, 1);
+        if (this.sky === 'ruin') {
+          ctx.fillStyle = '#0a0204'; ctx.fillRect(0, wy - 20, W, H - wy + 20);
+          ctx.fillStyle = 'rgba(255,70,20,0.18)'; ctx.fillRect(0, wy - 20, W, 6);
+          for (let i = 0; i < 24; i++) {
+            const xx = (i * 61 + Math.floor(t * 12) - Math.floor(cx * 0.6)) % (W + 20);
+            ctx.fillStyle = i % 3 ? '#8a2a0c' : '#ff7020';
+            ctx.fillRect((xx + W + 20) % (W + 20) - 10, wy - 10 + ((i * 13 + Math.floor(t * 20)) % 40), 1, 1);
+          }
+        } else {
+          ctx.fillStyle = this.sky === 'rift' ? '#0a2a2a' : (this.night ? '#0c1838' : '#1c4a7a');
+          ctx.fillRect(0, wy, W, H - wy);
+          ctx.fillStyle = this.sky === 'rift' ? '#2a6a50' : (this.night ? '#2a4a80' : '#4a8ac0');
+          for (let i = 0; i < 40; i++) {
+            const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (W + 40)) - 20;
+            const yy = wy + 3 + (i * 7) % Math.max(1, H - wy);
+            ctx.fillRect(W - xx, yy, 6, 1);
+          }
         }
       }
     }
@@ -1422,7 +1779,18 @@ class Level {
       if (d.x + (d.w || 200) < x0 || d.x - 200 > x1) continue;
       drawDecor(ctx, d, cx, cy, t, this);
     }
-    for (const s of this.near(x0, x1)) {
+    const vis = this.near(x0, x1);
+    // 2.5D: caras laterales y superiores en perspectiva (primero lo más lejano al centro)
+    const ext = [];
+    for (const s of vis) {
+      const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
+      if (sx > W + 40 || sx + s.w < -40 || sy > H) continue;
+      ext.push({ s, sx, sy, d: Math.abs(sx + s.w / 2 - VP.x) });
+    }
+    ext.sort((a, b) => b.d - a.d);
+    for (const e of ext) drawExtrusion(ctx, e.s, e.sx, e.sy, this, cx);
+    // caras frontales
+    for (const s of vis) {
       if (s.climb === undefined) {
         drawOneway(ctx, s, cx, cy, this);
         continue;
@@ -1439,11 +1807,89 @@ class Level {
     }
   }
 
+  // Sombra en el suelo bajo un personaje (efecto de profundidad)
+  shadow(ctx, x, feetY, cam, w = 10) {
+    const sY = this.surfaceY(x, feetY - 2);
+    const d = sY - feetY;
+    if (d > 90 || sY > this.height) return;
+    const a = 0.35 * (1 - d / 90);
+    const ww = Math.round(w * (1 - d / 180));
+    ctx.fillStyle = 'rgba(0,0,0,' + a.toFixed(2) + ')';
+    const sx = Math.round(x - cam.x), sy = Math.round(sY - cam.y);
+    ctx.fillRect(sx - ww / 2, sy - 1, ww, 2);
+    ctx.fillRect(sx - ww / 2 + 2, sy - 2, ww - 4, 4);
+  }
+
   drawFront(ctx, cx, cy, t) {
     for (const d of this.front) {
       if (d.x + (d.w || 100) < cx - 40 || d.x > cx + W + 40) continue;
       drawDecor(ctx, d, cx, cy, t, this);
     }
+  }
+}
+
+// ---------------- 2.5D ----------------
+const VP = { x: W / 2, y: 64 };
+const DEPTH = 0.16;
+function backPt(px, py, k = DEPTH) { return [px + (VP.x - px) * k, py + (VP.y - py) * k]; }
+function poly(ctx, col, pts) {
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  ctx.closePath(); ctx.fill();
+}
+const EXT_COLS = {
+  crate: ['#4a3218', '#9a7a4a'], truck: ['#909098', '#e0e0e8'], pillar: ['#3a3020', '#8a7a58'], tower: ['#2e343c', '#7a8492'],
+  beam: ['#4a2818', '#8a4a2a'],
+};
+const GROUND_TOP = { street: '#3c3c46', floor: '#34383e', bridge: '#50565e', stone: '#6a6654', void: '#2a1414' };
+function drawExtrusion(ctx, s, sx, sy, lv, cx) {
+  if (s.kind === 'block' || s.kind === 'ceiling') return;
+  let side, top, h = s.h;
+  if (s.climb === undefined) {
+    // plataforma de un sentido: solo la cara superior fina
+    if (sy <= VP.y) return;
+    const [a, b] = backPt(sx, sy, DEPTH * 0.6), [c, d] = backPt(sx + s.w, sy, DEPTH * 0.6);
+    poly(ctx, s.kind === 'scaffold' ? '#8a7030' : s.kind === 'catwalk' ? '#5a5e66' : '#2a2a30', [sx, sy, sx + s.w, sy, c, d, a, b]);
+    return;
+  }
+  if (s.kind === 'building') {
+    const st = BSTYLES[s.style] || BSTYLES.brick;
+    side = s.sideCol || (s.sideCol = shade(st.dark, -0.2));
+    top = s.topCol || (s.topCol = shade(st.ledge, -0.35));
+    h = s.vis;
+  } else if (s.kind === 'ground') {
+    if (sy <= VP.y) return;
+    const x1 = Math.max(sx, -60), x2 = Math.min(sx + s.w, W + 60);
+    const [a, b] = backPt(x1, sy), [c, d] = backPt(x2, sy);
+    poly(ctx, GROUND_TOP[s.style] || '#3c3c46', [x1, sy, x2, sy, c, d, a, b]);
+    if (s.style === 'street') {
+      // líneas de carril en perspectiva
+      ctx.fillStyle = '#b8a840';
+      const off = Math.floor(s.x + cx) % 1;
+      for (let wx = Math.floor((cx + x1) / 40) * 40; wx < cx + x2; wx += 40) {
+        const px = wx - cx - off;
+        const [p1, q1] = backPt(px, sy, DEPTH * 0.55), [p2] = backPt(px + 18, sy, DEPTH * 0.55);
+        ctx.fillRect(Math.round(p1), Math.round(q1), Math.max(1, Math.round(p2 - p1)), 1);
+      }
+    }
+    return;
+  } else {
+    const c = EXT_COLS[s.kind] || ['#3a3e48', '#6a7280'];
+    side = c[0]; top = c[1];
+    h = Math.min(s.h, H + 40);
+  }
+  const x1 = sx, x2 = sx + s.w, y1 = sy, y2 = sy + Math.min(h, H - sy + 20);
+  if (y1 > VP.y) {
+    const [a, b] = backPt(x1, y1), [c, d] = backPt(x2, y1);
+    poly(ctx, top, [x1, y1, x2, y1, c, d, a, b]);
+  }
+  if (x2 < VP.x) {
+    const [a, b] = backPt(x2, y1), [c, d] = backPt(x2, y2);
+    poly(ctx, side, [x2, y1, a, b, c, d, x2, y2]);
+  } else if (x1 > VP.x) {
+    const [a, b] = backPt(x1, y1), [c, d] = backPt(x1, y2);
+    poly(ctx, side, [x1, y1, a, b, c, d, x1, y2]);
   }
 }
 
@@ -1545,6 +1991,25 @@ function drawOneway(ctx, p, cx, cy, lv) {
 function drawDecor(ctx, d, cx, cy, t, lv) {
   const sx = Math.round(d.x - cx), sy = Math.round(d.y - cy);
   switch (d.type) {
+    case 'clock': // esfera de la torre del reloj
+      ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(sx, sy, 22, 0, TAU); ctx.fill();
+      ctx.fillStyle = lv.night ? '#f0e8c0' : '#e8e0c8'; ctx.beginPath(); ctx.arc(sx, sy, 19, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#2a2a2a';
+      for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; ctx.fillRect(Math.round(sx + Math.cos(a) * 16) - 1, Math.round(sy + Math.sin(a) * 16) - 1, 2, 2); }
+      thickLine(ctx, sx, sy, sx + Math.cos(t * 0.5) * 14, sy + Math.sin(t * 0.5) * 14, 1);
+      thickLine(ctx, sx, sy, sx, sy - 10, 2);
+      break;
+    case 'rift': { // grieta multiversal
+      const cols = ['#ffffff', '#60ffe0', '#ff40c0', '#ffe040'];
+      for (let i = 0; i < 70; i++) {
+        const yy = sy - 70 + i * 2;
+        const w = Math.max(1, 12 - Math.abs(35 - i) * 0.3) + Math.sin(t * 8 + i) * 2;
+        ctx.fillStyle = cols[(i + Math.floor(t * 10)) % cols.length];
+        ctx.fillRect(Math.round(sx + Math.sin(i * 0.4 + t * 3) * 5 - w / 2), yy, Math.round(w), 2);
+      }
+      ctx.fillStyle = 'rgba(160,255,230,0.12)'; ctx.fillRect(sx - 30, sy - 80, 60, 150);
+      break;
+    }
     case 'tank': // tanque de agua en azotea
       ctx.fillStyle = '#3a2a1e';
       ctx.fillRect(sx + 2, sy - 8, 2, 8); ctx.fillRect(sx + 14, sy - 8, 2, 8);
@@ -1664,9 +2129,12 @@ const STYLE_SETS = {
   queens: ['brick', 'brown', 'brick', 'concrete'],
   manhattan: ['concrete', 'glass', 'stone', 'glass', 'steel'],
   times: ['glass', 'steel', 'concrete', 'glass'],
+  andrew: ['glass', 'steel', 'glass', 'stone'],
+  verse: ['verse', 'verse2', 'brown', 'verse'],
+  ruin: ['ruin'],
 };
 const NEON = ['#e03080', '#30c0e0', '#e0c030', '#40e070', '#a050e0', '#e06030'];
-const BILLBOARD_TEXT = ['STARK', 'BUGLE.NET', 'DELMAR', 'ROXXON', 'OSCORP', 'FERIA', 'PIZZA', 'BRAVO', 'MIDTOWN', 'SNACKS', 'MARVELOSO', 'TACOS'];
+const BILLBOARD_TEXT = ['BUGLE.NET', 'DELMAR', 'ROXXON', 'OSCORP', 'FERIA', 'PIZZA', 'MIDTOWN', 'SNACKS', 'TACOS', 'ALCHEMAX', 'STARK', 'HORIZON'];
 
 function roofRun(lv, x0, x1, r, o) {
   let x = x0;
@@ -1678,9 +2146,9 @@ function roofRun(lv, x0, x1, r, o) {
     const b = lv.addBuilding(x, w, h, r.pick(o.styles), r.int(1, 99999));
     out.push(b);
     const top = lv.groundY - h;
-    if (r.chance(0.5)) lv.decor.push({ type: r.pick(['tank', 'ac', 'antenna', 'ac']), x: x + r.int(6, Math.max(7, w - 24)), y: top });
+    if (r.chance(0.5) && o.styles[0] !== 'ruin') lv.decor.push({ type: r.pick(['tank', 'ac', 'antenna', 'ac']), x: x + r.int(6, Math.max(7, w - 24)), y: top });
     if (o.billboards && r.chance(0.5) && h > 90) {
-      lv.decor.push({ type: 'billboard', x: x + 6, y: top + r.int(20, 50), w: Math.min(w - 12, 70), h: 22, color: r.pick(NEON), text: r.pick(BILLBOARD_TEXT) });
+      lv.decor.push({ type: 'billboard', x: x + 6, y: top + r.int(20, 50), w: Math.min(w - 12, 70), h: 22, color: r.pick(NEON), text: r.pick(o.boardText || BILLBOARD_TEXT) });
     }
     if (o.ledges && r.chance(0.45)) {
       const side = r.chance(0.5) ? -1 : 1;
@@ -1693,7 +2161,7 @@ function roofRun(lv, x0, x1, r, o) {
   return out;
 }
 
-function streetDecor(lv, x0, x1, r, night) {
+function streetDecor(lv, x0, x1, r) {
   for (let x = x0 + 20; x < x1 - 20; x += r.int(60, 130)) {
     const ty = r.pick(['lamp', 'hydrant', 'car', 'lamp', 'car']);
     if (ty === 'car') lv.decor.push({ type: 'car', x, y: lv.groundY, color: r.pick(['#c0a020', '#a02828', '#2a4a8a', '#e8e8e8', '#3a3a3a']), taxi: r.chance(0.3) });
@@ -1702,194 +2170,186 @@ function streetDecor(lv, x0, x1, r, night) {
 }
 
 function addArena(lv, x1, x2, waves, opts = {}) {
-  lv.arenas.push({ x1, x2, waves, wave: -1, active: false, done: false, boss: opts.boss || null, title: opts.title || null });
+  lv.arenas.push({ x1, x2, waves, wave: -1, active: false, done: false, boss: opts.boss || null, final: !!opts.final, canonAfter: opts.canonAfter || null, escape: opts.escape || 0 });
   lv.checkpoints.push({ x: x1 + 20 });
 }
 
+function bounds(lv) {
+  lv.addSolid(-40, 0, 40, lv.height, 'block', null, false);
+  lv.addSolid(lv.width, 0, 40, lv.height, 'block', null, false);
+}
+
+function styledLevel(uid, o) {
+  const U = UNIVERSES[uid];
+  const lv = new Level(Object.assign({ sky: U.sky, theme: 'city' }, o));
+  lv.universe = uid; lv.landmark = U.landmark; lv.tint = U.tint; lv.comic = !!U.comic; lv.pals = U.pals;
+  return lv;
+}
+
+// Torre del reloj (Tierra-120703)
+function clockTower(lv, x) {
+  const b = lv.addBuilding(x, 70, 280, 'stone', 7);
+  lv.decor.push({ type: 'clock', x: x + 35, y: lv.groundY - 250 });
+  return b;
+}
+
 const Levels = {
-  // ---------------- Ciudad abierta ----------------
-  city(sky) {
-    const lv = new Level({ name: 'Nueva York', width: 7200, height: 480, groundY: 440, sky, theme: 'city' });
-    const r = makeRng(2019);
-    lv.addGround(0, 2620, 'street');
-    lv.addGround(2620, 3520, 'bridge');
-    lv.addGround(3520, 7200, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block');
-    lv.addSolid(7200, 0, 40, 480, 'block');
-    const q = roofRun(lv, 120, 2500, r, { wmin: 70, wmax: 140, hmin: 60, hmax: 170, gmin: 20, gmax: 70, styles: STYLE_SETS.queens, ledges: true });
-    streetDecor(lv, 0, 2600, r);
-    lv.decor.push({ type: 'sign', x: 40, y: 380, w: 60, text: 'QUEENS' });
-    lv.decor.push({ type: 'sign', x: 2520, y: 380, w: 66, text: 'MUELLE 7' });
-    // Puente de Queensboro
-    lv.addSolid(2760, 150, 36, 290, 'tower', null, true);
-    lv.addSolid(3340, 150, 36, 290, 'tower', null, true);
-    lv.decor.push({ type: 'cable', x: 2620, y: 330, x2: 2778, y2: 152, sag: 30 });
-    lv.decor.push({ type: 'cable', x: 2778, y: 152, x2: 3358, y2: 152, sag: 120 });
-    lv.decor.push({ type: 'cable', x: 3358, y: 152, x2: 3520, y2: 330, sag: 30 });
-    lv.decor.push({ type: 'car', x: 2900, y: 440, color: '#e8e8e8' });
-    lv.decor.push({ type: 'car', x: 3150, y: 440, color: '#c0a020', taxi: true });
-    const m = roofRun(lv, 3600, 4850, r, { wmin: 90, wmax: 160, hmin: 140, hmax: 300, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
-    const ts = roofRun(lv, 4950, 5700, r, { wmin: 90, wmax: 150, hmin: 120, hmax: 260, gmin: 40, gmax: 90, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    const m2 = roofRun(lv, 5800, 6850, r, { wmin: 90, wmax: 170, hmin: 150, hmax: 320, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
-    streetDecor(lv, 3520, 7200, r);
-    lv.decor.push({ type: 'sign', x: 3560, y: 380, w: 72, text: 'MANHATTAN' });
-    lv.decor.push({ type: 'sign', x: 4990, y: 380, w: 84, text: 'TIMES SQUARE' });
-    lv.decor.push({ type: 'sign', x: 6960, y: 380, w: 84, text: 'BATTERY PARK' });
-    lv.decor.push({ type: 'dock', x: 6900, y: 440, w: 300 });
-    // Fichas de tecnología Stark coleccionables (20)
-    const all = q.concat(m, ts, m2);
-    const rr = makeRng(77);
+  // ---------------- Ciudades abiertas (una por universo) ----------------
+  city(uid) {
+    const U = UNIVERSES[uid];
+    const ruin = uid === 'ruina';
+    const lv = styledLevel(uid, { name: U.city, width: 7200, height: 480, groundY: 440, water: ruin ? 470 : null });
+    const r = makeRng(2019 + UNIVERSE_ORDER.indexOf(uid) * 101);
+    bounds(lv);
+    const all = [];
+    if (uid === '616') {
+      lv.addGround(0, 2620, 'street');
+      lv.addGround(2620, 3520, 'bridge');
+      lv.addGround(3520, 7200, 'street');
+      all.push(...roofRun(lv, 120, 2500, r, { wmin: 70, wmax: 140, hmin: 60, hmax: 170, gmin: 20, gmax: 70, styles: STYLE_SETS.queens, ledges: true }));
+      lv.addSolid(2760, 150, 36, 290, 'tower', null, true);
+      lv.addSolid(3340, 150, 36, 290, 'tower', null, true);
+      lv.decor.push({ type: 'cable', x: 2620, y: 330, x2: 2778, y2: 152, sag: 30 });
+      lv.decor.push({ type: 'cable', x: 2778, y: 152, x2: 3358, y2: 152, sag: 120 });
+      lv.decor.push({ type: 'cable', x: 3358, y: 152, x2: 3520, y2: 330, sag: 30 });
+      all.push(...roofRun(lv, 3600, 7000, r, { wmin: 90, wmax: 160, hmin: 140, hmax: 300, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true, billboards: true }));
+      streetDecor(lv, 0, 2600, r); streetDecor(lv, 3520, 7200, r);
+    } else if (ruin) {
+      // suelo roto sobre el vacío
+      const gaps = [[900, 980], [1900, 2000], [2800, 2880], [3900, 3990], [4800, 4880], [5800, 5890]];
+      let x = 0;
+      for (const [g0, g1] of gaps) { lv.addGround(x, g0, 'stone'); lv.addOneway(g0 + 10, 400, g1 - g0 - 20, 'scaffold'); x = g1; }
+      lv.addGround(x, 7200, 'stone');
+      all.push(...roofRun(lv, 100, 7000, r, { wmin: 70, wmax: 150, hmin: 60, hmax: 260, gmin: 50, gmax: 140, styles: STYLE_SETS.ruin, ledges: true }));
+      for (let i = 0; i < 14; i++) lv.addOneway(r.int(200, 7000), r.int(200, 330), r.int(30, 60), 'scaffold');
+    } else {
+      lv.addGround(0, 7200, 'street');
+      const st = { tobey: STYLE_SETS.queens, andrew: STYLE_SETS.andrew, miles: STYLE_SETS.verse }[uid];
+      const bt = { tobey: ['DAILY BUGLE', 'PIZZA DE JOE', 'OSCORP', 'MIDTOWN'], andrew: ['OSCORP', 'ROXXON', 'MIDTOWN', 'STACY'], miles: ['ALCHEMAX', 'VISIONS', 'BROOKLYN', '¡THWIP!'] }[uid];
+      all.push(...roofRun(lv, 120, 4700, r, { wmin: 70, wmax: 150, hmin: 80, hmax: 260, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
+      if (uid === 'andrew') clockTower(lv, 4800);
+      all.push(...roofRun(lv, 4960, 7000, r, { wmin: 70, wmax: 150, hmin: 90, hmax: 280, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
+      streetDecor(lv, 0, 7200, r);
+    }
+    U.signs.forEach((sg, i) => lv.decor.push({ type: 'sign', x: 40 + i * 2400, y: 380, w: Font.width(sg) + 10, text: sg }));
+    // 5 fragmentos del multiverso por universo
+    const rr = makeRng(77 + UNIVERSE_ORDER.indexOf(uid));
     const used = new Set();
     let id = 0;
-    while (id < 20 && used.size < all.length) {
+    while (id < 5 && used.size < all.length) {
       const b = all[rr.int(0, all.length - 1)];
       if (used.has(b)) continue;
       used.add(b);
-      const high = rr.chance(0.35);
-      lv.tokens.push({ id: id++, x: b.x + b.w / 2, y: b.y - (high ? rr.int(60, 110) : 14) });
+      lv.tokens.push({ id: uid + ':' + id, idx: UNIVERSE_ORDER.indexOf(uid) * 5 + id, x: b.x + b.w / 2, y: b.y - (rr.chance(0.4) ? rr.int(60, 110) : 14) });
+      id++;
     }
     return lv.build();
   },
 
   mission(n) {
-    const fn = [this.m1, this.m2, this.m3, this.m4, this.m5][n];
+    const fn = [this.m0, this.m1, this.m2, this.m3, this.m4][n];
     return fn.call(this).build();
   },
 
-  // ---------------- Misión 1: Queens ----------------
-  m1() {
-    const lv = new Level({ name: 'Queens', width: 3400, sky: 'sunset', theme: 'city' });
+  // ---------------- Prólogo: Tierra-616 ----------------
+  m0() {
+    const lv = styledLevel('616', { name: 'La grieta', width: 3400 });
     const r = makeRng(101);
     lv.addGround(0, 3400, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3400, 0, 40, 480, 'block', null, false);
+    bounds(lv);
     lv.addBuilding(300, 90, 60, 'brick', 11);
     lv.addBuilding(430, 110, 130, 'brown', 12);
-    roofRun(lv, 600, 1400, r, { wmin: 80, wmax: 130, hmin: 110, hmax: 190, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true });
+    roofRun(lv, 600, 1400, r, { wmin: 80, wmax: 130, hmin: 110, hmax: 190, gmin: 50, gmax: 100, styles: STYLE_SETS.manhattan, ledges: true, billboards: true });
     streetDecor(lv, 0, 3400, r);
-    roofRun(lv, 1900, 2600, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 180, gmin: 40, gmax: 90, styles: STYLE_SETS.queens, ledges: true });
+    roofRun(lv, 1900, 2600, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 180, gmin: 40, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
     lv.tips.push({ x: 40, text: 'tip_move' }, { x: 250, text: 'tip_wall' }, { x: 560, text: 'tip_swing' }, { x: 1000, text: 'tip_swing2' },
       { x: 1480, text: 'tip_fight' }, { x: 1560, text: 'tip_sense' }, { x: 1950, text: 'tip_web' }, { x: 2690, text: 'tip_brute' }, { x: 2400, text: 'tip_special' });
     addArena(lv, 1440, 1840, [['thug', 'thug', 'thug'], ['thug', 'gunner', 'thug']]);
-    lv.spawns.push({ type: 'thug', x: 2050, y: 0 }, { type: 'gunner', x: 2300, y: 0 }, { type: 'thug', x: 2450, y: 0 });
+    lv.spawns.push({ type: 'thug', x: 2050 }, { type: 'gunner', x: 2300 }, { type: 'thug', x: 2450 });
     addArena(lv, 2660, 3000, [['bat', 'thug', 'thug'], ['brute', 'thug']]);
-    lv.decor.push({ type: 'car', x: 3100, y: 440, color: '#3a3a3a' });
-    lv.addSolid(2604, 412, 50, 28, 'truck', '#4a6a3a', false);
-    addArena(lv, 3040, 3400, [], { boss: 'shocker' });
+    lv.decor.push({ type: 'rift', x: 3330, y: 330 });
+    addArena(lv, 3040, 3400, [], { boss: 'desconocido0', final: true, escape: 0.5 });
     return lv;
   },
 
-  // ---------------- Misión 2: Almacén de Control de Daños ----------------
-  m2() {
-    const lv = new Level({ name: 'Almacén de Control de Daños', width: 3000, height: 300, groundY: 270, sky: 'night', theme: 'warehouse', indoor: true, anchorMinY: 0, topY: 112 });
+  // ---------------- Tierra-96283 ----------------
+  m1() {
+    const lv = styledLevel('tobey', { name: 'Un gran poder', width: 3700 });
     const r = makeRng(202);
-    lv.addGround(0, 3000, 'floor');
-    lv.addSolid(-40, 0, 40, 300, 'block', null, false);
-    lv.addSolid(3000, 0, 40, 300, 'block', null, false);
-    lv.addSolid(0, 0, 3000, 110, 'ceiling', null, false);
-    for (let x = 60; x < 3000; x += 180) lv.decor.push({ type: 'light', x, y: 110, len: 10 });
-    const crates = (x0, x1) => {
-      for (let x = x0; x < x1; x += r.int(70, 140)) {
-        const w = r.pick([20, 24, 30]), h = r.pick([20, 24, 36, 48]);
-        lv.addSolid(x, 270 - h, w, h, 'crate');
-        if (r.chance(0.4) && h < 40) lv.addSolid(x + 2, 270 - h - 20, 20, 20, 'crate');
-      }
-    };
-    const catwalks = (x0, x1) => {
-      for (let x = x0; x < x1; x += r.int(130, 200)) lv.addOneway(x, r.int(175, 205), r.int(60, 110), 'catwalk');
-    };
-    for (let x = 100; x < 2900; x += r.int(160, 260)) lv.decor.push({ type: 'shelf', x, y: 270, w: r.int(40, 70), h: r.int(60, 110) });
-    crates(120, 640); catwalks(80, 660);
-    lv.decor.push({ type: 'dodc', x: 160, y: 124 });
-    lv.spawns.push({ type: 'thug', x: 380, y: 0 }, { type: 'gunner', x: 560, y: 0 });
-    addArena(lv, 700, 1060, [['thug', 'thug', 'gunner'], ['chitauri', 'thug', 'thug']]);
-    crates(1120, 1640); catwalks(1100, 1660);
-    lv.spawns.push({ type: 'chitauri', x: 1300, y: 0 }, { type: 'thug', x: 1450, y: 0 }, { type: 'gunner', x: 1580, y: 0 });
-    addArena(lv, 1700, 2060, [['brute', 'chitauri'], ['thug', 'thug', 'bat', 'gunner']]);
-    crates(2120, 2520); catwalks(2100, 2540);
-    lv.spawns.push({ type: 'bat', x: 2300, y: 0 }, { type: 'chitauri', x: 2450, y: 0 });
-    lv.decor.push({ type: 'vault', x: 2880, y: 270 });
-    lv.tips.push({ x: 60, text: 'tip_indoor' });
-    addArena(lv, 2600, 3000, [], { boss: 'exo' });
+    lv.addGround(0, 3700, 'street');
+    bounds(lv);
+    roofRun(lv, 150, 1000, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 200, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true, billboards: true, boardText: ['DAILY BUGLE', 'PIZZA DE JOE'] });
+    streetDecor(lv, 0, 3700, r);
+    lv.decor.push({ type: 'sign', x: 60, y: 380, w: 80, text: 'PIZZA DE JOE' });
+    lv.spawns.push({ type: 'thug', x: 500 }, { type: 'gunner', x: 800 });
+    addArena(lv, 1060, 1420, [['thug', 'bat', 'thug'], ['gunner', 'thug', 'bat']]);
+    addArena(lv, 1500, 1900, [], { boss: 'sandman' });
+    roofRun(lv, 1960, 2800, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 200, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true });
+    lv.spawns.push({ type: 'gunner', x: 2300 }, { type: 'thug', x: 2500 });
+    addArena(lv, 2860, 3220, [['brute', 'thug'], ['bat', 'bat', 'gunner']]);
+    addArena(lv, 3280, 3700, [], { boss: 'venom', final: true, canonAfter: 'harry' });
     return lv;
   },
 
-  // ---------------- Misión 3: Puente ----------------
-  m3() {
-    const lv = new Level({ name: 'Puente de Brooklyn', width: 3600, sky: 'dusk', theme: 'bridge', water: 470 });
+  // ---------------- Tierra-120703 ----------------
+  m2() {
+    const lv = styledLevel('andrew', { name: 'Tiempo roto', width: 3900 });
     const r = makeRng(303);
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3600, 0, 40, 480, 'block', null, false);
-    // tablero con huecos destrozados
-    const gaps = [[560, 640], [1450, 1530], [1720, 1800], [2560, 2650]];
-    let x = 0;
-    for (const [g0, g1] of gaps) { lv.addGround(x, g0, 'bridge'); x = g1; }
-    lv.addGround(x, 3600, 'bridge');
-    for (const tx of [400, 1300, 2450, 3050]) lv.addSolid(tx, 130, 40, 310, 'tower');
-    lv.decor.push({ type: 'cable', x: 0, y: 300, x2: 420, y2: 132, sag: 30 });
-    lv.decor.push({ type: 'cable', x: 420, y: 132, x2: 1320, y2: 132, sag: 150 });
-    lv.decor.push({ type: 'cable', x: 1320, y: 132, x2: 2470, y2: 132, sag: 170 });
-    lv.decor.push({ type: 'cable', x: 2470, y: 132, x2: 3070, y2: 132, sag: 120 });
-    lv.decor.push({ type: 'cable', x: 3070, y: 132, x2: 3600, y2: 300, sag: 30 });
-    for (const [tx, col] of [[250, '#8a2a2a'], [760, '#2a5a8a'], [1100, '#5a5a5a'], [2200, '#8a6a2a']]) lv.addSolid(tx, 414, 64, 26, 'truck', col, false);
-    for (let i = 0; i < 8; i++) lv.decor.push({ type: 'car', x: r.int(100, 3500), y: 440, color: r.pick(['#c0a020', '#a02828', '#2a4a8a', '#e8e8e8']), taxi: r.chance(0.4) });
-    lv.addOneway(560, 380, 80, 'scaffold');
-    lv.addOneway(1450, 370, 80, 'scaffold');
-    lv.addOneway(1720, 380, 80, 'scaffold');
-    lv.addOneway(2560, 370, 90, 'scaffold');
-    lv.spawns.push({ type: 'thug', x: 700, y: 0 }, { type: 'gunner', x: 820, y: 0 }, { type: 'drone', x: 1600, y: 360 }, { type: 'thug', x: 1900, y: 0 });
-    addArena(lv, 900, 1260, [['thug', 'gunner', 'thug'], ['chitauri', 'chitauri', 'thug']]);
-    addArena(lv, 1950, 2360, [['drone', 'drone', 'thug', 'thug'], ['brute', 'gunner']]);
-    lv.spawns.push({ type: 'drone', x: 2700, y: 360 }, { type: 'chitauri', x: 2850, y: 0 });
-    lv.tips.push({ x: 60, text: 'tip_water' });
-    addArena(lv, 3140, 3600, [], { boss: 'vulture' });
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.canons.push({ x: 120, id: 'padres' });
+    lv.tips.push({ x: 60, text: 'tip_canon' });
+    roofRun(lv, 250, 1100, r, { wmin: 80, wmax: 140, hmin: 120, hmax: 240, gmin: 50, gmax: 100, styles: STYLE_SETS.andrew, ledges: true, billboards: true, boardText: ['OSCORP', 'ROXXON'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'gunner', x: 700 }, { type: 'thug', x: 900 });
+    addArena(lv, 1160, 1520, [['thug', 'gunner', 'thug'], ['brute', 'gunner']]);
+    addArena(lv, 1600, 2000, [], { boss: 'rino' });
+    lv.canons.push({ x: 2120, id: 'ben' });
+    roofRun(lv, 2200, 3000, r, { wmin: 80, wmax: 140, hmin: 120, hmax: 240, gmin: 50, gmax: 100, styles: STYLE_SETS.andrew, ledges: true });
+    lv.spawns.push({ type: 'drone', x: 2500, y: 330 }, { type: 'gunner', x: 2700 });
+    clockTower(lv, 3060);
+    addArena(lv, 3160, 3520, [['drone', 'gunner', 'thug'], ['brute', 'bat', 'drone']]);
+    addArena(lv, 3520, 3900, [], { boss: 'electro', final: true, canonAfter: 'gwen' });
     return lv;
   },
 
-  // ---------------- Misión 4: Times Square ----------------
-  m4() {
-    const lv = new Level({ name: 'Times Square', width: 3400, sky: 'night', theme: 'times' });
+  // ---------------- Tierra-1610 ----------------
+  m3() {
+    const lv = styledLevel('miles', { name: 'Salto de fe', width: 3900 });
     const r = makeRng(404);
-    lv.addGround(0, 3400, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3400, 0, 40, 480, 'block', null, false);
-    roofRun(lv, 150, 950, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    roofRun(lv, 1400, 1950, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    roofRun(lv, 2400, 2900, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    streetDecor(lv, 0, 3400, r);
-    for (let i = 0; i < 6; i++) lv.decor.push({ type: 'billboard', x: 980 + i * 70 + (i > 2 ? 600 : 0), y: 300, w: 56, h: 30, color: NEON[i % NEON.length], text: ['BUGLE.NET', 'MYSTERIO', '¿HÉROE?', 'E.D.I.T.H.', 'DELMAR', 'STARK'][i] });
-    lv.spawns.push({ type: 'drone', x: 500, y: 300 }, { type: 'thug', x: 700, y: 0 }, { type: 'drone', x: 1600, y: 250 }, { type: 'gunner', x: 1700, y: 0 }, { type: 'drone', x: 2600, y: 260 });
-    addArena(lv, 1000, 1360, [['drone', 'drone', 'drone'], ['thug', 'thug', 'drone', 'gunner']]);
-    addArena(lv, 2000, 2360, [['chitauri', 'brute', 'drone'], ['drone', 'drone', 'bat', 'thug']]);
-    lv.tips.push({ x: 60, text: 'tip_illusion' });
-    addArena(lv, 2980, 3400, [], { boss: 'mysterio' });
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_verse' });
+    roofRun(lv, 150, 1000, r, { wmin: 80, wmax: 140, hmin: 110, hmax: 230, gmin: 50, gmax: 100, styles: STYLE_SETS.verse, ledges: true, billboards: true, boardText: ['ALCHEMAX', '¡THWIP!', 'VISIONS'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'thug', x: 600 }, { type: 'drone', x: 900, y: 320 });
+    addArena(lv, 1060, 1420, [['thug', 'thug', 'gunner'], ['drone', 'bat', 'brute']]);
+    addArena(lv, 1500, 1900, [], { boss: 'mancha' });
+    roofRun(lv, 1960, 2900, r, { wmin: 80, wmax: 140, hmin: 110, hmax: 230, gmin: 50, gmax: 100, styles: STYLE_SETS.verse, ledges: true, billboards: true, boardText: ['ALCHEMAX', 'BROOKLYN'] });
+    lv.spawns.push({ type: 'gunner', x: 2300 }, { type: 'drone', x: 2600, y: 320 });
+    addArena(lv, 2960, 3320, [['drone', 'drone', 'thug'], ['brute', 'gunner', 'bat']]);
+    addArena(lv, 3400, 3900, [], { boss: 'miguel', final: true, canonAfter: 'davis' });
     return lv;
   },
 
-  // ---------------- Misión 5: Estatua de la Libertad ----------------
-  m5() {
-    const lv = new Level({ name: 'Isla de la Libertad', width: 3300, sky: 'rift', theme: 'liberty', water: 470 });
+  // ---------------- Universo ¿Y si...? ----------------
+  m4() {
+    const lv = styledLevel('ruina', { name: 'Nada es canon', width: 3700, water: 470 });
     const r = makeRng(505);
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3300, 0, 40, 480, 'block', null, false);
-    lv.addGround(0, 420, 'stone');
-    lv.decor.push({ type: 'statue', x: 2950, y: 440 });
-    // andamios sobre el agua
-    const pillars = [[480, 330], [620, 290], [760, 350]];
-    for (const [px, py] of pillars) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px - 30, py + 30, 30, 'scaffold'); }
-    lv.addGround(820, 1200, 'stone');
-    const p2 = [[1260, 320], [1380, 260], [1500, 300], [1620, 250], [1740, 330]];
-    for (const [px, py] of p2) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px + 22, py + 40, 34, 'scaffold'); }
-    lv.addGround(1800, 2200, 'stone');
-    const p3 = [[2260, 300], [2400, 260], [2540, 320]];
-    for (const [px, py] of p3) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px - 34, py + 36, 34, 'scaffold'); }
-    lv.addGround(2620, 3300, 'stone');
-    for (let x = 900; x < 3300; x += 700) lv.addSolid(x + 200, 390, 16, 50, 'pillar');
-    lv.spawns.push({ type: 'thug', x: 250, y: 0 }, { type: 'drone', x: 700, y: 250 }, { type: 'drone', x: 1500, y: 200 }, { type: 'chitauri', x: 2000, y: 0 });
-    addArena(lv, 840, 1190, [['thug', 'thug', 'chitauri', 'gunner'], ['brute', 'brute']]);
-    addArena(lv, 1820, 2190, [['drone', 'chitauri', 'chitauri'], ['bat', 'bat', 'brute']]);
-    lv.tips.push({ x: 60, text: 'tip_final' });
-    addArena(lv, 2660, 3300, [], { boss: 'scorpion' });
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_ruin' });
+    lv.addGround(0, 520, 'stone');
+    for (const [px, py] of [[580, 380], [700, 340], [820, 370]]) lv.addOneway(px, py, 60, 'scaffold');
+    lv.addGround(900, 1500, 'stone');
+    roofRun(lv, 960, 1440, r, { wmin: 60, wmax: 110, hmin: 60, hmax: 180, gmin: 70, gmax: 120, styles: STYLE_SETS.ruin, ledges: true });
+    lv.spawns.push({ type: 'zombie', x: 300 }, { type: 'zombie', x: 420 }, { type: 'ultron', x: 1100, y: 300 });
+    for (const [px, py] of [[1560, 370], [1680, 320], [1800, 360], [1920, 310]]) lv.addOneway(px, py, 70, 'scaffold');
+    lv.addGround(2000, 2600, 'stone');
+    addArena(lv, 2040, 2560, [['zombie', 'zombie', 'zombie', 'zombie'], ['ultron', 'zombie', 'brute', 'ultron']]);
+    for (const [px, py] of [[2660, 360], [2790, 330]]) lv.addOneway(px, py, 70, 'scaffold');
+    lv.addGround(2900, 3700, 'stone');
+    lv.decor.push({ type: 'rift', x: 3620, y: 300 });
+    addArena(lv, 3000, 3700, [], { boss: 'desconocido4', final: true });
     return lv;
   },
 };
@@ -2435,6 +2895,24 @@ const THUG_PALS = [
   { torso: '#5a4a3a', leg: '#1e2a44', hair: '#141414', face: 'mask', head: '#141414', eye: '#e0e0e0' },
   { torso: '#3a3a3a', leg: '#4a3a2a', hair: '#e0c060', face: 'human', head: '#8a5a3a' },
 ].map((p) => makePal(Object.assign({ boot: '#1a1a1a', outline: '#140a12' }, p)));
+const THEME_PALS = {
+  thugs: THUG_PALS,
+  oscorp: [
+    { torso: '#2a2e36', torsoLow: '#1a1c22', leg: '#1a1c22', head: '#20242a', hair: '#20242a', face: 'visor', eye: '#60ff90' },
+    { torso: '#3a3e46', torsoLow: '#22252c', leg: '#22252c', head: '#20242a', hair: '#20242a', face: 'visor', eye: '#60ffe0' },
+  ].map((p) => makePal(Object.assign({ boot: '#101014', outline: '#08080a' }, p))),
+  kingpin: [
+    { torso: '#3a1a4a', torsoLow: '#1a0a24', leg: '#1a1a22', head: '#c89070', hair: '#141414', face: 'human' },
+    { torso: '#1a1a22', torsoLow: '#101014', leg: '#101014', head: '#8a5a3a', hair: '#141414', face: 'beanie' },
+    { torso: '#e0205a', torsoLow: '#1a1a22', leg: '#1a1a22', head: '#e0b088', hair: '#e0e040', face: 'human' },
+  ].map((p) => makePal(Object.assign({ boot: '#0a0a0a', outline: '#000000' }, p))),
+  zombie: [
+    { torso: '#3a4a2a', leg: '#2a2a3a', head: '#7a9a6a', hair: '#2a3a1a', face: 'human', eye: '#ff3030' },
+    { torso: '#5a2a2a', leg: '#2a2a2a', head: '#8aaa7a', hair: '#1a1a1a', face: 'human', eye: '#ff3030' },
+    { torso: '#6a1818', torsoLow: '#e0b030', leg: '#6a1818', head: '#6a1818', hair: '#6a1818', face: 'spider', eye: '#ffe0a0', emblem: '#140a12' },
+  ].map((p) => makePal(Object.assign({ boot: '#1a1a1a', outline: '#0a0a06' }, p))),
+};
+let ENEMY_THEME = 'thugs';
 const CHITAURI_PAL = makePal({ torso: '#3a2a4a', torsoLow: '#2a2030', arm: '#4a3a5a', leg: '#2a2030', boot: '#1a1420', head: '#20202a', hair: '#20202a', face: 'visor', eye: '#c060ff', outline: '#0a0610' });
 const BRUTE_PAL = makePal({ torso: '#5a5a62', torsoLow: '#3a3a42', arm: '#6a4a3a', arm2: '#c89070', hand: '#c89070', leg: '#2a2a34', boot: '#1a1a1a', head: '#c89070', hair: '#1a1a1a', face: 'beanie', outline: '#140a12' });
 
@@ -2445,6 +2923,8 @@ const ENEMY_SPECS = {
   chitauri: { hp: 5, speed: 48, kind: 'ranged', prefer: [70, 140], windup: 0.8, dmg: 11, cd: [1.6, 2.6], proj: 'orb', pspeed: 150, weapon: 'alien', tech: 3 },
   brute: { hp: 14, speed: 42, range: 26, windup: 0.8, dmg: 17, cd: [1.4, 2.4], kind: 'melee', armor: 0.35, scale: 1.35, w: 14, h: 30, tech: 4 },
   drone: { hp: 3, speed: 70, kind: 'ranged', prefer: [60, 130], windup: 0.8, dmg: 8, cd: [1.6, 2.6], proj: 'laser', pspeed: 210, fly: true, w: 12, h: 8, tech: 2 },
+  zombie: { hp: 6, speed: 34, range: 16, windup: 0.7, dmg: 11, cd: [1.0, 2.0], kind: 'melee', tech: 1 },
+  ultron: { hp: 4, speed: 80, kind: 'ranged', prefer: [60, 130], windup: 0.7, dmg: 9, cd: [1.4, 2.2], proj: 'laser', pspeed: 230, fly: true, w: 12, h: 9, tech: 2 },
   decoy: { hp: 1, speed: 70, kind: 'ranged', prefer: [60, 140], windup: 0.9, dmg: 7, cd: [3, 4.5], proj: 'laser', pspeed: 200, fly: true, w: 14, h: 10, tech: 0 },
 };
 const DIFF_DMG = [0.6, 1, 1.4], DIFF_HP = [0.8, 1, 1.25], DIFF_TOKENS = [1, 2, 3];
@@ -2461,7 +2941,8 @@ class Enemy {
     this.facing = -1; this.state = 'idle'; this.t = 0; this.anim = rand(0, 5);
     this.cd = rand(0.4, 1.2); this.webbed = 0; this.flash = 0; this.dead = false; this.koT = 0;
     this.fly = !!sp.fly; this.scale = sp.scale || 1;
-    this.pal = type === 'chitauri' ? CHITAURI_PAL : type === 'brute' ? BRUTE_PAL : THUG_PALS[this.id % THUG_PALS.length];
+    const pals = THEME_PALS[type === 'zombie' ? 'zombie' : ENEMY_THEME] || THUG_PALS;
+    this.pal = type === 'chitauri' ? CHITAURI_PAL : (type === 'brute' && ENEMY_THEME !== 'zombie') ? BRUTE_PAL : pals[this.id % pals.length];
     this.hasToken = false; this.arena = null; this.aggro = false; this.onGround = false;
     this.hoverY = y; this.isBoss = false; this.noReward = false;
   }
@@ -2646,7 +3127,7 @@ class Enemy {
     if (this.dead && this.koT < 0.5 && Math.floor(this.koT * 20) % 2) return;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
     if (x < -60 || x > W + 60 || y < -60 || y > H + 80) return;
-    if (this.type === 'drone' || this.type === 'decoy') { this.drawDrone(ctx, x, y - this.h, t); return; }
+    if (this.type === 'drone' || this.type === 'decoy' || this.type === 'ultron') { this.drawDrone(ctx, x, y - this.h, t); return; }
     let pose;
     if (this.dead) pose = Poses.ko();
     else if (this.webbed > 0) pose = Poses.webbed();
@@ -2657,7 +3138,8 @@ class Enemy {
       case 'air': pose = Poses.hurt(); pose.rot = -30; break;
       case 'down': pose = Poses.ko(); break;
       default:
-        pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 9) : Poses.idle(this.anim);
+        pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * (this.type === 'zombie' ? 5 : 9)) : Poses.idle(this.anim);
+        if (this.type === 'zombie') { pose.a1 = 80; pose.b1 = 85; pose.a2 = 0; pose.b2 = 0; pose.h = Math.sin(this.anim * 3) * 20; }
     }
     const pal = this.flash > 0 ? FLASH_PAL : this.pal;
     const wp = Rig.draw(ctx, x, y, this.facing, pose, pal, { scale: this.scale, bulk: this.type === 'brute' ? 6 : 4 });
@@ -2694,7 +3176,7 @@ class Enemy {
 
   drawDrone(ctx, x, y, t) {
     const f = this.flash > 0;
-    const body = f ? '#ffffff' : (this.type === 'decoy' || this.mysterio ? '#4a6a5a' : '#5a606c');
+    const body = f ? '#ffffff' : this.type === 'ultron' ? '#a8b0bc' : (this.type === 'decoy' || this.mysterio ? '#4a6a5a' : '#5a606c');
     const bx = x - 6, by = Math.round(y);
     ctx.fillStyle = '#140a12'; ctx.fillRect(bx - 1, by + 1, 14, 7);
     ctx.fillStyle = body; ctx.fillRect(bx, by + 2, 12, 5);
@@ -2745,6 +3227,11 @@ class Boss extends Enemy {
     this.hp -= dmg * mul;
     this.flash = 0.1;
     if (this.stun > 0) this.vx = kx * 0.25;
+    if (this.escapeAt && this.hp <= this.maxHp * this.escapeAt) {
+      this.hp = Math.max(1, this.hp); this.escaped = true;
+      world.particles.burst(this.cx, this.cy, 24, '#e06020', 120); world.particles.burst(this.cx, this.cy, 16, '#60ffe0', 90);
+      this.die(kx, world); return true;
+    }
     if (this.hp <= 0) { this.hp = 0; this.die(kx, world); return true; }
     if (this.phase === 1 && this.hp <= this.maxHp / 2) {
       this.phase = 2; this.inv = 0.8; this.stun = 0;
@@ -2924,19 +3411,25 @@ class ExoBrute extends Boss {
     if (!this.summoned) { this.summoned = true; world.spawnMinion('thug', this.arena); world.spawnMinion('thug', this.arena); }
   }
   onStun() { this.vx = 0; }
+  chooseAttack(adx) {
+    if (adx < 42) { this.state = 'punchWU'; this.t = 0.7 / this.speedMul(); }
+    else if (Math.random() < 0.5) { this.state = 'leapWU'; this.t = 0.5; }
+    else { this.state = 'chargeWU'; this.t = 0.6; }
+  }
+  aiExtra() { return false; }
+  drawExtra(ctx, wp) {
+    ctx.fillStyle = '#7a808c'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 5);
+    ctx.fillStyle = '#e09020'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 1);
+  }
   ai(dt, world) {
     const p = world.player, adx = Math.abs(p.cx - this.cx);
     this.contactDmg = this.state === 'charge' || (this.state === 'leap' && this.vy > 0);
+    if (this.aiExtra(dt, world)) return;
     switch (this.state) {
       case 'move':
         this.faceP(world); this.t -= dt;
         this.vx = approach(this.vx, (adx > 30 ? this.facing : 0) * 50 * this.speedMul(), 300 * dt);
-        if (this.t <= 0 || adx < 36) {
-          if (adx < 42) { this.state = 'punchWU'; this.t = 0.7 / this.speedMul(); }
-          else if (Math.random() < 0.5) { this.state = 'leapWU'; this.t = 0.5; }
-          else { this.state = 'chargeWU'; this.t = 0.6; }
-          Audio2.sfx('roar');
-        }
+        if (this.t <= 0 || adx < 36) { this.chooseAttack(adx); Audio2.sfx('roar'); }
         break;
       case 'punchWU':
         this.vx = 0; this.t -= dt;
@@ -3004,10 +3497,10 @@ class ExoBrute extends Boss {
       case 'roar': pose = Poses.cheer(t); break;
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 6) : Poses.idle(t);
     }
+    if (this.state === 'whipWU') pose = Poses.windup();
+    else if (this.state === 'whip') pose = Poses.punch1();
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, bulk: 6 });
-    // hombreras
-    ctx.fillStyle = '#7a808c'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 5);
-    ctx.fillStyle = '#e09020'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 1);
+    this.drawExtra(ctx, wp, t);
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
   }
 }
@@ -3241,6 +3734,7 @@ class Scorpion extends Boss {
     this.tailExt = 0; this.riftT = 5;
   }
   onPhase2(world) {
+    if (this.type !== 'scorpion') return;
     world.bubble('gargan', '¡El fragmento... me hace más fuerte!');
     this.pal = makePal({ head: '#3a9a4a', hair: '#1a5a2a', torso: '#3a9a4a', torsoLow: '#1a5a2a', arm: '#3a9a4a', arm2: '#1a5a2a', hand: '#b0ffb0', leg: '#1a5a2a', boot: '#3a9a4a', face: 'visor', eye: '#ffffff', outline: '#08140a' });
   }
@@ -3248,7 +3742,7 @@ class Scorpion extends Boss {
     const p = world.player, adx = Math.abs(p.cx - this.cx);
     this.contactDmg = this.state === 'leap' && this.vy > 0;
     this.tailExt = approach(this.tailExt, this.state === 'stab' ? 1 : 0, dt * 8);
-    if (this.phase === 2) {
+    if (this.phase === 2 && !this.noRift) {
       this.riftT -= dt;
       if (this.riftT <= 0) {
         this.riftT = rand(4, 6);
@@ -3304,7 +3798,7 @@ class Scorpion extends Boss {
           for (let i = 0; i < n; i++) {
             const tx = p.cx + (i - (n - 1) / 2) * 40;
             const vx = clamp((tx - this.cx) / 0.74, -320, 320);
-            world.addProj(new Proj('acid', this.cx, this.y + 6, vx, -260, 'e', this.bdmg(0.8)));
+            world.addProj(new Proj(this.projKind || 'acid', this.cx, this.y + 6, vx, -260, 'e', this.bdmg(0.8)));
           }
           Audio2.sfx('shoot');
           this.state = 'recover'; this.t = 0.6;
@@ -3379,7 +3873,7 @@ class Scorpion extends Boss {
   }
 }
 
-const BOSS_CLASSES = { shocker: Shocker, exo: ExoBrute, vulture: Vulture, mysterio: MysterioSwarm, scorpion: Scorpion };
+
 
 // ---------------------------------------------------------------------------
 // Proyectiles
@@ -3387,9 +3881,9 @@ const BOSS_CLASSES = { shocker: Shocker, exo: ExoBrute, vulture: Vulture, myster
 class Proj {
   constructor(kind, x, y, vx, vy, owner, dmg) {
     this.kind = kind; this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner; this.dmg = dmg || 0;
-    this.life = { web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
-    this.g = { bomb: 600, acid: 700, riftorb: 0 }[kind] || 0;
-    this.r = { web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
+    this.life = { darkweb: 2, spot: 3, redweb: 2.5, web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
+    this.g = { bomb: 600, acid: 700, redweb: 700, spot: 500, riftorb: 0 }[kind] || 0;
+    this.r = { darkweb: 4, spot: 5, redweb: 4, web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
     this.dead = false; this.t = 0;
   }
   box() { return { x: this.x - this.r, y: this.y - this.r, w: this.r * 2, h: this.r * 2 }; }
@@ -3406,7 +3900,7 @@ class Proj {
       if (Math.floor(this.t * 30) % 2) world.particles.spark(this.x, this.y + 4, this.dmg > 0 ? '#80d0ff' : '#90ff90', 1);
     } else if (lv.pointSolid(this.x, this.y, false) || this.y > lv.killY) {
       if (this.kind === 'bomb' || this.kind === 'riftorb') this.explode(world);
-      else if (this.kind === 'acid') { world.particles.burst(this.x, this.y, 8, '#90ff60', 60); this.dead = true; }
+      else if (this.kind === 'acid' || this.kind === 'redweb' || this.kind === 'spot') { world.particles.burst(this.x, this.y, 8, '#90ff60', 60); this.dead = true; }
       else { world.particles.burst(this.x, this.y, 4, this.owner === 'p' ? '#ffffff' : '#ffe060', 50); this.dead = true; }
       return;
     }
@@ -3474,6 +3968,17 @@ class Proj {
         break;
       case 'acid':
         ctx.fillStyle = '#90ff60'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#e0ffb0'; ctx.fillRect(x - 1, y - 2, 2, 2);
+        break;
+      case 'darkweb':
+        ctx.fillStyle = '#16141a'; ctx.fillRect(x - 3, y - 3, 7, 7);
+        ctx.fillStyle = '#e06020'; ctx.fillRect(x - 1, y - 1, 3, 3);
+        break;
+      case 'redweb':
+        ctx.fillStyle = '#ff3040'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 1, 2, 2);
+        break;
+      case 'spot':
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill();
         break;
       case 'riftorb':
         ctx.fillStyle = 'rgba(80,255,140,0.35)'; ctx.fillRect(x - 8, y - 8, 16, 16);
@@ -3579,169 +4084,817 @@ class Particles {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Jefes de Rompecánones
+// ---------------------------------------------------------------------------
+class Sandman extends ExoBrute {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'sandman'; this.name = 'HOMBRE DE ARENA';
+    this.w = 22; this.h = 44; this.scale = 2.0;
+    this.hp = this.maxHp = Math.ceil(50 * DIFF_HP[Game.settings.difficulty]);
+    this.pal = makePal({ head: '#c8a878', hair: '#8a6a3a', torso: '#4a7a3a', torsoLow: '#6a5a3a', arm: '#c8a060', arm2: '#b89050', hand: '#d8b070', leg: '#6a5a3a', boot: '#3a2a1a', face: 'human', outline: '#2a1a0a' });
+    this.summoned = true;
+  }
+  drawExtra(ctx, wp, t) {
+    ctx.fillStyle = '#2a4a1a';
+    for (let i = 0; i < 3; i++) ctx.fillRect(wp.mid[0] - 4, wp.mid[1] - 6 + i * 4, 9, 1);
+    ctx.fillStyle = 'rgba(210,180,120,0.7)';
+    for (let i = 0; i < 4; i++) ctx.fillRect(Math.round(wp.hip[0] + Math.sin(t * 7 + i) * 10), Math.round(wp.hip[1] + 8 + (i * 5 + t * 30) % 14), 2, 2);
+  }
+}
+
+class Venom extends ExoBrute {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'venom'; this.name = 'VENOM';
+    this.hp = this.maxHp = Math.ceil(70 * DIFF_HP[Game.settings.difficulty]);
+    this.scale = 1.6; this.w = 16; this.h = 36;
+    this.pal = makePal({ head: '#101018', hair: '#101018', torso: '#101018', arm: '#101018', leg: '#101018', boot: '#101018', face: 'venom', eye: '#ffffff', outline: '#000000' });
+    this.summoned = true;
+  }
+  chooseAttack(adx) {
+    const r = Math.random();
+    if (adx < 42 && r < 0.4) { this.state = 'punchWU'; this.t = 0.6 / this.speedMul(); }
+    else if (adx < 90 && r < 0.75) { this.state = 'whipWU'; this.t = 0.55 / this.speedMul(); }
+    else if (r < 0.88) { this.state = 'leapWU'; this.t = 0.45; }
+    else { this.state = 'chargeWU'; this.t = 0.55; }
+  }
+  aiExtra(dt, world) {
+    if (this.state === 'whipWU') {
+      this.faceP(world); this.vx = 0; this.t -= dt;
+      if (this.t <= 0) { this.state = 'whip'; this.t = 0.3; this.hitDone = false; Audio2.sfx('whoosh'); }
+    } else if (this.state === 'whip') {
+      this.t -= dt;
+      const box = { x: this.facing > 0 ? this.cx : this.cx - 78, y: this.y + 8, w: 78, h: 14 };
+      if (!this.hitDone && overlap(box, world.player.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+      if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; }
+    } else return false;
+    this.ground(dt, world);
+    return true;
+  }
+  drawExtra(ctx, wp, t) {
+    ctx.fillStyle = '#e8e8f0';
+    const [x, y] = wp.mid;
+    ctx.fillRect(x - 1, y - 8, 3, 12); ctx.fillRect(x - 6, y - 7, 5, 2); ctx.fillRect(x + 2, y - 7, 5, 2); ctx.fillRect(x - 6, y - 1, 5, 2); ctx.fillRect(x + 2, y - 1, 5, 2);
+    if (this.state === 'whip' || this.state === 'whipWU') {
+      const [hx, hy] = wp.h2, f = this.facing;
+      const len = this.state === 'whip' ? 76 : 12;
+      ctx.fillStyle = '#000000'; thickLine(ctx, hx, hy, hx + f * len, hy + Math.sin(t * 30) * 3, 4);
+      ctx.fillStyle = '#3a3a4a'; thickLine(ctx, hx, hy - 1, hx + f * len, hy - 1 + Math.sin(t * 30) * 3, 1);
+    }
+  }
+}
+
+class Rino extends ExoBrute {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'rino'; this.name = 'RINO';
+    this.hp = this.maxHp = Math.ceil(55 * DIFF_HP[Game.settings.difficulty]);
+    this.pal = makePal({ head: '#6a6a72', hair: '#6a6a72', torso: '#5a5a62', torsoLow: '#3a3a42', arm: '#6a6a72', arm2: '#5a5a62', hand: '#8a8a92', leg: '#4a4a52', boot: '#2a2a32', face: 'visor', eye: '#ffe060', outline: '#101014' });
+    this.summoned = true;
+  }
+  chooseAttack(adx) {
+    if (adx < 40 && Math.random() < 0.4) { this.state = 'punchWU'; this.t = 0.65 / this.speedMul(); }
+    else if (Math.random() < 0.7) { this.state = 'chargeWU'; this.t = 0.55; }
+    else { this.state = 'leapWU'; this.t = 0.5; }
+  }
+  drawExtra(ctx, wp) {
+    const [hx, hy] = wp.head, f = this.facing;
+    ctx.fillStyle = '#e8e8d8';
+    ctx.fillRect(hx + f * 5 - 1, hy - 4, 3, 5); ctx.fillRect(hx + f * 7 - 1, hy - 7, 2, 4);
+    ctx.fillStyle = '#8a8a92'; ctx.fillRect(wp.sh[0] - 6, wp.sh[1] - 3, 12, 5);
+  }
+}
+
+class Electro extends Shocker {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'electro'; this.name = 'ELECTRO';
+    this.hp = this.maxHp = Math.ceil(55 * DIFF_HP[Game.settings.difficulty]);
+    this.pal = makePal({ head: '#3a8aff', hair: '#3a8aff', torso: '#1a2030', torsoLow: '#12161e', arm: '#1a2030', arm2: '#3a8aff', hand: '#a0e0ff', leg: '#12161e', boot: '#0a0c12', face: 'visor', eye: '#ffffff', outline: '#040810' });
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
+    ctx.fillStyle = 'rgba(80,170,255,' + (0.12 + Math.sin(t * 20) * 0.06) + ')';
+    ctx.fillRect(x - 14, y - 34, 28, 36);
+    super.draw(ctx, cam, t);
+    if (Math.floor(t * 15) % 3 === 0) {
+      ctx.fillStyle = '#c0f0ff';
+      let px = x, py = y - 30;
+      for (let i = 0; i < 5; i++) { const nx = px + rand(-6, 6), ny = py - 4; thickLine(ctx, px, py, nx, ny, 1); px = nx; py = ny; }
+    }
+  }
+}
+
+class Mancha extends Boss {
+  constructor(x, y) {
+    super('mancha', x, y, { name: 'LA MANCHA', w: 11, h: 24, scale: 1.1, hp: 58, dmg: 12,
+      pal: makePal({ head: '#f0f0f0', hair: '#f0f0f0', torso: '#f0f0f0', arm: '#f0f0f0', leg: '#f0f0f0', boot: '#101010', face: 'spot', eye: '#101010', outline: '#000000' }) });
+    this.portals = [];
+  }
+  ai(dt, world) {
+    const p = world.player, adx = Math.abs(p.cx - this.cx);
+    this.inv = this.state === 'gone' ? 1 : 0;
+    for (const po of this.portals) po.t += dt;
+    switch (this.state) {
+      case 'move': {
+        this.faceP(world); this.t -= dt;
+        this.vx = approach(this.vx, (adx > 60 ? this.facing : adx < 30 ? -this.facing : 0) * 55 * this.speedMul(), 300 * dt);
+        if (this.t <= 0) {
+          const r = Math.random();
+          if (r < 0.45) {
+            this.state = 'portalWU'; this.t = 0.8 / this.speedMul();
+            const n = this.phase === 2 ? 2 : 1;
+            this.portals = [];
+            for (let i = 0; i < n; i++) this.portals.push({ x: p.cx + (i ? rand(-50, 50) : 0), y: p.y + 8, t: 0 });
+          } else if (r < 0.75) { this.state = 'throwWU'; this.t = 0.5; }
+          else { this.state = 'gone'; this.t = 0.6; world.particles.burst(this.cx, this.cy, 14, '#000000', 90); Audio2.sfx('whoosh'); }
+        }
+        break;
+      }
+      case 'portalWU':
+        this.vx = 0; this.t -= dt;
+        if (this.t <= 0) { this.state = 'portal'; this.t = 0.28; this.hitDone = false; Audio2.sfx('heavy'); }
+        break;
+      case 'portal':
+        this.t -= dt;
+        for (const po of this.portals) {
+          const box = { x: po.x - 12, y: po.y - 10, w: 24, h: 22 };
+          if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), po.x); }
+        }
+        if (this.t <= 0) { this.portals = []; this.state = 'recover'; this.t = 0.7; }
+        break;
+      case 'throwWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (this.t <= 0) {
+          const n = this.phase === 2 ? 3 : 2;
+          for (let i = 0; i < n; i++) {
+            const tx = p.cx + (i - (n - 1) / 2) * 36;
+            world.addProj(new Proj('spot', this.cx, this.y + 6, clamp((tx - this.cx) / 0.8, -300, 300), -200, 'e', this.bdmg(0.8)));
+          }
+          Audio2.sfx('shoot');
+          this.state = 'recover'; this.t = 0.6;
+        }
+        break;
+      case 'gone':
+        this.t -= dt; this.vx = 0;
+        if (this.t <= 0) {
+          const nx = clamp(p.cx + (Math.random() < 0.5 ? -80 : 80), this.arena.x1 + 20, this.arena.x2 - 30);
+          this.x = nx - this.w / 2;
+          this.y = world.level.surfaceY(this.cx, world.level.groundY - 60) - this.h;
+          world.particles.burst(this.cx, this.cy, 14, '#000000', 90);
+          this.state = 'recover'; this.t = 0.45;
+        }
+        break;
+      case 'recover':
+        this.vx = approach(this.vx, 0, 400 * dt); this.t -= dt;
+        if (this.t <= 0) { this.state = 'move'; this.t = rand(0.7, 1.2) / this.speedMul(); }
+        break;
+      default: this.state = 'move';
+    }
+    if (this.state !== 'gone') this.ground(dt, world);
+  }
+  hittable() { return super.hittable() && this.state !== 'gone'; }
+  draw(ctx, cam, t) {
+    for (const po of this.portals) {
+      const x = Math.round(po.x - cam.x), y = Math.round(po.y - cam.y);
+      const r = Math.min(12, po.t * 30);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x, y, r + 2, (r + 2) * 0.7, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0, 0, TAU); ctx.fill();
+      if (this.state === 'portal') { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(x - 5, y - 4, 10, 8); ctx.fillStyle = '#101010'; ctx.fillRect(x - 3, y - 2, 2, 2); }
+    }
+    if (this.state === 'gone' && !this.dead) return;
+    const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
+    let pose;
+    if (this.dead) pose = Poses.ko();
+    else switch (this.state) {
+      case 'portalWU': pose = Poses.cheer(t); break;
+      case 'portal': pose = Poses.punch1(); break;
+      case 'throwWU': pose = Poses.windup(); break;
+      case 'stunned': pose = Poses.hurt(); break;
+      default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 8) : Poses.idle(t);
+    }
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
+    ctx.fillStyle = '#101010';
+    ctx.fillRect(wp.mid[0] - 2, wp.mid[1] - 3, 3, 3); ctx.fillRect(wp.k2[0] - 1, wp.k2[1] - 1, 2, 2); ctx.fillRect(wp.e1[0] - 1, wp.e1[1], 2, 2);
+    this.drawStun(ctx, wp.head[0], wp.head[1] - 9, t);
+  }
+}
+
+class Miguel extends Scorpion {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'miguel'; this.name = 'MIGUEL O\'HARA (2099)';
+    this.hp = this.maxHp = Math.ceil(78 * DIFF_HP[Game.settings.difficulty]);
+    this.scale = 1.2; this.w = 12; this.h = 27;
+    this.projKind = 'redweb'; this.noRift = true;
+    this.pal = makePal({ head: '#1a2a6a', hair: '#1a2a6a', torso: '#1a2a6a', torsoLow: '#10183a', arm: '#1a2a6a', arm2: '#1a2a6a', hand: '#d01a2a', leg: '#1a2a6a', boot: '#d01a2a', face: 'spider', eye: '#ff3040', emblem: '#d01a2a', outline: '#050818' });
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
+    let pose;
+    if (this.dead) pose = Poses.ko();
+    else switch (this.state) {
+      case 'stabWU': case 'acidWU': pose = Poses.windup(); break;
+      case 'stab': pose = Poses.punch2(); break;
+      case 'sweepWU': case 'sweep': pose = Poses.kick(); break;
+      case 'leapWU': pose = Poses.crouch(); break;
+      case 'leap': pose = this.vy < 0 ? Poses.jump() : Poses.dive(); break;
+      case 'stunned': pose = Poses.hurt(); break;
+      case 'roar': pose = Poses.cheer(t); break;
+      default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 9) : Poses.idle(t);
+    }
+    const cape = (c, wp, f) => {
+      c.fillStyle = '#d01a2a';
+      c.beginPath(); c.moveTo(wp.sh[0], wp.sh[1]); c.lineTo(wp.sh[0] - f * 10, wp.hip[1] + 6 + Math.sin(t * 6) * 2); c.lineTo(wp.sh[0] - f * 3, wp.hip[1] + 4); c.fill();
+    };
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
+    if (this.state === 'stab') {
+      ctx.fillStyle = '#ffe0e0';
+      for (let i = 0; i < 3; i++) thickLine(ctx, wp.h2[0], wp.h2[1] - 3 + i * 3, wp.h2[0] + this.facing * 26, wp.h2[1] - 6 + i * 4, 1);
+    }
+    if (this.phase === 2 && !this.dead) {
+      ctx.fillStyle = 'rgba(255,40,60,0.15)'; ctx.fillRect(x - 12, y - 36, 24, 38);
+    }
+    this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
+  }
+}
+
+class Desconocido extends Boss {
+  constructor(x, y, final) {
+    const n = final ? canonCount() : 0;
+    super(final ? 'desconocido4' : 'desconocido0', x, y, { name: 'EL DESCONOCIDO', w: 10, h: 22, scale: 1.05,
+      hp: final ? 70 + n * 8 : 44, dmg: final ? 12 + n : 10,
+      pal: SUITS.find((s) => s.id === 'cero').palObj });
+    this.final = final; this.power = n; this.echoes = false;
+  }
+  speedMul() { return (this.phase === 2 ? 1.3 : 1) + this.power * 0.05; }
+  onPhase2(world) {
+    if (!this.final) return;
+    world.bubble('desconocido', 'Cada canon que rompiste... me hace más fuerte.');
+    if (!this.echoes) {
+      this.echoes = true;
+      for (let i = 0; i < 1 + Math.min(2, Math.floor(this.power / 2)); i++) {
+        const e = world.spawnMinion('thug', this.arena);
+        e.pal = this.pal; e.noReward = true;
+      }
+    }
+  }
+  ai(dt, world) {
+    const p = world.player, adx = Math.abs(p.cx - this.cx);
+    this.contactDmg = this.state === 'dash' || (this.state === 'dive' && this.vy > 0);
+    switch (this.state) {
+      case 'move': {
+        this.faceP(world); this.t -= dt;
+        let want = 0;
+        if (adx > 110) want = this.facing; else if (adx < 50) want = -this.facing;
+        this.vx = approach(this.vx, want * 95 * this.speedMul(), 500 * dt);
+        if (this.t <= 0) {
+          const r = Math.random();
+          if (r < 0.3) { this.state = 'webWU'; this.t = 0.45; }
+          else if (r < 0.55) { this.state = 'diveWU'; this.t = 0.4; }
+          else if (r < 0.8) { this.state = 'dashWU'; this.t = 0.4; }
+          else { this.state = 'zipWU'; this.t = 0.5; }
+        }
+        break;
+      }
+      case 'webWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (this.t <= 0) {
+          const n = this.phase === 2 ? 3 : 2;
+          const ox = this.cx + this.facing * 6, oy = this.y + 7;
+          const base = Math.atan2(p.cy - oy, p.cx - ox);
+          for (let i = 0; i < n; i++) {
+            const a = base + (i - (n - 1) / 2) * 0.2;
+            world.addProj(new Proj('darkweb', ox, oy, Math.cos(a) * 240, Math.sin(a) * 240, 'e', this.bdmg(0.8)));
+          }
+          Audio2.sfx('thwip');
+          this.state = 'recover'; this.t = 0.5;
+        }
+        break;
+      case 'diveWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (this.t <= 0) { this.state = 'dive'; this.vy = -430; this.onGround = false; this.vx = clamp((p.cx - this.cx) / 0.9, -260, 260); Audio2.sfx('jump'); }
+        break;
+      case 'dive':
+        if (this.onGround && this.vy >= 0) {
+          this.vx = 0; world.shake(3); Audio2.sfx('heavy'); world.particles.dust(this.cx, this.y + this.h, 8);
+          if (this.phase === 2) for (const d of [-1, 1]) world.addProj(new Proj('wave', this.cx + d * 8, this.y + this.h - 6, d * 170, 0, 'e', this.bdmg(0.7)));
+          this.state = 'recover'; this.t = 0.55;
+        }
+        break;
+      case 'dashWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (this.t <= 0) { this.state = 'dash'; this.t = 0.4; this.vx = this.facing * 300 * this.speedMul(); Audio2.sfx('whoosh'); }
+        break;
+      case 'dash':
+        this.t -= dt;
+        if (Math.floor(this.anim * 30) % 2) world.particles.spark(this.cx, this.cy, '#e06020', 1);
+        if (this.t <= 0 || this.hitWall) { this.state = 'recover'; this.t = 0.6; }
+        break;
+      case 'zipWU':
+        this.vx = 0; this.t -= dt;
+        if (this.t <= 0) {
+          world.particles.burst(this.cx, this.cy, 10, '#e06020', 80);
+          const side = p.facing > 0 ? -1 : 1;
+          this.x = clamp(p.cx + side * 26, this.arena.x1 + 10, this.arena.x2 - 20) - this.w / 2;
+          this.y = p.y + p.h - this.h;
+          this.faceP(world);
+          world.particles.burst(this.cx, this.cy, 10, '#e06020', 80);
+          Audio2.sfx('thwip');
+          this.state = 'punchWU'; this.t = 0.3;
+        }
+        break;
+      case 'punchWU':
+        this.vx = 0; this.t -= dt;
+        if (this.t <= 0) { this.state = 'punch'; this.t = 0.18; this.hitDone = false; Audio2.sfx('whoosh'); }
+        break;
+      case 'punch': {
+        this.t -= dt;
+        const box = { x: this.facing > 0 ? this.cx : this.cx - 22, y: this.y + 3, w: 22, h: 14 };
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+        if (this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
+        break;
+      }
+      case 'recover':
+        this.vx = approach(this.vx, 0, 500 * dt); this.t -= dt;
+        if (this.t <= 0) { this.state = 'move'; this.t = rand(0.6, 1.1) / this.speedMul(); }
+        break;
+      default: this.state = 'move';
+    }
+    this.ground(dt, world);
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
+    if (this.escaped && this.dead) return;
+    let pose;
+    if (this.dead && !this.escaped) pose = Poses.ko();
+    else switch (this.state) {
+      case 'webWU': case 'punchWU': pose = Poses.shoot(); break;
+      case 'diveWU': pose = Poses.crouch(); break;
+      case 'dive': pose = this.vy < 0 ? Poses.flip(this.anim) : Poses.dive(); break;
+      case 'dash': case 'punch': pose = Poses.punch1(); break;
+      case 'dashWU': pose = Poses.windup(); break;
+      case 'zipWU': pose = Poses.crouch(); break;
+      case 'stunned': pose = Poses.hurt(); break;
+      case 'roar': pose = Poses.cheer(t); break;
+      default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 9) : Poses.idle(t);
+    }
+    if (this.phase === 2 && !this.dead) {
+      ctx.globalAlpha = 0.35;
+      Rig.draw(ctx, x + Math.round(Math.sin(t * 20) * 3), y, this.facing, pose, this.pal, { scale: this.scale });
+      ctx.globalAlpha = 1;
+    }
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
+    ctx.globalAlpha = 1;
+    if (Math.floor(t * 6) % 2 && !this.dead) { ctx.fillStyle = '#ff8030'; ctx.fillRect(wp.mid[0] + 1, wp.mid[1] - 2, 1, 1); }
+    this.drawStun(ctx, wp.head[0], wp.head[1] - 8, t);
+  }
+}
+
+const BOSS_CLASSES = {
+  shocker: Shocker, exo: ExoBrute, vulture: Vulture, mysterio: MysterioSwarm, scorpion: Scorpion,
+  sandman: Sandman, venom: Venom, rino: Rino, electro: Electro, mancha: Mancha, miguel: Miguel,
+  desconocido0: class extends Desconocido { constructor(x, y) { super(x, y, false); } },
+  desconocido4: class extends Desconocido { constructor(x, y) { super(x, y, true); } },
+};
+
 </script>
 <script>
 // ---- js/story.js ----
 'use strict';
 // ---------------------------------------------------------------------------
-// Historia original: "Spider-Man: Ecos de Nueva York"
-// Ambientada seis meses después de Spider-Man: No Way Home (MCU)
+// Historia original: "Spider-Man: Rompecánones"
+// Peter Parker (Tierra-616) tras Brand New Day y antes de enfrentarse a Doom.
 // ---------------------------------------------------------------------------
 const WHO = {
   narr: { name: '', portrait: null },
   peter: { name: 'Peter Parker', portrait: 'peter' },
   spidey: { name: 'Spider-Man', portrait: 'spidey' },
-  radio: { name: 'Radio policial', portrait: 'radio' },
-  cleary: { name: 'Agente Cleary', portrait: 'cleary' },
+  radio: { name: 'Radio', portrait: 'radio' },
+  static: { name: '¿...?', portrait: 'radio' },
   jjj: { name: 'J. Jonah Jameson', portrait: 'jjj' },
-  shocker: { name: 'Shocker', portrait: 'shocker' },
-  mason: { name: 'El Hojalatero', portrait: 'mason' },
-  gargan: { name: 'Escorpión', portrait: 'gargan' },
-  mysterio: { name: '¿Mysterio?', portrait: 'mysterio' },
-  voice: { name: 'Voz del fragmento', portrait: 'mj' },
+  desconocido: { name: 'El Desconocido', portrait: 'desconocido' },
+  cero: { name: 'Peter Cero', portrait: 'cero' },
+  tobey: { name: 'Peter (Tierra-96283)', portrait: 'tobey' },
+  andrew: { name: 'Peter (Tierra-120703)', portrait: 'andrew' },
+  miles: { name: 'Miles Morales', portrait: 'miles' },
+  gwen: { name: 'Gwen Stacy (Tierra-65)', portrait: 'gwen' },
+  gwenS: { name: 'Gwen Stacy', portrait: 'gwens' },
+  miguel: { name: 'Miguel O\'Hara', portrait: 'miguel' },
+  harry: { name: 'Harry Osborn', portrait: 'harry' },
+  venom: { name: 'Venom', portrait: 'venom' },
+  sandman: { name: 'Hombre de Arena', portrait: 'sandman' },
+  rino: { name: 'Rino', portrait: 'rino' },
+  electro: { name: 'Electro', portrait: 'electro' },
+  mancha: { name: 'La Mancha', portrait: 'mancha' },
+  richard: { name: 'Richard Parker', portrait: 'richard' },
+  ben: { name: 'Ben Parker', portrait: 'ben' },
+  davis: { name: 'Capitán Davis', portrait: 'davis' },
+  doom: { name: '???', portrait: 'doom' },
   civil: { name: 'Ciudadano', portrait: 'civil' },
 };
 
+// ---------------- Universos (cada uno es una ciudad abierta) ----------------
+const UNIVERSES = {
+  '616': { id: '616', name: 'Tierra-616', city: 'Nueva York', sky: 'night', styles: 'manhattan', pals: 'thugs', tint: null, landmark: 'avengers',
+    crimes: ['robo', 'caida', 'persecucion', 'drones'], signs: ['MIDTOWN', 'QUEENS', 'DAILY BUGLE'], music: 'city' },
+  tobey: { id: 'tobey', name: 'Tierra-96283', city: 'Nueva York dorada', sky: 'golden', styles: 'queens', pals: 'thugs', tint: 'rgba(255,190,110,0.10)', landmark: 'empire',
+    crimes: ['robo', 'caida', 'persecucion'], signs: ['PIZZA DE JOE', 'DAILY BUGLE', 'OSCORP'], music: 'city' },
+  andrew: { id: 'andrew', name: 'Tierra-120703', city: 'Nueva York de cristal', sky: 'teal', styles: 'manhattan', pals: 'oscorp', tint: 'rgba(60,170,200,0.08)', landmark: 'oscorp',
+    crimes: ['robo', 'caida', 'persecucion', 'drones'], signs: ['OSCORP', 'MIDTOWN SCIENCE', 'TORRE DEL RELOJ'], music: 'city' },
+  miles: { id: 'miles', name: 'Tierra-1610', city: 'Brooklyn animado', sky: 'verse', styles: 'verse', pals: 'kingpin', tint: null, comic: true, landmark: 'alchemax',
+    crimes: ['robo', 'persecucion', 'caida', 'drones'], signs: ['BROOKLYN', 'VISIONS', 'ALCHEMAX'], music: 'verse' },
+  ruina: { id: 'ruina', name: 'Universo ¿Y si...?', city: 'Nueva York en ruinas', sky: 'ruin', styles: 'ruin', pals: 'zombie', tint: 'rgba(160,30,20,0.08)', landmark: 'ruins',
+    crimes: ['zombies', 'ultron', 'caida'], signs: ['SIN CANON', 'VENGADORES', '¿Y SI...?'], music: 'ruin' },
+};
+const UNIVERSE_ORDER = ['616', 'tobey', 'andrew', 'miles', 'ruina'];
+
+// ---------------- Capítulos ----------------
+// stage = capítulo actual. El 0 es el prólogo; 1-4 tienen ciudad libre y misión.
 const MISSIONS = [
-  { name: 'Tu amigable vecino', place: 'Queens' },
-  { name: 'Control de Daños', place: 'Almacén del Muelle 7' },
-  { name: 'Alas de acero', place: 'Puente de Brooklyn' },
-  { name: 'Nada es lo que parece', place: 'Times Square' },
-  { name: 'El Escorpión', place: 'Isla de la Libertad' },
+  { name: 'La grieta', place: 'Tierra-616', universe: '616', markerX: null },
+  { name: 'Un gran poder', place: 'Tierra-96283', universe: 'tobey', markerX: 3100 },
+  { name: 'Tiempo roto', place: 'Tierra-120703', universe: 'andrew', markerX: 5200 },
+  { name: 'Salto de fe', place: 'Tierra-1610', universe: 'miles', markerX: 3100 },
+  { name: 'Nada es canon', place: 'Universo ¿Y si...?', universe: 'ruina', markerX: 6900 },
 ];
-const MISSION_SUIT = ['casero', 'sigilo', 'stark', 'ffh', 'iron'];
-const MARKER_X = [null, 2560, 3060, 5250, 7020];
-const MARKER_PLACE = [null, 'Muelle 7', 'Puente de Queensboro', 'Times Square', 'Battery Park'];
-const CITY_SKY = ['day', 'day', 'sunset', 'dusk', 'night', 'day'];
+const MISSION_SUIT = ['sigilo', 'raimi', 'tasm', 'verse', 'cero'];
+
+// ---------------- Eventos canónicos ----------------
+const CANONS = {
+  harry: {
+    title: 'HARRY OSBORN',
+    text: 'Harry va a interponerse entre Venom y Peter. En este universo, ese es su último acto.',
+    save: 'SALVAR A HARRY (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['crack', 'harry', 'doom', '2099', 'alone', 'ruin', 'spiders', 'harry'],
+    saved: [
+      ['narr', 'Peter se lanza antes que Harry. Una red. Un tirón. El planeador choca contra la pared vacía.'],
+      ['harry', '¿Qué... qué ha pasado? Estoy vivo.'],
+      ['tobey', 'Harry... Estás vivo.'],
+      ['narr', 'Muy lejos, algo en el multiverso cruje, como un hueso que se rompe.'],
+    ],
+    kept: [
+      ['harry', 'Peter... Eres mi mejor amigo.'],
+      ['tobey', '...'],
+      ['peter', 'Lo siento. Lo siento mucho.'],
+      ['narr', 'El canon sigue en pie. Pero duele igual.'],
+    ],
+  },
+  padres: {
+    title: 'RICHARD Y MARY PARKER',
+    text: 'Los padres de Peter viajan en este avión. En este universo, nunca llegan a su destino.',
+    save: 'SALVARLOS (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['plane', 'crack', 'doom', 'plane', '2099', 'spiders', 'alone', 'plane'],
+    saved: [
+      ['narr', 'Peter atraviesa la cabina, desarma al asesino y sujeta el avión con telarañas en mitad de la tormenta.'],
+      ['richard', '¿Quién... quién eres?'],
+      ['peter', 'Alguien que conoce a su hijo. Él los va a necesitar. Vuelvan a casa.'],
+      ['narr', 'El avión aterriza. En algún lugar, un reloj se detiene un segundo.'],
+    ],
+    kept: [
+      ['peter', 'No puedo... Si toco esto, todo se rompe. Lo siento.'],
+      ['narr', 'El avión desaparece entre las nubes. Como siempre.'],
+    ],
+  },
+  ben: {
+    title: 'BEN PARKER',
+    text: 'Ben Parker está a punto de cruzarse con un ladrón. En todos los universos, esta es la noche que crea a Spider-Man.',
+    save: 'SALVAR AL TÍO BEN (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['bentomb', 'crack', 'spiders', 'bentomb', 'doom', 'alone', '2099', 'bentomb'],
+    saved: [
+      ['narr', 'Una red atrapa la pistola. Otra atrapa al ladrón. El disparo nunca suena.'],
+      ['ben', 'Gracias, muchacho. Oye... ¿te conozco?'],
+      ['peter', 'No. Pero su sobrino tiene mucha suerte de tenerlo.'],
+      ['ben', 'Dile que sea la persona que quiere ser. Eso es lo que importa.'],
+    ],
+    kept: [
+      ['peter', 'Todos tenemos un tío Ben... y todos lo perdemos.'],
+      ['narr', 'Un disparo en la noche. Un chico corre hacia la acera. Y nace un héroe.'],
+    ],
+  },
+  gwen: {
+    title: 'GWEN STACY',
+    text: 'Gwen cae desde la torre del reloj. Andrew nunca llega a tiempo. Nunca.',
+    save: 'SALVAR A GWEN (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['clock', 'gwenfall', 'crack', 'clock', 'doom', 'gwenfall', '2099', 'gwenfall'],
+    saved: [
+      ['narr', 'Peter lanza dos telarañas. Andrew lanza la tercera. Esta vez, Gwen no toca el suelo.'],
+      ['gwenS', '¿Peter? ¿...Dos Peters?'],
+      ['andrew', 'La salvaste... La salvamos.'],
+      ['andrew', 'Llevo tanto tiempo soñando con esto que no sé qué hacer ahora.'],
+      ['peter', 'Empieza por decirle lo que sientes. Créeme.'],
+    ],
+    kept: [
+      ['andrew', 'Otra vez no...'],
+      ['peter', 'Lo siento, Peter. Lo siento mucho.'],
+      ['andrew', 'No. Tú no tenías que cargar con esto. Es mío. Siempre ha sido mío.'],
+    ],
+  },
+  davis: {
+    title: 'CAPITÁN JEFFERSON DAVIS',
+    text: 'El padre de Miles protege a los civiles bajo un edificio que se derrumba. Es su evento canónico.',
+    save: 'SALVAR AL PADRE DE MILES (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['2099', 'crack', 'spiders', 'doom', '2099', 'ruin', 'alone', 'spiders'],
+    saved: [
+      ['narr', 'Peter y Miles sostienen el techo con cien telarañas. El capitán Davis sale caminando.'],
+      ['davis', '¿Estoy... vivo? ¿Miles? ¿Qué haces tú aquí?'],
+      ['miles', '¡PAPÁ! Es... una larga historia.'],
+      ['miguel', 'Acabas de condenar este universo, Parker. Espero que valga la pena.'],
+    ],
+    kept: [
+      ['miles', 'No... Papá...'],
+      ['gwen', 'Lo siento, Miles.'],
+      ['peter', 'Yo... también lo siento. No sabes cuánto.'],
+    ],
+  },
+};
+const CANON_ORDER = ['harry', 'padres', 'ben', 'gwen', 'davis'];
 
 const STORY = {
   intro: [
-    ['narr', 'Nueva York. Seis meses después del hechizo que borró a Peter Parker de la memoria del mundo.'],
-    ['narr', 'Nadie recuerda quién es. Ni Ned. Ni MJ. Ni Happy.'],
-    ['narr', 'Pero la ciudad todavía tiene a alguien que la cuida.'],
-    ['peter', 'Traje nuevo, cosido a mano. Radio de la policía encendida. Un apartamento diminuto... pero es mío.'],
-    ['radio', 'A todas las unidades: asalto a un camión blindado en Queens. El sospechoso lleva guanteletes que disparan ondas de choque.'],
-    ['peter', '¿Ondas de choque? No puede ser... ¿Herman Schultz? Se suponía que seguía en la cárcel.'],
-    ['peter', 'Bueno. Hora de ser tu amigable vecino.'],
+    ['narr', 'Tierra-616. Después de todo lo que pasó... Peter Parker sigue en pie.'],
+    ['narr', 'Un nuevo día. Una nueva vida. Pero algo se acerca: un nombre que se susurra entre los universos. Doom.'],
+    ['peter', 'Otra noche tranquila. Patrullar, cenar algo, dormir cuatro horas. El plan perfecto.'],
+    ['narr', 'Entonces, el cielo se rompe.'],
+    ['peter', '¿Eso es una grieta? ¿Otra vez? No, no, no. El doctor Strange me va a matar.'],
+    ['radio', '¡Alerta en Control de Daños! Un intruso con traje de araña se lleva un dispositivo de contención...'],
+    ['peter', '¿Traje de araña? Yo estoy aquí... Genial. Un impostor.'],
   ],
+  // Llegada a cada universo (se muestra al entrar por primera vez)
+  arrival: {
+    tobey: [
+      ['narr', 'Tierra-96283. Una Nueva York cálida y dorada, que huele a pizza.'],
+      ['peter', 'Esto... me suena. ¿El Daily Bugle? ¿Aquí todavía imprimen periódicos?'],
+      ['tobey', '¿Peter? Vaya. Otra vez el multiverso.'],
+      ['peter', '¡Peter 2! Digo... ¡hola! Busco a un Spider-Man con el traje quemado.'],
+      ['tobey', 'Lo vi saltar desde Oscorp. Pero ahora tenemos otro problema: algo negro y pegajoso anda suelto.'],
+    ],
+    andrew: [
+      ['narr', 'Tierra-120703. Una ciudad azul y fría. Aquí los relojes no marcan la misma hora.'],
+      ['andrew', '¿Otro Peter? No sé si es una buena señal o una muy mala.'],
+      ['peter', '¡Peter 3! ¿Cómo estás?'],
+      ['andrew', '¿Sinceramente? Estoy bien. Estoy bien. ...Vale, no estoy bien. El tiempo se está rompiendo.'],
+      ['andrew', 'Veo momentos de mi vida que se repiten. Mis padres. Mi tío. Ella.'],
+    ],
+    miles: [
+      ['narr', 'Tierra-1610. El aire es distinto: puntos, colores, líneas de cómic.'],
+      ['miles', '¡Otro Spider-Man! ¿De dónde eres tú?'],
+      ['peter', 'Tierra-616. Allí tenemos... menos colores.'],
+      ['gwen', 'Cuidado, Peter. La Sociedad Araña sabe lo que estás haciendo. Miguel te está buscando.'],
+      ['peter', '¿Miguel?'],
+      ['gwen', 'Spider-Man 2099. Cree que los cánones son sagrados. Y no se equivoca del todo.'],
+    ],
+    ruina: [
+      ['narr', 'Universo ¿Y si...? Una Nueva York en ruinas flota sobre la nada.'],
+      ['narr', 'Aquí no quedan cánones. Solo restos.'],
+      ['peter', '¿Hola? ...¿Hay alguien?'],
+      ['static', '...si alguien oye esto... no sigas al hombre del traje quemado... él fue quien...'],
+      ['peter', '¿Quien qué? ¡¿Quien qué?! ...Genial. Hasta las radios del fin del mundo me dejan con la intriga.'],
+    ],
+    '616': [
+      ['narr', 'Tierra-616. Casa.'],
+      ['peter', 'Todo sigue igual. Y a la vez nada es igual.'],
+    ],
+  },
   briefing: [
     null,
     [
-      ['cleary', 'Agente Cleary, Control de Daños. No me mires así, trepamuros. Necesito ayuda... y odio decirlo.'],
-      ['spidey', '¿Qué ha pasado?'],
-      ['cleary', 'Alguien vació nuestra bóveda: restos del traje de Toomes, drones de Beck, armas chitauri...'],
-      ['cleary', '...y un fragmento cristalino que recogimos en la Estatua de la Libertad después del incidente de las "visitas". Brilla. Y no debería existir.'],
-      ['spidey', '(Un fragmento del hechizo de Strange... Si alguien lo usa, podría volver a abrir el multiverso.)'],
-      ['cleary', 'Los ladrones siguen dentro. Y no rompas nada... más.'],
+      ['tobey', 'Venom está en el centro. Y Flint... el Hombre de Arena, también.'],
+      ['peter', '¿Los dos juntos? Qué suerte la mía.'],
+      ['tobey', 'La suerte Parker. Existe en todos los universos.'],
     ],
     [
-      ['radio', 'Reportes de un hombre con alas mecánicas sobre el puente. Está atacando vehículos.'],
-      ['spidey', '¿Alas mecánicas? Ay, no. Por favor, que no sea el señor Toomes.'],
+      ['andrew', 'El Desconocido está en Oscorp. Dice que puede devolverme todo lo que perdí.'],
+      ['peter', '¿Y tú le crees?'],
+      ['andrew', 'Quiero creerle. Ese es el problema.'],
     ],
     [
-      ['cleary', 'Los drones de Beck se han activado en Times Square. Las pantallas muestran... algo raro.'],
-      ['spidey', '¿Raro cómo?'],
-      ['cleary', 'Como si Mysterio hubiera vuelto.'],
-      ['spidey', 'Beck está muerto. Esto es solo un truco. ...¿Verdad?'],
+      ['miles', 'La Mancha está abriendo agujeros por todo Brooklyn. Y tu Desconocido le da órdenes.'],
+      ['peter', 'Pues vamos. ¿Tú y yo?'],
+      ['miles', 'Sí. Pero voy a hacerlo a mi manera.'],
     ],
     [
-      ['narr', 'El cielo sobre la bahía se agrieta. Una luz verde se derrama desde la antorcha de la estatua.'],
-      ['spidey', 'Otra vez aquí... La última vez que estuve en esta estatua lo perdí todo.'],
-      ['spidey', 'Esta vez no voy a perder la ciudad.'],
+      ['peter', 'La señal del Desconocido viene de la vieja Torre de los Vengadores.'],
+      ['peter', 'Si esto es lo que pasa cuando rompes todo... tengo que detenerlo.'],
+      ['peter', 'Un gran poder... Sí, sí. Ya lo sé.'],
     ],
   ],
-  bossIntro: [
-    [
-      ['shocker', '¡Mira quién vino! El bicho de las telarañas.'],
-      ['spidey', 'Herman Schultz. ¿Guanteletes nuevos? Te quedan geniales. Muy de los 2000.'],
-      ['shocker', 'Alguien me sacó de la jaula y me dio juguetes mejores. ¡Pruébalos!'],
+  bossIntro: {
+    desconocido0: [
+      ['desconocido', '...'],
+      ['spidey', '¡Eh! Ese traje es horrible. Y lo dice alguien que se cosió el suyo.'],
+      ['desconocido', 'Todavía no lo entiendes. Pero lo entenderás.'],
+      ['desconocido', 'Cada universo tiene su dolor. Su canon. Voy a romperlos todos.'],
     ],
-    [
-      ['mason', '(Por los altavoces) ¡Vaya, vaya! El chico araña. Te presento a mi nueva creación.'],
-      ['spidey', '¿Phineas Mason? ¿El Hojalatero? ¡Tú trabajabas para Toomes!'],
-      ['mason', 'Trabajaba. Ahora trabajo para quien pague mejor. ¡Exo-Matón, aplástalo!'],
+    sandman: [
+      ['sandman', 'No quiero hacer esto, chico. Pero no tengo elección.'],
+      ['spidey', 'Siempre hay elección. Te lo dice alguien que siempre elige fatal.'],
     ],
-    [
-      ['mason', '¡Adrian nunca me dejó volarlo! ¡El Buitre Mark II es MÍO!'],
-      ['spidey', 'Señor Mason, esas alas tienen más años que yo. ¡Bájese de ahí!'],
-      ['mason', '¡Oblígame, chico!'],
+    venom: [
+      ['venom', 'Dos arañas... Nos encantan los aperitivos.'],
+      ['tobey', '¡Cuidado! Se alimenta de rabia.'],
+      ['spidey', 'Entonces voy a estar muy tranquilo. Súper tranquilo. Zen.'],
     ],
-    [
-      ['mysterio', '¡Spider-Man! ¿Creíste que podías librarte de mí? ¡Nadie se olvida de Mysterio!'],
-      ['spidey', 'Qué ironía. Todos se acuerdan de ti y de mí no se acuerda nadie.'],
-      ['mysterio', 'La gente necesita creer. ¡Y hoy creerán que caíste!'],
+    rino: [
+      ['rino', '¡Soy el RINO! ¡Y voy a aplastarte, bicho!'],
+      ['spidey', 'Genial. Un tanque que habla.'],
     ],
-    [
-      ['gargan', '¡Por fin! Llevo años soñando con este momento, Spider-Man.'],
-      ['spidey', '¿Mac Gargan? Bonito disfraz. ¿Escorpión? ¿En serio?'],
-      ['gargan', 'Toomes nunca me dijo quién eras. Da igual. Con este fragmento abriré el multiverso y traeré a cada enemigo que hayas tenido.'],
-      ['spidey', 'Si abres esa puerta, no sabes lo que vendrá.'],
-      ['gargan', '¡Exacto! ¡Esa es la gracia!'],
+    electro: [
+      ['electro', '¡Todos me olvidan! ¡Hoy la ciudad entera sabrá mi nombre!'],
+      ['spidey', 'Créeme, amigo: sé lo que es que nadie te recuerde. No hace falta apagar la ciudad.'],
     ],
+    mancha: [
+      ['mancha', '¿Me recuerdas? ...No, claro. Nadie me recuerda. ¡Hasta hoy!'],
+      ['spidey', 'Oye, te entiendo mejor de lo que crees.'],
+    ],
+    miguel: [
+      ['miguel', 'Anomalía detectada. Parker, llevas {N} cánones rotos.'],
+      ['spidey', 'Solo intentaba salvar a gente.'],
+      ['miguel', 'Todos lo intentamos. Y así es como caen los universos.'],
+      ['miles', '¡Miguel, déjalo en paz!'],
+    ],
+    desconocido4: [
+      ['desconocido', 'Bienvenido a mi casa, Peter.'],
+      ['spidey', '¿Tu casa? Aquí no hay nada.'],
+      ['desconocido', 'Por eso. Aquí lo salvé todo. A todos. Y el universo no pudo soportarlo.'],
+      ['desconocido', 'Rompiste {N} cánones para llegar hasta aquí. Ya sabes lo que se siente.'],
+      ['spidey', '¿Quién eres?'],
+      ['desconocido', 'Pelea. Y lo verás.'],
+    ],
+  },
+  bossOutro: {
+    desconocido0: [
+      ['desconocido', 'Suficiente. Si quieres respuestas, sígueme, Parker.'],
+      ['narr', 'El Desconocido salta a la grieta. Peter duda un segundo.'],
+      ['peter', 'Señor Stark... no me siento bien con esto.'],
+      ['peter', 'Allá voy.'],
+    ],
+    sandman: [
+      ['sandman', 'Mi hija... Tengo que volver con ella.'],
+      ['spidey', 'Pues vuelve. Hoy nadie tiene que ser el malo.'],
+    ],
+    venom: [
+      ['venom', 'Nosotros... volveremos...'],
+      ['narr', 'Entre el humo, alguien vuela hacia Venom en un planeador...'],
+    ],
+    rino: [
+      ['rino', 'Ugh... mi armadura...'],
+      ['andrew', 'Buen trabajo. Yo tardé tres películas en ganarle.'],
+      ['peter', '¿Qué?'],
+      ['andrew', 'Nada, nada.'],
+    ],
+    electro: [
+      ['electro', 'Tú... me has visto...'],
+      ['spidey', 'Te veo, Max. Descansa.'],
+      ['narr', 'Las luces vuelven. Y en lo alto de la torre del reloj, alguien grita un nombre.'],
+      ['andrew', '¡GWEN!'],
+    ],
+    mancha: [
+      ['mancha', 'Los agujeros... se cierran... ¡Esto no ha terminado!'],
+      ['gwen', 'Peter, sal de ahí. Miguel viene a por ti.'],
+    ],
+    miguel: [
+      ['miguel', 'Eres terco... como todos nosotros.'],
+      ['gwen', '¡Peter! El edificio... ¡El padre de Miles está dentro!'],
+    ],
+    desconocido4: [
+      ['narr', 'La máscara quemada cae al suelo.'],
+      ['cero', '¿Lo ves? Soy tú. Sin la suerte. Sin nadie que me dijera que no.'],
+      ['spidey', '...Peter.'],
+      ['cero', 'Antes me llamaba así. Ahora soy Peter Cero. El primero que lo rompió todo.'],
+      ['cero', 'Salvé a mis padres, al tío Ben, a Gwen, a Tony... a todos. Y mi universo se partió en mil pedazos.'],
+      ['cero', 'Doom me prometió reconstruirlo si abría suficientes grietas. Y tú me ayudaste, ¿sabes?'],
+      ['peter', 'No lo sabía...'],
+      ['cero', 'Nadie lo sabe. Hasta que es demasiado tarde.'],
+      ['narr', 'Las grietas crecen. Hay que decidir.'],
+    ],
+  },
+  finalChoice: {
+    title: 'LA ÚLTIMA DECISIÓN',
+    options: [
+      { id: 'mano', label: 'TENDERLE LA MANO' },
+      { id: 'deshacer', label: 'DESHACER LOS CÁNONES ROTOS' },
+      { id: 'dentro', label: 'CERRAR LAS GRIETAS DESDE DENTRO' },
+    ],
+  },
+  endings: {
+    feliz: {
+      title: 'FINAL: UN NUEVO DÍA',
+      lines: [
+        ['peter', 'No tienes que estar solo. Nunca tuviste que estarlo.'],
+        ['cero', '...Hace años que nadie me decía eso.'],
+        ['cero', 'Las grietas necesitan un ancla. Alguien que no pertenezca a ningún universo. Ese soy yo.'],
+        ['peter', '¡No! Tiene que haber otra forma.'],
+        ['cero', 'La hay: tú vuelves a casa. Y cuando luches contra Doom, recuerda que alguien te eligió.'],
+        ['narr', 'Peter Cero se convierte en luz. Las grietas se cierran, una a una.'],
+        '{SAVED}',
+        ['narr', 'Tierra-616. Amanece.'],
+        ['peter', 'Un gran poder conlleva una gran responsabilidad. Y a veces, también, un poco de suerte.'],
+      ],
+    },
+    triste: {
+      title: 'FINAL: EL PRECIO',
+      lines: [
+        '{WHY}',
+        ['peter', '...Lo haré.'],
+        '{UNDO}',
+        ['cero', 'Ahora lo entiendes. Por eso yo no pude.'],
+        ['narr', 'Peter Cero se desvanece con los restos de su mundo. El multiverso respira de nuevo.'],
+        ['narr', 'Tierra-616. Peter vuelve a un apartamento vacío.'],
+        ['peter', 'Salvé el multiverso. Entonces... ¿por qué me siento así?'],
+      ],
+    },
+    neutral: {
+      title: 'FINAL: ENTRE MUNDOS',
+      lines: [
+        ['peter', 'Si alguien tiene que quedarse entre los universos... que sea yo.'],
+        ['cero', '¿Por qué harías eso?'],
+        ['peter', 'Porque tú ya perdiste demasiado. Vuelve. Empieza de nuevo.'],
+        ['narr', 'Peter entra en la grieta y la cierra desde dentro.'],
+        ['narr', 'Tobey siente que olvidó algo importante. Andrew mira el cielo sin saber por qué. Miles dibuja una araña que no reconoce.'],
+        ['narr', 'Todo lo que salvó sigue en pie. Pero nadie, en ningún universo, recuerda su nombre.'],
+        ['peter', 'Otra vez nadie me recuerda. ...Pero esta vez lo elegí yo.'],
+        ['narr', 'Entre los universos, un Spider-Man sigue balanceándose. Por si alguien lo necesita.'],
+      ],
+    },
+  },
+  postCredits: {
+    feliz: [['doom', 'Qué conmovedor, Parker. Disfruta de tu nuevo día.'], ['doom', 'Nos veremos muy pronto.']],
+    triste: [['doom', 'Ya has perdido, Parker. Solo que todavía no lo sabes.']],
+    neutral: [['doom', 'Un héroe perdido entre mundos... Justo donde lo quería.']],
+  },
+  savedLines: {
+    harry: ['En Tierra-96283, Harry Osborn despierta con una sonrisa.', 'En Tierra-96283, una tumba lleva el nombre de Harry Osborn.'],
+    padres: ['En Tierra-120703, un avión aterriza a salvo bajo la lluvia.', 'En Tierra-120703, un niño sigue esperando a sus padres.'],
+    ben: ['Un tío Ben enseña a su sobrino a cambiar una rueda.', 'Una acera guarda para siempre el recuerdo del tío Ben.'],
+    gwen: ['Gwen Stacy da un discurso de graduación. Esta vez, termina.', 'Una torre del reloj sigue marcando la misma hora.'],
+    davis: ['El capitán Davis llega tarde a cenar. Miles lo abraza igual.', 'Miles lleva la placa de su padre en el bolsillo.'],
+  },
+  undoLines: {
+    harry: 'Harry vuelve a caer.',
+    padres: 'El avión vuelve a perderse en la tormenta.',
+    ben: 'El tío Ben vuelve a quedarse en la acera.',
+    gwen: 'Gwen vuelve a caer.',
+    davis: 'El capitán Davis vuelve a quedarse atrás.',
+  },
+  // Fragmentos coleccionables: frases con significado (easter eggs)
+  fragments: [
+    'Un gran poder conlleva una gran responsabilidad.',
+    '¡Hora de la pizza! Nadie paga a tiempo, ni en este universo.',
+    'Señor Stark... no me siento bien.',
+    '¿Qué es un salto de fe? Confianza.',
+    'Cualquiera puede llevar la máscara.',
+    'Nadie puede salvar a todos. Pero todos pueden intentarlo.',
+    'Cuando nadie te recuerda, la ciudad todavía lo hace.',
+    'Estoy bien. De verdad. Estoy bien.',
+    'El tío Ben decía: sé la persona que quieres ser.',
+    'Ya no soy el único, ¿verdad?',
+    'El canon no es el destino. Es una cicatriz.',
+    'Las grietas suenan como un latido.',
+    'Doom no conquista mundos. Espera a que se rompan solos.',
+    'Un Spider-Man con el traje quemado miraba desde la azotea.',
+    'La Sociedad Araña nunca olvida una anomalía.',
+    'Si pudieras salvarlos a todos... ¿lo harías?',
+    'Gwen: en todos los universos, siempre hay una caída.',
+    'Miles: voy a hacer las cosas a mi manera.',
+    'Tobey: a veces, para hacer lo correcto, hay que renunciar a lo que más quieres.',
+    'Andrew: pensé que no podía salvar a nadie.',
+    'Yo también llevé esa máscara. Yo también la amé.',
+    'Tony habría sabido qué hacer. O habría hecho un chiste.',
+    'MJ, Ned: algún día os lo contaré todo.',
+    'La esperanza es lo que nos hace fuertes.',
+    'Todos somos Spider-Man. Incluso tú.',
   ],
-  bossOutro: [
-    [
-      ['shocker', 'Ugh... Da igual, bicho... Gargan ya tiene lo que buscaba...'],
-      ['spidey', '¿Gargan? ¿Mac Gargan? ¿El tipo del ferry?'],
-      ['radio', '...alarma silenciosa en el almacén de Control de Daños, Muelle 7. Repito, Muelle 7...'],
-      ['spidey', 'Genial. Lo que me faltaba.'],
+  radio: {
+    '616': [
+      ['jjj', '¡Grietas en el cielo! ¡Otra vez! ¡Y adivinen quién estaba debajo! ¡Spider-Man!'],
+      ['jjj', '¿Por qué se tapa la cara? ¡Porque tiene algo que esconder! ¡Suscríbanse a TheDailyBugle.net!'],
+      ['jjj', 'Mis fuentes dicen que el trepamuros come pizza sin pagar. ¡No me consta, pero lo sospecho!'],
     ],
-    [
-      ['mason', 'Impresionante... pero ya tenemos lo que vinimos a buscar. ¡Nos vemos en el puente, chico!'],
-      ['cleary', 'Se llevaron el fragmento. Van hacia el puente.'],
-      ['spidey', 'Entonces voy al puente.'],
+    tobey: [
+      ['jjj', '¡Quiero fotos de esa amenaza con telarañas! ¡En mi mesa! ¡Ahora!'],
+      ['jjj', '¿Dos Spider-Man? ¡Genial! ¡Ahora tengo el doble de titulares!'],
+      ['jjj', '¿Héroe? ¡Criminal! ¡Vándalo! ¡Amenaza! ...¿Me quedé sin palabras? ¡Nunca!'],
     ],
-    [
-      ['mason', 'Mis alas... Está bien, está bien. Me rindo.'],
-      ['spidey', '¿Qué quiere Gargan con el fragmento?'],
-      ['mason', 'Abrir la puerta. Traer desde otros mundos a todos los que te odian. Dice que tú tienes la culpa de... todo.'],
-      ['mason', 'Pero el fragmento necesita energía. Por eso se llevó los drones de Beck a Times Square.'],
+    andrew: [
+      ['radio', 'A todas las unidades: apagones en Midtown. Evitad los cables sueltos.'],
+      ['radio', 'Oscorp niega cualquier relación con los "fantasmas" de la torre del reloj.'],
+      ['radio', 'Reportes de un hombre enorme con armadura de rinoceronte. No, no es una broma.'],
     ],
-    [
-      ['spidey', 'Solo era un eco. Drones, hologramas... y mucho humo verde.'],
-      ['cleary', 'Buen trabajo. Rastreamos la señal de control: viene de la Isla de la Libertad.'],
-      ['spidey', 'Donde todo empezó.'],
+    miles: [
+      ['radio', 'Agujeros negros en las paredes de Brooklyn. Si ve uno, no lo toque. Ni lo mire.'],
+      ['radio', 'Nuevo mural de Spider-Man en Brooklyn. El artista dice que "lo vio en un sueño".'],
+      ['radio', 'Aviso de Alchemax: los experimentos de esta semana son "totalmente seguros".'],
     ],
-    [
-      ['gargan', 'No... el fragmento... es mío...'],
-      ['narr', 'El fragmento rueda hasta los pies de Peter. En sus destellos aparecen rostros conocidos: Ned. MJ. May.'],
-      ['voice', 'Úsame. Abre la puerta. Ellos volverán a recordarte.'],
-      ['peter', '...Podría recuperarlos. Podría decirles quién soy.'],
-      ['peter', 'Pero prometí mantenerlos a salvo. Y eso significa dejarles vivir sus vidas.'],
-      ['narr', 'Peter aprieta el fragmento hasta convertirlo en polvo de luz. La grieta del cielo se cierra.'],
-      ['cleary', 'Buen trabajo, Spider-Man. Por cierto... ¿quién eres en realidad?'],
-      ['spidey', 'Solo tu amigable vecino.'],
+    ruina: [
+      ['static', '...¿hay alguien...? ...los zombis han cruzado el puente...'],
+      ['static', '...Ultron sigue buscando... no salgáis de noche...'],
+      ['static', '...él salvó a todos... y luego no quedó nadie a quien salvar...'],
     ],
-  ],
-  afterCity: [
-    [
-      ['jjj', '¡Aquí J. Jonah Jameson, de TheDailyBugle.net! El trepamuros destrozó media calle de Queens persiguiendo a un "supervillano". ¿Coincidencia? ¡No lo creo!'],
-      ['peter', 'Siempre es un placer, JJ.'],
-    ],
-    [
-      ['jjj', '¡Última hora! Robo en un almacén federal, ¿y adivinen quién estaba allí? ¡Spider-Man! ¡Yo solo digo lo que veo!'],
-    ],
-    [
-      ['jjj', '¿Un buitre gigante? ¿Un tipo con telarañas? ¡Esta ciudad es un zoológico y Spider-Man es el cuidador!'],
-    ],
-    [
-      ['jjj', '¡Luces verdes en el cielo sobre la Estatua de la Libertad! ¡Otra vez! ¡Juro que si Spider-Man está detrás de esto...!'],
-    ],
-    [
-      ['jjj', '¡Spider-Man salvó la ciudad! ...Eso dicen. ¡Yo sigo sin fiarme de él! Aquí J. Jonah Jameson.'],
-      ['peter', 'Algunas cosas nunca cambian. Y está bien.'],
-    ],
-  ],
-  jjjQuips: [
-    '¿Por qué se tapa la cara? ¡Porque tiene algo que esconder!',
-    '¡Spider-Man! ¡Amenaza! ¡Peligro! ¡Suscríbanse a TheDailyBugle.net!',
-    'Un lector escribe: "Spider-Man salvó a mi gato". ¡Seguro que él lo subió al árbol!',
-    'Mis fuentes dicen que el trepamuros come pizza sin pagar. ¡No me consta, pero lo sospecho!',
-    '¡Otro día, otro destrozo arácnido en esta ciudad!',
-    '¿Telarañas en mi coche? ¡Esto es personal, Spider-Man!',
-    'Hoy en el programa: ¿son las telarañas biodegradables? ¡Lo dudo mucho!',
-  ],
-  thanks: ['¡Gracias, Spider-Man!', '¡Eres el mejor, Spidey!', '¡Te debo una!', '¡Viva Spider-Man!', '¡Mi héroe!', '¡Sabía que vendrías!'],
+  },
+  thanks: ['¡Gracias, Spider-Man!', '¡Eres el mejor, Spidey!', '¡Te debo una!', '¡Mi héroe!', '¡Sabía que vendrías!', '¡Otro Spider-Man!'],
   tips: {
     tip_move: 'Muévete con {MOVE}. Salta con {JUMP} y pulsa otra vez en el aire para un doble salto.',
     tip_wall: 'Salta contra un edificio para pegarte a la pared. Trepa con {UP}/{DOWN} y salta con {JUMP}.',
@@ -3750,23 +4903,22 @@ const STORY = {
     tip_fight: '¡A pelear! {ATTACK} encadena golpes. {UP} + {ATTACK} lanza al aire. {DOWN} + {ATTACK} en el aire: patada en picado.',
     tip_sense: '¿Ves las líneas sobre tu cabeza? Es el hormigueo arácnido: pulsa {DODGE} para esquivar a tiempo.',
     tip_web: '{SHOOT} dispara una bola de red que inmoviliza enemigos. Los enemigos atrapados reciben más daño.',
-    tip_brute: 'Los matones grandes llevan blindaje: atrápalos con red ({SHOOT}) para romper su guardia.',
+    tip_brute: 'Los enemigos grandes llevan blindaje: atrápalos con red ({SHOOT}) para romper su guardia.',
     tip_special: 'Golpear llena la barra de foco. {SPECIAL}: ataque giratorio. Mantén {SPECIAL} en el suelo para curarte.',
-    tip_indoor: 'Dentro del almacén, la telaraña se engancha al techo.',
-    tip_water: '¡Cuidado con los huecos del puente! Si caes al agua, perderás vida.',
-    tip_illusion: 'Los drones de Beck crean ilusiones. El dron real se esconde entre copias.',
-    tip_final: 'La batalla final. Usa todo lo que has aprendido.',
-    tip_city: 'Ciudad libre: detén crímenes (!), busca 20 piezas de tecnología Stark y ve al faro azul para seguir la historia. {PAUSE}: menú, taller y trajes.',
     tip_boss: 'Consejo: atrapa a los jefes con {SHOOT} varias veces para aturdirlos.',
+    tip_city: 'Ciudad libre: detén crímenes (!), busca 5 fragmentos del multiverso y ve al faro azul para seguir. {PAUSE}: menú, taller, trajes y viajes.',
+    tip_canon: 'Eventos canónicos: puedes salvar a quien el canon condena. Pero cada canon roto agrieta el multiverso.',
+    tip_ruin: 'Aquí nada sigue las reglas. Cuidado con los zombis: son lentos, pero no se rinden.',
+    tip_verse: 'En este universo todo es un cómic. ¡Hasta tus golpes suenan!',
   },
   credits: [
-    ['SPIDER-MAN', 'ECOS DE NUEVA YORK'],
+    ['SPIDER-MAN', 'ROMPECÁNONES'],
     ['UN JUEGO NO OFICIAL HECHO POR FANS', ''],
-    ['DISEÑO, PROGRAMACIÓN,', 'GRÁFICOS Y MÚSICA'],
-    ['Creado con Claude Code', 'para un fan de Spider-Man'],
-    ['HISTORIA ORIGINAL', 'inspirada en el Universo Cinematográfico de Marvel'],
-    ['PERSONAJES', 'Spider-Man, Shocker, el Hojalatero, el Buitre, Mysterio, Escorpión, Agente Cleary y J. Jonah Jameson son propiedad de Marvel.'],
-    ['SIN FINES DE LUCRO', 'Hecho con cariño por fans.'],
+    ['IDEA E HISTORIA', 'Un fan de Spider-Man, con Claude Code'],
+    ['DISEÑO, PROGRAMACIÓN,', 'GRÁFICOS Y MÚSICA ORIGINAL'],
+    ['INSPIRADO EN', 'Las películas de Spider-Man de Tobey Maguire, Andrew Garfield y Tom Holland, y el Spider-Verse'],
+    ['PERSONAJES', 'Spider-Man, Miles Morales, Gwen Stacy, Miguel O\'Hara, Venom, Electro, Rino, La Mancha, el Hombre de Arena y Doctor Doom son propiedad de Marvel.'],
+    ['SIN FINES DE LUCRO', 'Hecho con cariño por fans, para fans.'],
     ['GRACIAS POR JUGAR', 'Un gran poder conlleva una gran responsabilidad.'],
   ],
 };
@@ -3780,6 +4932,40 @@ function fillTip(text) {
     }
     return '[' + Input.label(a) + ']';
   });
+}
+
+function canonCount() {
+  const c = Game.save.canon || {};
+  return CANON_ORDER.filter((k) => c[k] === true).length;
+}
+
+// Sustituye marcadores dinámicos en diálogos
+function prepLines(lines) {
+  const out = [];
+  const n = canonCount();
+  for (const ln of lines) {
+    if (typeof ln === 'string') {
+      const c = Game.save.canon || {};
+      if (ln === '{SAVED}') {
+        for (const k of CANON_ORDER) if (c[k] !== undefined) out.push(['narr', STORY.savedLines[k][c[k] ? 0 : 1]]);
+      } else if (ln === '{UNDO}') {
+        const saved = CANON_ORDER.filter((k) => c[k] === true);
+        if (saved.length) saved.forEach((k) => out.push(['narr', STORY.undoLines[k]]));
+        else out.push(['narr', 'No había nada que deshacer. Solo quedaba cerrar las grietas por la fuerza.']);
+      } else if (ln === '{WHY}') {
+        if (Game.save.lastChoice === 'mano') {
+          out.push(['cero', 'Rompiste demasiados cánones, Peter. Las grietas ya no se cierran con buenas intenciones.']);
+          out.push(['cero', 'Solo queda una forma: deshacer todo lo que salvaste.']);
+        } else {
+          out.push(['peter', 'Si deshago lo que cambié, las grietas se cerrarán.']);
+          out.push(['cero', '¿Sabes lo que te costará?']);
+        }
+      }
+      continue;
+    }
+    out.push([ln[0], ln[1].replace('{N}', String(n))]);
+  }
+  return out;
 }
 
 </script>
@@ -3992,6 +5178,8 @@ function drawHUD(ctx, w, t) {
   UI.panel(ctx, W - tw - 6, 3, tw + 3, 13, 'rgba(12,10,24,0.7)');
   drawTechIcon(ctx, W - tw - 2, 6, t);
   Font.draw(ctx, tech, W - 6, 6, UI.gold, { align: 'right' });
+  // Cánones rotos
+  { const n = canonCount(); if (n > 0) { Font.draw(ctx, 'CANON ' + n + '/5', W - 6, 20, '#ff60c0', { align: 'right', shadow: UI.ink }); } }
   // Combo
   if (w.combo.n >= 3) {
     const s = 'x' + w.combo.n;
@@ -4004,7 +5192,7 @@ function drawHUD(ctx, w, t) {
     ctx.fillStyle = 'rgba(12,10,24,0.75)'; ctx.fillRect(mx - 2, my - 2, mw + 4, 9);
     ctx.fillStyle = '#2a3050'; ctx.fillRect(mx, my + 2, mw, 1);
     const sx = (x) => mx + Math.round(x / w.level.width * mw);
-    ctx.fillStyle = '#4a6aa0'; ctx.fillRect(sx(2620), my + 1, sx(3520) - sx(2620), 3);
+    if (w.universe === '616') { ctx.fillStyle = '#4a6aa0'; ctx.fillRect(sx(2620), my + 1, sx(3520) - sx(2620), 3); }
     if (w.markerX) { ctx.fillStyle = Math.floor(t * 4) % 2 ? '#60e0ff' : '#2080c0'; ctx.fillRect(sx(w.markerX) - 1, my - 1, 3, 7); }
     if (w.crime) { ctx.fillStyle = Math.floor(t * 6) % 2 ? '#ff3030' : '#ffffff'; ctx.fillRect(sx(w.crime.x) - 1, my, 3, 5); }
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx(p.cx) - 1, my, 2, 5);
@@ -4093,6 +5281,94 @@ function drawTouch(ctx) {
   ctx.globalAlpha = 1;
 }
 
+// ---------------------------------------------------------------------------
+// Destellos antes de un evento canónico
+// ---------------------------------------------------------------------------
+const FLASH_WORDS = ['CANON', '¿Y SI...?', 'NO PUEDES SALVARLOS A TODOS', 'EVENTO CANÓNICO', 'TODO SE ROMPE', 'DOOM ESPERA', 'ANOMALÍA', 'OTRA VEZ NO'];
+class FlashSeq {
+  constructor(ids, onDone) {
+    this.ids = ids; this.onDone = onDone; this.t = 0; this.done = false;
+    this.intro = 0.5; this.each = 0.24;
+    this.total = this.intro + ids.length * this.each + 0.4;
+    this.last = -1;
+    Audio2.sfx('glitch');
+  }
+  update(dt) {
+    if (this.done) return;
+    this.t += dt;
+    const i = Math.floor((this.t - this.intro) / this.each);
+    if (i !== this.last && i >= 0 && i < this.ids.length) { this.last = i; Audio2.sfx(i % 2 ? 'glitch' : 'beat'); Input.rumble(0.3, 0.6, 80); }
+    if (this.t >= this.total) { this.done = true; this.onDone(); }
+  }
+  draw(ctx, t) {
+    const lt = this.t;
+    if (lt < this.intro) {
+      ctx.fillStyle = 'rgba(255,255,255,' + (lt / this.intro * 0.9).toFixed(2) + ')';
+      ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    const i = Math.min(this.ids.length - 1, Math.floor((lt - this.intro) / this.each));
+    if (lt > this.intro + this.ids.length * this.each) {
+      ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    const local = (lt - this.intro) % this.each;
+    FlashArt.draw(ctx, this.ids[i], local);
+    // interferencia
+    for (let k = 0; k < 6; k++) {
+      const y = Math.floor(hash2(i, k) * H), h = 2 + Math.floor(hash2(k, i) * 8);
+      const off = Math.round((hash2(k + i, 7) - 0.5) * 30);
+      ctx.drawImage(ctx.canvas, 0, y, W, h, off, y, W, h);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+    ctx.fillStyle = i % 2 ? 'rgba(255,0,80,0.12)' : 'rgba(0,255,220,0.10)';
+    ctx.fillRect(0, 0, W, H);
+    if (local < 0.05) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(0, 0, W, H); }
+    const word = FLASH_WORDS[Math.floor(hash2(i, 3) * FLASH_WORDS.length)];
+    if (i % 2 === 1) Font.draw(ctx, word, W / 2, 20 + Math.floor(hash2(i, 9) * 160), '#ffffff', { align: 'center', scale: 2, outline: '#000000' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Decisión (evento canónico / final)
+// ---------------------------------------------------------------------------
+class ChoiceBox {
+  constructor(title, text, options, onPick) {
+    this.title = title; this.text = text; this.options = options; this.onPick = onPick; this.t = 0; this.picked = false;
+    this.menu = new Menu(options.map((o) => ({ label: o.label, act: () => this.pick(o.id) })));
+  }
+  pick(id) {
+    if (this.picked || this.t < 0.6) return;
+    this.picked = true;
+    this.onPick(id);
+  }
+  update(dt) {
+    this.t += dt;
+    if (this.t < 0.6) { Input.takeTap(); return; }
+    this.menu.update(dt);
+  }
+  draw(ctx, t) {
+    ctx.fillStyle = 'rgba(4,2,10,0.92)'; ctx.fillRect(0, 0, W, H);
+    // grietas en los bordes
+    ctx.fillStyle = Math.floor(t * 6) % 2 ? '#60ffe0' : '#ff40c0';
+    for (let i = 0; i < 20; i++) {
+      const x = Math.floor(hash2(i, 1) * W), y = Math.floor(hash2(1, i) * H);
+      if (x > 40 && x < W - 40 && y > 30 && y < H - 30) continue;
+      ctx.fillRect(x, y, 1 + (i % 3), 1);
+    }
+    const a = Math.min(1, this.t * 2);
+    ctx.globalAlpha = a;
+    Font.draw(ctx, this.title, W / 2, 26, '#ff60c0', { align: 'center', shadow: '#000000' });
+    Font.wrap(this.text, 300).forEach((ln, i) => Font.draw(ctx, ln, W / 2, 48 + i * 11, UI.paper, { align: 'center' }));
+    const n = canonCount();
+    Font.draw(ctx, 'CÁNONES ROTOS: ' + n + '/5', W / 2, 100, '#60ffe0', { align: 'center' });
+    for (let i = 0; i < 5; i++) { ctx.fillStyle = i < n ? '#ff60c0' : '#2a2a3a'; ctx.fillRect(W / 2 - 24 + i * 10, 112, 7, 4); }
+    this.menu.draw(ctx, W / 2, 132, t, { lh: 18 });
+    ctx.globalAlpha = 1;
+  }
+}
+
 </script>
 <script>
 // ---- js/world.js ----
@@ -4168,8 +5444,10 @@ class World {
     this.mode = mode;
     this.missionIdx = opts.mission !== undefined ? opts.mission : -1;
     this.t = 0;
-    if (mode === 'city') this.level = Levels.city(CITY_SKY[Game.save.stage] || 'day');
+    this.universe = mode === 'city' ? (opts.universe || Game.save.universe || '616') : MISSIONS[this.missionIdx].universe;
+    if (mode === 'city') this.level = Levels.city(this.universe);
     else this.level = Levels.mission(this.missionIdx);
+    ENEMY_THEME = this.level.pals || 'thugs';
     const lv = this.level;
     const sx = opts.x !== undefined ? opts.x : (mode === 'city' ? 400 : 40);
     this.player = new Player(sx, 0);
@@ -4195,37 +5473,42 @@ class World {
     this.objective = '';
     this.lockInput = 0;
     this.civSayCd = 0;
+    this.flash = null; this.choice = null; this.pops = []; this.bossArena = null; this.markerMission = -1;
     // enemigos colocados
     for (const s of lv.spawns) this.spawnEnemy(s.type, s.x, s.y || null);
     if (mode === 'city') this.setupCity(opts);
     else this.setupMission(opts);
   }
 
-  get inputEnabled() { return !this.dialog && this.state === 'play' && !this.pause && this.lockInput <= 0; }
+  get inputEnabled() { return !this.dialog && !this.flash && !this.choice && this.state === 'play' && !this.pause && this.lockInput <= 0; }
+
+  missionMusic() { return this.universe === 'miles' ? 'verse' : this.universe === 'ruina' ? 'ruin' : 'action'; }
 
   setupMission() {
     const m = MISSIONS[this.missionIdx];
-    this.card = { small: 'MISIÓN ' + (this.missionIdx + 1), big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
+    this.card = { small: this.missionIdx === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + this.missionIdx, big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
     this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
-    Audio2.music('action');
+    Audio2.music(this.missionMusic());
   }
 
   setupCity(opts) {
-    const stage = Game.save.stage;
-    if (stage >= 1 && stage <= 4) {
-      this.markerX = MARKER_X[stage];
-      this.objective = 'OBJETIVO: VE AL FARO AZUL (' + MARKER_PLACE[stage].toUpperCase() + ')';
+    const stage = Game.save.stage, uid = this.universe, U = UNIVERSES[uid];
+    Game.save.universe = uid;
+    const mi = MISSIONS.findIndex((m) => m.universe === uid && m.markerX);
+    if (mi > 0 && (stage === mi || stage >= 5)) {
+      this.markerX = MISSIONS[mi].markerX; this.markerMission = mi;
+      this.objective = stage === mi ? 'OBJETIVO: VE AL FARO AZUL' : 'REPETIR CAPÍTULO: FARO AZUL';
       if (Math.abs(this.player.cx - this.markerX) < 80) this.markerArmed = false;
-    } else {
-      this.objective = 'MODO LIBRE: PROTEGE LA CIUDAD';
-    }
-    Audio2.music('city');
-    const after = opts.afterMission;
-    const lines = after !== undefined && STORY.afterCity[after] ? STORY.afterCity[after] : null;
+    } else if (stage >= 5) this.objective = 'MODO LIBRE: ' + U.name.toUpperCase();
+    else this.objective = 'UNIVERSO VISITADO · VIAJA DESDE EL MENÚ DE PAUSA';
+    Audio2.music(U.music);
+    if (!Array.isArray(Game.save.visited)) Game.save.visited = [];
+    let lines = null;
+    if (!Game.save.visited.includes(uid)) { Game.save.visited.push(uid); lines = STORY.arrival[uid]; Game.saveGame(); }
     const showTip = () => { if (!Game.save.seenCityTip) { Game.save.seenCityTip = true; Game.saveGame(); this.showTip('tip_city', 9); } };
-    if (lines) this.startDialog(lines, showTip);
+    this.card = { small: U.name.toUpperCase(), big: U.city.toUpperCase(), sub: 'Fragmentos: ' + Game.save.tokens.filter((k) => String(k).startsWith(uid + ':')).length + '/5', t: 0, dur: 2.8 };
+    if (lines) this.startDialog(prepLines(lines), showTip);
     else showTip();
-    if (!opts.afterMission && stage >= 5) this.card = { small: 'NUEVA YORK', big: 'MODO LIBRE', sub: 'Tecnología Stark: ' + Game.save.tokens.length + '/20', t: 0, dur: 2.5 };
   }
 
   // ---------------- utilidades para entidades ----------------
@@ -4286,6 +5569,7 @@ class World {
     this.player.gainFocus(heavy ? 10 : 6);
     this.combo.n++; this.combo.t = 2.2;
     this.stats.hits++;
+    if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
   }
 
@@ -4413,7 +5697,7 @@ class World {
     np.focus = p.focus; np.inv = 1.5;
     this.player = np;
     this.state = 'play';
-    Audio2.music(this.mode === 'city' ? 'city' : 'action');
+    Audio2.music(this.mode === 'city' ? UNIVERSES[this.universe].music : this.missionMusic());
   }
 
   // ---------------- arenas ----------------
@@ -4477,8 +5761,73 @@ class World {
       a.introDone = true;
       this.showTip('tip_boss', 5);
     };
-    if (!a.introDone) this.startDialog(STORY.bossIntro[this.missionIdx], begin);
+    b.escapeAt = a.escape || 0;
+    this.bossArena = a;
+    const intro = STORY.bossIntro[a.boss];
+    if (!a.introDone && intro) this.startDialog(prepLines(intro), begin);
     else begin();
+  }
+
+  afterBoss() {
+    const a = this.bossArena, b = this.boss;
+    if (!a) { this.complete(); return; }
+    Audio2.music('sad');
+    const finish = () => {
+      if (a.final) {
+        if (a.boss === 'desconocido4') this.finalChoice();
+        else this.complete();
+        return;
+      }
+      a.done = true; a.active = false;
+      this.arena = null; this.boss = null; this.bossArena = null;
+      this.enemies = this.enemies.filter((e) => e !== b);
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+      Audio2.music(this.missionMusic());
+      this.float('¡SIGUE ADELANTE!', this.player.cx, this.player.y - 20, '#80ff80');
+    };
+    const next = () => { if (a.canonAfter) this.startCanon(a.canonAfter, finish); else finish(); };
+    const outro = STORY.bossOutro[a.boss];
+    if (outro) this.startDialog(prepLines(outro), next); else next();
+  }
+
+  // ---------------- eventos canónicos ----------------
+  startCanon(id, cb) {
+    const C = CANONS[id];
+    const p = this.player;
+    p.anchor = null; p.attack = null;
+    if (p.state !== 'dead') p.state = 'cutscene';
+    Audio2.music(null);
+    if (!Game.save.seenCanonTip) { Game.save.seenCanonTip = true; }
+    this.flash = new FlashSeq(C.flashes, () => {
+      this.flash = null;
+      this.choice = new ChoiceBox('EVENTO CANÓNICO: ' + C.title, C.text, [{ id: 'save', label: C.save }, { id: 'keep', label: C.keep }], (opt) => {
+        this.choice = null;
+        if (!Game.save.canon) Game.save.canon = {};
+        Game.save.canon[id] = opt === 'save';
+        Game.saveGame();
+        if (opt === 'save') { this.shake(8); Audio2.sfx('explode'); Input.rumble(1, 1, 500); }
+        else Audio2.sfx('fail');
+        Audio2.music('sad');
+        this.startDialog(prepLines(opt === 'save' ? C.saved : C.kept), () => {
+          if (opt === 'save') this.float('CANON ROTO (' + canonCount() + '/5)', this.player.cx, this.player.y - 20, '#ff60c0');
+          Audio2.music(this.missionMusic());
+          if (cb) cb();
+        });
+      });
+    });
+  }
+
+  finalChoice() {
+    const n = canonCount();
+    const text = 'Cánones rotos: ' + n + '/5. ' + (n <= 3 ? 'Las grietas todavía pueden cerrarse.' : 'Las grietas son enormes. Quizás demasiado.');
+    Audio2.music('sad');
+    this.choice = new ChoiceBox(STORY.finalChoice.title, text, STORY.finalChoice.options, (id) => {
+      this.choice = null;
+      Game.save.lastChoice = id;
+      const ending = id === 'dentro' ? 'neutral' : id === 'deshacer' ? 'triste' : (n <= 3 ? 'feliz' : 'triste');
+      this.state = 'complete';
+      Game.finishGame(ending, this.stats);
+    });
   }
 
   // ---------------- ciudad: crímenes ----------------
@@ -4489,10 +5838,10 @@ class World {
       const d = Math.abs(p.cx - this.markerX);
       if (d > 70) this.markerArmed = true;
       if (this.markerArmed && d < 16 && p.feet > this.level.groundY - 70 && this.state === 'play' && !this.dialog) {
-        const m = Game.save.stage;
+        const m = this.markerMission;
         this.markerArmed = false;
-        this.startDialog(STORY.briefing[m], () => {
-          Game.save.cityX = this.markerX - 100;
+        this.startDialog(prepLines(STORY.briefing[m] || [['peter', 'Allá vamos otra vez.']]), () => {
+          Game.save.cityPos[this.universe] = this.markerX - 100;
           Game.saveGame();
           Game.startMission(m);
         });
@@ -4504,10 +5853,11 @@ class World {
       if (Math.abs(p.cx - tk.x) < 9 && Math.abs(p.cy - tk.y) < 14) {
         Game.save.tokens.push(tk.id);
         this.addTech(3, false);
-        this.float('TECNOLOGÍA STARK ' + Game.save.tokens.length + '/20', tk.x, tk.y - 10, UI.gold);
+        this.float('FRAGMENTO ' + Game.save.tokens.length + '/25', tk.x, tk.y - 10, UI.gold);
+        this.showTip('"' + STORY.fragments[tk.idx] + '"', 6);
         Audio2.sfx('coin');
-        this.particles.burst(tk.x, tk.y, 12, UI.gold, 80);
-        if (Game.save.tokens.length === 20) this.bubble('peter', '¡Todas las piezas! Con esto puedo mejorar mucho el traje.');
+        this.particles.burst(tk.x, tk.y, 12, '#60ffe0', 80);
+        if (Game.save.tokens.length === 25) this.bubble('peter', 'Todos los fragmentos... Ahora entiendo un poco mejor el multiverso.');
         Game.saveGame();
       }
     }
@@ -4525,7 +5875,7 @@ class World {
     }
     // J. Jonah Jameson
     this.jjjT -= dt;
-    if (this.jjjT <= 0 && !this.radio) { this.jjjT = rand(70, 110); this.bubble('jjj', pick(STORY.jjjQuips)); }
+    if (this.jjjT <= 0 && !this.radio) { this.jjjT = rand(70, 110); const q = pick(STORY.radio[this.universe] || STORY.radio['616']); this.bubble(q[0], q[1]); }
     // crímenes
     if (!this.crime) {
       this.crimeT -= dt;
@@ -4533,14 +5883,13 @@ class World {
     } else this.updateCrime(dt);
     // autoguardado
     this.autoSaveT -= dt;
-    if (this.autoSaveT <= 0 && p.onGround && this.state === 'play') { this.autoSaveT = 20; Game.save.cityX = p.x; Game.saveGame(); }
+    if (this.autoSaveT <= 0 && p.onGround && this.state === 'play') { this.autoSaveT = 20; Game.save.cityPos[this.universe] = p.x; Game.save.universe = this.universe; Game.saveGame(); }
   }
 
   spawnCrime() {
     const p = this.player, lv = this.level;
     const stage = Game.save.stage;
-    const types = ['robo', 'caida', 'persecucion', 'robo'];
-    if (stage >= 3) types.push('drones');
+    const types = UNIVERSES[this.universe].crimes.slice();
     const type = pick(types);
     let x = 0;
     for (let i = 0; i < 20; i++) {
@@ -4554,14 +5903,19 @@ class World {
       const n = randi(2, 3);
       for (let i = 0; i < n; i++) {
         const e = this.spawnEnemy(i === 0 && stage >= 2 ? 'gunner' : pick(['thug', 'thug', 'bat']), x + (i - 1) * 26, lv.groundY - 22 - (i === 0 && stage >= 2 ? 0 : 0));
-        e.y = lv.groundY - e.h;
+        e.y = lv.surfaceY(e.cx, lv.groundY - 40) - e.h;
         c.enemies.push(e);
       }
       const civ = new Civilian(x + 50, lv.groundY, 'cower'); civ.crime = true; civ.say('¡AYUDA!');
       this.civs.push(civ); c.civ = civ;
-    } else if (type === 'drones') {
-      c.label = 'DRONES DESCONTROLADOS';
-      for (let i = 0; i < 3; i++) { const e = this.spawnEnemy('drone', x + (i - 1) * 40, lv.groundY - 150 - i * 12); c.enemies.push(e); }
+    } else if (type === 'zombies') {
+      c.label = 'ZOMBIS';
+      for (let i = 0; i < 4; i++) { const e = this.spawnEnemy('zombie', x + (i - 1.5) * 24, null); c.enemies.push(e); }
+      const civ = new Civilian(x + 60, lv.surfaceY(x + 60, lv.groundY - 40), 'cower'); civ.crime = true; civ.say('¡AYUDA!');
+      this.civs.push(civ); c.civ = civ;
+    } else if (type === 'drones' || type === 'ultron') {
+      c.label = type === 'ultron' ? 'ULTRONES' : 'DRONES DESCONTROLADOS';
+      for (let i = 0; i < 3; i++) { const e = this.spawnEnemy(type === 'ultron' ? 'ultron' : 'drone', x + (i - 1) * 40, lv.groundY - 150 - i * 12); c.enemies.push(e); }
     } else if (type === 'caida') {
       c.label = 'CIVIL EN PELIGRO';
       // buscar un edificio alto cerca
@@ -4578,7 +5932,7 @@ class World {
       c.car = { x, y: lv.groundY - 16, w: 34, h: 16, vx: dir * 105, hp: 4, stopped: false, color: pick(['#2a2a2a', '#6a1a1a', '#1a3a6a']) };
     }
     this.crime = c;
-    this.bubble('radio', { robo: 'Atraco en curso. Varios sospechosos.', caida: '¡Alguien va a caer de un edificio!', persecucion: 'Coche huyendo a toda velocidad. ¡Detenedlo!', drones: 'Drones fuera de control atacando a civiles.' }[type]);
+    this.bubble('radio', { robo: 'Atraco en curso. Varios sospechosos.', caida: '¡Alguien va a caer de un edificio!', persecucion: 'Coche huyendo a toda velocidad. ¡Detenedlo!', drones: 'Drones fuera de control atacando a civiles.', zombies: 'Zombis cerca de un superviviente.', ultron: 'Ultrones patrullando la zona.' }[type]);
     Audio2.sfx('alert');
   }
 
@@ -4679,6 +6033,8 @@ class World {
       this.particles.update(dt);
       return;
     }
+    if (this.flash) { this.flash.update(dt); return; }
+    if (this.choice) { this.choice.update(dt); return; }
     if (this.dialog) {
       this.dialog.update(dt);
       this.updateFloats(dt);
@@ -4718,16 +6074,20 @@ class World {
     for (const cp of this.level.checkpoints) {
       if (p.cx > cp.x && cp.x > this.checkpoint.x) this.checkpoint = { x: cp.x };
     }
+    for (const lc of this.level.canons) {
+      if (!lc.done && p.cx > lc.x && this.state === 'play' && !this.arena && !this.dialog) { lc.done = true; this.startCanon(lc.id); break; }
+    }
     this.updateArenas(dt);
     if (this.mode === 'city') this.updateCity(dt);
+    for (const pp of this.pops) pp.t += dt;
+    this.pops = this.pops.filter((pp) => pp.t < 0.5);
 
     // jefe derrotado
     if (this.bossDoneT > 0) {
       this.bossDoneT -= dt;
       if (this.bossDoneT <= 0) {
         this.bossDoneT = -1;
-        Audio2.music('title');
-        this.startDialog(STORY.bossOutro[this.missionIdx], () => this.complete());
+        this.afterBoss();
       }
     }
     // muerte
@@ -4742,7 +6102,7 @@ class World {
     }
     // objetivo
     if (this.mode === 'mission') {
-      if (this.boss && !this.boss.dead) this.objective = 'OBJETIVO: DERROTA A ' + this.boss.name;
+      if (this.boss && !this.boss.dead) this.objective = 'OBJETIVO: DERROTA ' + (this.boss.name.startsWith('EL ') ? 'AL ' + this.boss.name.slice(3) : 'A ' + this.boss.name);
       else if (this.arena) this.objective = 'OBJETIVO: DERROTA A LOS ENEMIGOS';
       else if (!this.boss) this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
       else this.objective = '';
@@ -4783,7 +6143,7 @@ class World {
   openGameOver() {
     const items = [
       { label: 'Reintentar desde el punto de control', act: () => { this.respawn(); } },
-      { label: 'Volver a la ciudad', act: () => Game.goCity({ x: MARKER_X[this.missionIdx] ? MARKER_X[this.missionIdx] - 100 : 400 }) },
+      { label: 'Volver a la ciudad', act: () => Game.goCity({ universe: this.universe, x: MISSIONS[this.missionIdx].markerX ? MISSIONS[this.missionIdx].markerX - 100 : 400 }) },
     ];
     if (Game.save.stage === 0) items[1] = { label: 'Menú principal', act: () => Game.toMenu() };
     this.gameOver = new Menu(items);
@@ -4806,7 +6166,7 @@ class World {
       for (let x = -(cam.x * 0.5 % 60); x < W; x += 60) ctx.fillRect(Math.round(x), 0, 30, H);
       ctx.fillStyle = '#20242c';
       for (let x = -(cam.x * 0.5 % 120); x < W; x += 120) ctx.fillRect(Math.round(x) + 10, 60, 50, 30);
-    } else Scenery.drawBackground(ctx, lv.sky, cam.x, cam.y, lv.height);
+    } else Scenery.drawBackground(ctx, lv.sky, cam.x, cam.y, lv.height, lv.landmark);
     if (this.boss && this.boss.drawIllusion) this.boss.drawIllusion(ctx, cam, t, this.boss.arena);
     lv.draw(ctx, cam.x, cam.y, t);
     // faro de misión
@@ -4826,11 +6186,11 @@ class World {
     if (this.mode === 'city') {
       for (const tk of lv.tokens) {
         if (Game.save.tokens.includes(tk.id)) continue;
-        const x = Math.round(tk.x - cam.x), y = Math.round(tk.y - cam.y + Math.sin(t * 3 + tk.id) * 2);
+        const x = Math.round(tk.x - cam.x), y = Math.round(tk.y - cam.y + Math.sin(t * 3 + tk.idx) * 2);
         if (x < -10 || x > W + 10 || y < -10 || y > H + 10) continue;
         ctx.fillStyle = 'rgba(255,220,80,0.25)'; ctx.fillRect(x - 6, y - 6, 12, 12);
         ctx.fillStyle = UI.ink; ctx.fillRect(x - 4, y - 4, 9, 9);
-        ctx.fillStyle = Math.floor(t * 4 + tk.id) % 2 ? '#80e0ff' : '#ffd040'; ctx.fillRect(x - 3, y - 3, 7, 7);
+        ctx.fillStyle = Math.floor(t * 4 + tk.idx) % 2 ? '#80ffe8' : '#ff60c0'; ctx.fillRect(x - 3, y - 3, 7, 7);
         ctx.fillStyle = '#20304a'; ctx.fillRect(x - 1, y - 1, 3, 3);
       }
     }
@@ -4840,6 +6200,9 @@ class World {
       drawDecor(ctx, { type: 'car', x: car.x, y: car.y + car.h, color: car.flash > 0 ? '#ffffff' : car.color }, cam.x, cam.y, t, lv);
       if (!car.stopped && Math.floor(t * 8) % 2) { ctx.fillStyle = '#ff3030'; ctx.fillRect(Math.round(car.x - cam.x) + 14, Math.round(car.y - cam.y), 5, 2); }
     }
+    // sombras (profundidad 2.5D)
+    for (const e of this.enemies) if (!e.dead && this.onScreen(e)) lv.shadow(ctx, e.cx, e.y + e.h, cam, e.w + 4);
+    lv.shadow(ctx, this.player.cx, this.player.feet, cam, 12);
     for (const c of this.civs) c.draw(ctx, cam, t);
     for (const pk of this.pickups) pk.draw(ctx, cam, t);
     for (const e of this.enemies) e.draw(ctx, cam, t);
@@ -4847,6 +6210,17 @@ class World {
     for (const pr of this.projs) pr.draw(ctx, cam, t);
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
+    // onomatopeyas de cómic
+    for (const pp of this.pops) {
+      const s2 = pp.t < 0.1 ? 2 : 1;
+      Font.draw(ctx, pp.text, Math.round(pp.x - cam.x), Math.round(pp.y - cam.y - pp.t * 20), pp.c, { align: 'center', scale: s2, outline: '#000000' });
+    }
+    // tinte del universo
+    if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
+    if (lv.comic) {
+      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      for (let yy = 0; yy < H; yy += 3) ctx.fillRect(0, yy, W, 1);
+    }
     // efecto de ilusión (Mysterio)
     if (this.illusion && this.boss && !this.boss.dead) {
       ctx.fillStyle = 'rgba(80,255,140,' + (0.05 + Math.sin(t * 3) * 0.04) + ')';
@@ -4883,7 +6257,9 @@ class World {
     }
     drawHUD(ctx, this, t);
     if (this.dialog) this.dialog.draw(ctx, t);
-    else drawTouch(ctx);
+    else if (!this.flash && !this.choice) drawTouch(ctx);
+    if (this.choice) this.choice.draw(ctx, t);
+    if (this.flash) this.flash.draw(ctx, t);
     if (this.state === 'dead' || this.gameOver) {
       const a = this.gameOver ? 0.7 : clamp(1 - this.deadT / 1.8, 0, 0.7);
       ctx.fillStyle = 'rgba(40,0,0,' + a + ')'; ctx.fillRect(0, 0, W, H);
@@ -4913,15 +6289,17 @@ const UPGRADES = [
 ];
 const DIFF_NAMES = ['FÁCIL', 'NORMAL', 'DIFÍCIL'];
 
+const SAVE_VERSION = 2;
 function defaultSave() {
   return {
-    v: 1, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
-    suits: ['nwh'], suit: 'nwh', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
-    cityX: 400, completed: false, started: false,
+    v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
+    suits: START_SUITS.slice(), suit: 'nwh', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
+    universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
+    completed: false, started: false,
   };
 }
 function defaultSettings() {
-  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto' };
+  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
 }
 
 // ---------------------------------------------------------------------------
@@ -4983,6 +6361,8 @@ class OptionsScreen {
       { label: () => 'VIBRACIÓN DEL MANDO: ' + (s.rumble ? 'SÍ' : 'NO'), act: () => { s.rumble = !s.rumble; Game.applySettings(); if (s.rumble) Input.rumble(0.6, 0.6, 200); } },
       { label: () => 'SACUDIDA DE PANTALLA: ' + (s.shake ? 'SÍ' : 'NO'), act: () => { s.shake = !s.shake; Game.applySettings(); } },
       { label: () => 'CONTROLES TÁCTILES: ' + { auto: 'AUTO', on: 'SÍ', off: 'NO' }[s.touch], act: () => { s.touch = { auto: 'on', on: 'off', off: 'auto' }[s.touch]; Game.applySettings(); } },
+      { label: () => 'CANCIÓN DE CRÉDITOS: ' + (s.creditsSong === 'custom' && CustomSong.url ? 'TU ARCHIVO' : 'ORIGINAL'), act: () => { s.creditsSong = s.creditsSong === 'custom' ? 'original' : 'custom'; if (s.creditsSong === 'custom' && !CustomSong.url) this.msg = 'Primero carga una canción.'; Game.applySettings(); } },
+      { label: () => CustomSong.url ? 'CAMBIAR MI CANCIÓN (' + CustomSong.name.slice(0, 16) + ')' : 'CARGAR MI CANCIÓN (MP3)', act: () => CustomSong.pickFile((ok) => { if (ok) { s.creditsSong = 'custom'; Game.applySettings(); this.msg = 'Canción cargada.'; } }) },
       { label: 'PANTALLA COMPLETA', act: () => Game.toggleFullscreen() },
       { label: 'VOLVER', act: () => { this.done = true; } },
     ]);
@@ -4994,8 +6374,8 @@ class OptionsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'OPCIONES');
-    this.menu.draw(ctx, W / 2, 44, t, { lh: 17 });
-    Font.draw(ctx, 'Usa izquierda/derecha para ajustar', W / 2, H - 14, UI.dim, { align: 'center' });
+    this.menu.draw(ctx, W / 2, 34, t, { lh: 16 });
+    Font.draw(ctx, this.msg || 'Usa izquierda/derecha para ajustar', W / 2, H - 12, this.msg ? UI.gold : UI.dim, { align: 'center' });
   }
 }
 
@@ -5150,7 +6530,8 @@ class SuitsScreen {
       if (!unlocked) ctx.globalAlpha = 0.15;
       Rig.draw(ctx, 305, 150, Math.sin(t) > 0 ? 1 : -1, Poses.idle(t), pal, { scale: 4 });
       ctx.globalAlpha = 1;
-      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa la misión ' + (MISSION_SUIT.indexOf(s.id) + 1) + '.', 150);
+      const mi = MISSION_SUIT.indexOf(s.id);
+      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa ' + (mi === 0 ? 'el prólogo' : 'el capítulo ' + mi) + '.', 150);
       lines.forEach((ln, i) => Font.draw(ctx, ln, 305, 176 + i * 10, UI.paper, { align: 'center' }));
     }
   }
@@ -5164,12 +6545,13 @@ class PauseRoot {
       { label: 'REANUDAR', act: () => { this.res = 'close'; } },
       { label: 'TALLER', act: () => this.stack.push(new WorkshopScreen(world)) },
       { label: 'TRAJES', act: () => this.stack.push(new SuitsScreen()) },
+      { label: 'VIAJAR ENTRE UNIVERSOS', disabled: () => !city, act: () => this.stack.push(new TravelScreen(world)) },
       { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
       { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
-      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityX = world.player.x; Game.saveGame(); Game.toMenu(); } }
-        : { label: 'ABANDONAR MISIÓN', act: () => this.stack.push(new ConfirmScreen('¿Abandonar la misión? Volverás a la ciudad.', () => { Game.goCity({ x: MARKER_X[world.missionIdx] ? MARKER_X[world.missionIdx] - 100 : Game.save.cityX }); })) },
+      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.toMenu(); } }
+        : { label: 'ABANDONAR CAPÍTULO', act: () => this.stack.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[world.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) },
     ]);
-    if (Game.save.stage === 0 && !city) this.menu.items[5] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de esta misión.', () => Game.toMenu())) };
+    if (Game.save.stage === 0 && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
   }
   update(dt) {
     const r = this.menu.update(dt);
@@ -5178,13 +6560,38 @@ class PauseRoot {
   }
   draw(ctx, t) {
     ctx.fillStyle = 'rgba(8,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, 'PAUSA', W / 2, 26, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
-    this.menu.draw(ctx, W / 2, 70, t, { lh: 15 });
+    Font.draw(ctx, 'PAUSA', W / 2, 16, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
+    this.menu.draw(ctx, W / 2, 52, t, { lh: 15 });
     const s = Game.save;
-    const info = 'TECNOLOGÍA ' + s.tech + '   PIEZAS STARK ' + s.tokens.length + '/20   CRÍMENES ' + (s.stats.crimes || 0);
-    Font.draw(ctx, info, W / 2, 172, UI.dim, { align: 'center' });
-    if (this.world.mode === 'mission') Font.draw(ctx, 'MISIÓN ' + (this.world.missionIdx + 1) + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 186, UI.gold, { align: 'center' });
-    else if (s.stage >= 1 && s.stage <= 4) Font.draw(ctx, 'SIGUIENTE: ' + MISSIONS[s.stage].name + ' (' + MARKER_PLACE[s.stage] + ')', W / 2, 186, UI.gold, { align: 'center' });
+    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/25   CÁNONES ROTOS ' + canonCount() + '/5';
+    Font.draw(ctx, info, W / 2, 176, UI.dim, { align: 'center' });
+    const U = UNIVERSES[this.world.universe];
+    if (this.world.mode === 'mission') Font.draw(ctx, (this.world.missionIdx ? 'CAPÍTULO ' + this.world.missionIdx : 'PRÓLOGO') + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
+    else Font.draw(ctx, U.name + ' · ' + U.city, W / 2, 190, UI.gold, { align: 'center' });
+  }
+}
+
+class TravelScreen {
+  constructor(world) {
+    this.world = world;
+    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= 5));
+    const items = list.map((u) => ({
+      label: () => UNIVERSES[u].name + ' · ' + UNIVERSES[u].city + (u === world.universe ? '  (AQUÍ)' : ''),
+      disabled: () => u === world.universe,
+      act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.goCity({ universe: u }); },
+    }));
+    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
+    this.menu = new Menu(items);
+  }
+  update(dt) {
+    const r = this.menu.update(dt);
+    if (this.done) { this.done = false; return 'back'; }
+    return r;
+  }
+  draw(ctx, t) {
+    drawScreenTitle(ctx, 'VIAJAR ENTRE UNIVERSOS');
+    this.menu.draw(ctx, W / 2, 50, t, { lh: 18 });
+    Font.draw(ctx, 'Solo puedes volver a universos que ya visitaste.', W / 2, 190, UI.dim, { align: 'center' });
   }
 }
 
@@ -5228,7 +6635,8 @@ function drawLogo(ctx, t, y = 30) {
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   const w = Font.width(title, 4);
   ctx.fillRect(W / 2 - w / 2, y + 1, w, 2);
-  Font.draw(ctx, 'ECOS DE NUEVA YORK', W / 2, y + 36, UI.paper, { align: 'center', scale: 2, shadow: UI.blue });
+  const g = Math.floor(t * 8) % 17 === 0 ? 2 : 0;
+  Font.draw(ctx, 'ROMPECÁNONES', W / 2 + g, y + 36, '#60ffe0', { align: 'center', scale: 2, shadow: '#ff40c0' });
 }
 
 class TitleScene {
@@ -5268,8 +6676,8 @@ class MenuScene {
         root.menu.draw(ctx, W / 2, 100, t, { lh: 15 });
         if (Game.save.started) {
           const s = Game.save;
-          const prog = s.stage >= 5 ? 'HISTORIA COMPLETADA' : 'MISIÓN ' + (s.stage + 1) + ' DE 5';
-          Font.draw(ctx, prog + ' · PIEZAS STARK ' + s.tokens.length + '/20', W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
+          const prog = s.stage >= 5 ? 'FINALES ' + (s.endings || []).length + '/3' : s.stage === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + s.stage + ' DE 4';
+          Font.draw(ctx, prog + ' · FRAGMENTOS ' + s.tokens.length + '/25 · CÁNONES ' + canonCount() + '/5', W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
         }
         Font.draw(ctx, Audio2.ready() ? '' : 'Haz clic o pulsa una tecla para activar el sonido', W / 2, 200, '#9aa0c0', { align: 'center', shadow: UI.ink });
       },
@@ -5311,7 +6719,7 @@ class ResultsScene {
     this.t = 0; this.idx = idx; this.stats = stats; this.next = next;
     Audio2.music(null);
     Audio2.sfx('win');
-    this.suit = SUITS.find((s) => s.id === MISSION_SUIT[idx]);
+    this.suit = this.newSuit ? null : SUITS.find((s) => s.id === MISSION_SUIT[idx] && Game.suitJustUnlocked === s.id);
   }
   update(dt) {
     this.t += dt;
@@ -5321,8 +6729,8 @@ class ResultsScene {
   draw(ctx) {
     Scenery.drawBackground(ctx, 'dusk', this.t * 20, 264, 480);
     ctx.fillStyle = 'rgba(8,6,16,0.7)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, '¡MISIÓN COMPLETADA!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
-    Font.draw(ctx, 'MISIÓN ' + (this.idx + 1) + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
+    Font.draw(ctx, this.idx === 4 ? 'FIN DEL VIAJE' : '¡CAPÍTULO COMPLETADO!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
+    Font.draw(ctx, (this.idx ? 'CAPÍTULO ' + this.idx : 'PRÓLOGO') + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
     const s = this.stats;
     const mm = Math.floor(s.time / 60), ss = Math.floor(s.time % 60);
     const rows = [
@@ -5348,12 +6756,16 @@ class ResultsScene {
 }
 
 class CreditsScene {
-  constructor(next) { this.t = 0; this.next = next; Audio2.music('title'); }
+  constructor(next) {
+    this.t = 0; this.next = next;
+    this.custom = Game.settings.creditsSong === 'custom' && CustomSong.play();
+    Audio2.music(this.custom ? null : 'credits');
+  }
   update(dt) {
     this.t += dt;
     const tap = Input.takeTap();
     const end = this.t > STORY.credits.length * 3.2 + 2;
-    if (end || (this.t > 1.5 && (Input.confirm() || Input.back() || tap))) { Game.change(this.next); this.t = -999; }
+    if (end || (this.t > 1.5 && (Input.confirm() || Input.back() || tap))) { CustomSong.stop(); Game.change(this.next); this.t = -999; }
   }
   draw(ctx) {
     Scenery.drawBackground(ctx, 'night', this.t * 25, 264, 480);
@@ -5366,6 +6778,66 @@ class CreditsScene {
     Font.draw(ctx, c[0], W / 2, 80, UI.gold, { align: 'center', scale: i === 0 ? 3 : 1, shadow: UI.ink });
     Font.wrap(c[1], 300).forEach((ln, k) => Font.draw(ctx, ln, W / 2, (i === 0 ? 112 : 96) + k * 11, UI.paper, { align: 'center', shadow: UI.ink }));
     ctx.globalAlpha = 1;
+  }
+}
+
+class EndingScene {
+  constructor(ending, next) {
+    this.t = 0; this.ending = ending; this.next = next;
+    const E = STORY.endings[ending];
+    this.title = E.title;
+    Audio2.music('sad');
+    this.dialog = null;
+    this.lines = prepLines(E.lines);
+  }
+  update(dt) {
+    this.t += dt;
+    if (!this.dialog && this.t > 2.6) this.dialog = new Dialog(this.lines, () => Game.change(this.next));
+    if (this.dialog) this.dialog.update(dt);
+  }
+  draw(ctx) {
+    const e = this.ending;
+    const sky = e === 'feliz' ? 'golden' : e === 'triste' ? 'teal' : 'verse';
+    Scenery.drawBackground(ctx, sky, 100 + this.t * 5, 264, 480, e === 'neutral' ? 'alchemax' : 'avengers');
+    ctx.fillStyle = '#140e18'; ctx.fillRect(0, 178, W, 38);
+    if (e === 'triste') {
+      ctx.fillStyle = 'rgba(160,190,255,0.35)';
+      for (let i = 0; i < 60; i++) ctx.fillRect((i * 53 + this.t * 40) % W, (i * 37 + this.t * 220) % H, 1, 4);
+    }
+    if (e === 'neutral') {
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      for (let i = 0; i < 8; i++) ctx.fillRect(0, (i * 29 + this.t * 30) % H, W, 1);
+      drawSwinger(ctx, this.t * 0.7);
+    } else Rig.draw(ctx, 190, 178, 1, e === 'feliz' ? Poses.idle(this.t) : Poses.sit(), SUITS[0].palObj);
+    if (this.t < 2.6) {
+      ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0, 1 - this.t / 2.6 * 0.6) + ')'; ctx.fillRect(0, 0, W, H);
+      Font.draw(ctx, this.title, W / 2, 96, e === 'feliz' ? UI.gold : e === 'triste' ? '#8ab0ff' : '#ff60c0', { align: 'center', scale: 2, shadow: UI.ink });
+    }
+    if (this.dialog) this.dialog.draw(ctx, this.t);
+  }
+}
+
+class PostCreditsScene {
+  constructor(ending, next) {
+    this.t = 0; this.next = next;
+    Audio2.music(null);
+    this.dialog = null;
+    this.lines = STORY.postCredits[ending] || [];
+  }
+  update(dt) {
+    this.t += dt;
+    if (!this.dialog && this.t > 1.5) this.dialog = new Dialog(this.lines, () => Game.change(this.next));
+    if (this.dialog) this.dialog.update(dt);
+  }
+  draw(ctx) {
+    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+    const a = Math.min(1, this.t / 1.5);
+    ctx.globalAlpha = a;
+    FlashArt.draw(ctx, 'doom', this.t % 1);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
+    Font.draw(ctx, 'ESCENA POST-CRÉDITOS', W / 2, 8, '#6a6a80', { align: 'center' });
+    if (this.dialog) this.dialog.draw(ctx, this.t);
   }
 }
 
@@ -5388,6 +6860,7 @@ const Game = {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
+    CustomSong.load();
     Input.init(this.canvas);
     this.applySettings();
     window.addEventListener('resize', () => this.resize());
@@ -5400,12 +6873,18 @@ const Game = {
   loadAll() {
     const s = Store.get('sm_save', null);
     const base = defaultSave();
-    if (s && typeof s === 'object') {
+    if (s && typeof s === 'object' && s.v === SAVE_VERSION) {
       this.save = Object.assign(base, s);
       this.save.upgrades = Object.assign(defaultSave().upgrades, s.upgrades || {});
       this.save.stats = Object.assign(defaultSave().stats, s.stats || {});
       if (!Array.isArray(this.save.tokens)) this.save.tokens = [];
-      if (!Array.isArray(this.save.suits) || !this.save.suits.length) this.save.suits = ['nwh'];
+      if (!Array.isArray(this.save.suits) || !this.save.suits.length) this.save.suits = START_SUITS.slice();
+      for (const k of START_SUITS) if (!this.save.suits.includes(k)) this.save.suits.push(k);
+      if (!this.save.cityPos || typeof this.save.cityPos !== 'object') this.save.cityPos = {};
+      if (!this.save.canon || typeof this.save.canon !== 'object') this.save.canon = {};
+      if (!Array.isArray(this.save.visited)) this.save.visited = [];
+      if (!Array.isArray(this.save.endings)) this.save.endings = [];
+      if (!UNIVERSES[this.save.universe]) this.save.universe = '616';
       if (!SUITS.find((x) => x.id === this.save.suit)) this.save.suit = 'nwh';
       this.save.stage = clamp(parseInt(this.save.stage, 10) || 0, 0, 5);
       this.save.tech = Math.max(0, parseInt(this.save.tech, 10) || 0);
@@ -5444,39 +6923,61 @@ const Game = {
   },
 
   newGame() {
-    const keepSuit = null;
     this.save = defaultSave();
     this.save.started = true;
-    if (keepSuit) this.save.suit = keepSuit;
     this.saveGame();
     this.change(() => new StoryScene(STORY.intro, () => this.missionScene(0)));
   },
+  cityScene(uid, x) {
+    const u = uid || this.save.universe || '616';
+    const px = x !== undefined ? x : (this.save.cityPos[u] !== undefined ? this.save.cityPos[u] : 400);
+    return new PlayScene(new World('city', { universe: u, x: px }));
+  },
   continueGame() {
     if (this.save.stage === 0) this.change(() => this.missionScene(0));
-    else this.change(() => new PlayScene(new World('city', { x: this.save.cityX })));
+    else this.change(() => this.cityScene());
   },
   missionScene(i) { return new PlayScene(new World('mission', { mission: i })); },
   startMission(i) { this.change(() => this.missionScene(i)); },
   goCity(opts = {}) {
     if (this.save.stage === 0) { this.change(() => new MenuScene()); return; }
-    this.change(() => new PlayScene(new World('city', Object.assign({ x: this.save.cityX }, opts))));
+    this.change(() => this.cityScene(opts.universe, opts.x));
   },
-  toMenu() { this.change(() => new MenuScene()); },
+  toMenu() { CustomSong.stop(); this.change(() => new MenuScene()); },
+
+  unlockSuit(id) {
+    this.suitJustUnlocked = null;
+    if (id && !this.save.suits.includes(id)) { this.save.suits.push(id); this.suitJustUnlocked = id; }
+  },
 
   missionComplete(i, stats) {
     this.save.tech += 15;
+    const first = this.save.stage <= i;
     this.save.stage = Math.max(this.save.stage, i + 1);
-    const suit = MISSION_SUIT[i];
-    if (suit && !this.save.suits.includes(suit)) this.save.suits.push(suit);
-    const cx = i === 0 ? 400 : MARKER_X[i] - 100;
-    this.save.cityX = cx;
-    if (i === 4) this.save.completed = true;
+    this.unlockSuit(MISSION_SUIT[i]);
+    let uid, x;
+    if (first && i < 4) { uid = MISSIONS[i + 1].universe; x = 400; }
+    else { uid = MISSIONS[i].universe; x = MISSIONS[i].markerX ? MISSIONS[i].markerX - 100 : 400; }
+    this.save.universe = uid; this.save.cityPos[uid] = x;
     this.saveGame();
-    const next = () => {
-      if (i === 4) return new CreditsScene(() => new PlayScene(new World('city', { x: cx, afterMission: 4 })));
-      return new PlayScene(new World('city', { x: cx, afterMission: i }));
-    };
-    this.change(() => new ResultsScene(i, stats, next));
+    this.change(() => new ResultsScene(i, stats, () => this.cityScene(uid, x)));
+  },
+
+  finishGame(ending, stats) {
+    this.save.tech += 25;
+    this.save.stage = 5; this.save.completed = true;
+    if (!Array.isArray(this.save.endings)) this.save.endings = [];
+    if (!this.save.endings.includes(ending)) this.save.endings.push(ending);
+    if (ending === 'triste' && this.save.lastChoice === 'deshacer') {
+      for (const k of CANON_ORDER) if (this.save.canon[k] === true) this.save.canon[k] = false;
+    }
+    this.unlockSuit(MISSION_SUIT[4]);
+    this.save.universe = '616'; this.save.cityPos['616'] = 400;
+    if (!this.save.visited.includes('616')) this.save.visited.push('616');
+    this.saveGame();
+    const post = () => new PostCreditsScene(ending, () => this.cityScene('616', 400));
+    const credits = () => new CreditsScene(post);
+    this.change(() => new ResultsScene(4, stats, () => new EndingScene(ending, credits)));
   },
 
   loop(ts) {

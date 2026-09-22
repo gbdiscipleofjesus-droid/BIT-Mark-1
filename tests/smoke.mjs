@@ -95,47 +95,54 @@ for (let m = 0; m < 5; m++) {
   await shot(`10_m${m}_start`);
   // correr un poco con el bot
   await sim(600, bot);
-  // teletransportar a la arena del jefe
-  await page.evaluate(() => {
-    const w = Game.scene.world;
-    for (const a of w.level.arenas) if (!a.boss) { a.done = true; }
-    w.arena = null;
-    w.enemies = w.enemies.filter((e) => e.arena && e.arena.boss);
-    const a = w.level.arenas.find((x) => x.boss);
-    w.player.x = a.x1 + 40; w.player.y = w.level.surfaceY(a.x1 + 45, 0) - 22; w.player.vx = 0; w.player.vy = 0; w.player.state = 'normal';
-  });
-  await sim(20);
-  await shot(`11_m${m}_bossintro`);
-  // pasar diálogo
-  await sim(200, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
-  // pelea: el jugador es invulnerable, el bot ataca
-  const fight = bot + `
-    const w2 = G.scene.world; if (w2 && w2.player) { w2.player.inv = 1; }
-  `;
-  await sim(900, fight);
-  await shot(`12_m${m}_fight`);
-  const bossInfo = await page.evaluate(() => { const b = Game.scene.world && Game.scene.world.boss; return b ? { hp: Math.round(b.hp), max: b.maxHp, st: b.state, phase: b.phase } : null; });
-  console.log('boss', m, JSON.stringify(bossInfo));
-  // forzar derrota
-  await page.evaluate(() => {
-    const w = Game.scene.world; const b = w.boss;
-    if (b) { b.inv = 0; if (b.state === 'wait') b.state = 'move'; b.stun = 0; b.takeHit(b.hp / b.armorMul + 5, 100, -100, true, w); }
-  });
-  await sim(200, `const w2 = G.scene.world; if (w2 && w2.player) w2.player.inv = 1;`);
-  await sim(400, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
+  // recorrer cada arena de jefe en orden
+  const nBoss = await page.evaluate(() => Game.scene.world.level.arenas.filter((a) => a.boss).length);
+  for (let bi = 0; bi < nBoss; bi++) {
+    await page.evaluate((bi) => {
+      const w = Game.scene.world;
+      if (!w.level) return;
+      const bossArenas = w.level.arenas.filter((a) => a.boss);
+      const a = bossArenas[bi];
+      for (const o of w.level.arenas) if (!o.boss && o.x2 <= a.x1 + 1) o.done = true;
+      w.enemies = w.enemies.filter((e) => e.arena === a);
+      for (const c of w.level.canons) if (c.x < a.x1) c.done = true;
+      w.player.x = a.x1 + 40; w.player.y = w.level.surfaceY(a.x1 + 45) - 22; w.player.vx = 0; w.player.vy = 0; w.player.state = 'normal';
+    }, bi);
+    await sim(20);
+    await shot(`11_m${m}_b${bi}_intro`);
+    await sim(200, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
+    const fight = bot + `
+      const w2 = G.scene.world; if (w2 && w2.player) { w2.player.inv = 1; }
+    `;
+    await sim(700, fight);
+    await shot(`12_m${m}_b${bi}_fight`);
+    const bossInfo = await page.evaluate(() => { const b = Game.scene.world && Game.scene.world.boss; return b ? { name: b.name, hp: Math.round(b.hp), max: b.maxHp, st: b.state, phase: b.phase } : null; });
+    console.log('boss', m, bi, JSON.stringify(bossInfo));
+    await page.evaluate(() => {
+      const w = Game.scene.world; const b = w && w.boss;
+      if (b && !b.dead) { b.inv = 0; if (b.state === 'wait') b.state = 'move'; if (b.state === 'gone') b.state = 'move'; b.stun = 0; b.escapeAt = 0; b.takeHit(b.hp / (b.armorMul || 1) + 5, 100, -100, true, w); }
+    });
+    await sim(160, `const w2 = G.scene.world; if (w2 && w2.player) w2.player.inv = 1;`);
+    // diálogos, destellos y decisiones (Enter = primera opción)
+    await sim(700, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
+    await shot(`13_m${m}_b${bi}_after`);
+    const st = await page.evaluate(() => ({ scene: Game.scene.constructor.name, mode: Game.scene.world && Game.scene.world.mode }));
+    if (st.scene !== 'PlayScene' || st.mode !== 'mission') break;
+  }
   await log(`after m${m}`);
   await shot(`13_m${m}_after`);
   await sim(200, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
   await log(`after m${m} continue`);
 }
-await sim(1200, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
+await sim(3000, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
 await log('post credits');
+console.log('save', await page.evaluate(() => JSON.stringify({ stage: Game.save.stage, canon: Game.save.canon, endings: Game.save.endings, suits: Game.save.suits.length, uni: Game.save.universe })));
 await shot('20_city');
 
 // Ciudad: bot + crímenes
-await page.evaluate(() => { Game.fade = null; Game.save.stage = 2; Game.goCity({ x: 1000 }); });
+await page.evaluate(() => { Game.fade = null; Game.goCity({ universe: 'ruina', x: 1000 }); });
 await sim(60, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
-for (const type of ['robo', 'caida', 'persecucion', 'drones']) {
+for (const type of ['zombies', 'ultron', 'caida']) {
   await page.evaluate((type) => {
     const w = Game.scene.world;
     if (w.crime) w.endCrime(false, 'x');
@@ -155,32 +162,38 @@ const cx = await page.evaluate(() => Math.round(Game.scene.world.player.x));
 console.log('city x after run', cx);
 await shot('22_city_far');
 
-// Menú de pausa completo
-await page.evaluate(() => { Game.save.tech = 200; });
-await page.evaluate(() => window.__press('Escape'));
-await sim(10);
-await shot('30_pause');
-for (let item = 1; item <= 4; item++) {
-  await page.evaluate((item) => { const p = Game.scene.world.pause; const root = p.stack.stack[0]; root.menu.sel = item; }, item);
-  await page.evaluate(() => window.__press('Enter'));
-  await sim(10);
-  await shot(`31_pause_${item}`);
-  if (item === 1) { await page.evaluate(() => window.__press('Enter')); await sim(10); }
-  if (item === 2) { await page.evaluate(() => { const top = Game.scene.world.pause.stack.top; top.menu.sel = 1; }); await page.evaluate(() => window.__press('Enter')); await sim(10); }
-  if (item === 3) {
-    await page.evaluate(() => window.__press('Enter')); await sim(5);
-    await page.keyboard.press('KeyN'); await sim(5);
-    const kb = await page.evaluate(() => Input.keyBinds.LEFT.join(','));
-    console.log('rebind LEFT ->', kb);
-    await page.evaluate(() => Input.resetBinds());
-  }
-  if (item === 4) { await page.evaluate(() => { Input.keyLatch.ArrowRight = true; }); await sim(5); }
-  await page.evaluate(() => window.__press('Escape'));
-  await sim(10);
+for (const u of ['616', 'tobey', 'andrew', 'miles', 'ruina']) {
+  await page.evaluate((u) => { Game.fade = null; Game.goCity({ universe: u, x: 600 }); }, u);
+  await sim(60, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
+  await sim(900, bot.replace('k.ArrowLeft = (i % 400) >= 360;', 'k.ArrowLeft = false;'));
+  await shot('23_city_' + u);
+  console.log('city', u, JSON.stringify(await page.evaluate(() => ({ x: Math.round(Game.scene.world.player.x), uni: Game.scene.world.universe, err: Game.errors.length }))));
 }
+// Menú de pausa completo: abrir cada pantalla
+await page.evaluate(() => { Game.fade = null; Game.goCity({ universe: 'miles', x: 800 }); Game.save.tech = 200; });
+await sim(40, `if (i % 6 === 0) Input.keyLatch.Enter = true;`);
+await sim(200, `const w = G.scene.world; if (w && w.dialog && i % 5 === 0) Input.keyLatch.Enter = true;`);
 await page.evaluate(() => window.__press('Escape'));
+await sim(6);
+const hasPause = await page.evaluate(() => !!Game.scene.world.pause);
+console.log('pause open', hasPause);
+await shot('30_pause');
+for (let item = 1; item <= 5; item++) {
+  await page.evaluate((item) => { const p = Game.scene.world.pause; if (!p) { Game.scene.world.openPause(); } const root = Game.scene.world.pause.stack.stack[0]; root.menu.sel = item; }, item);
+  await page.evaluate(() => window.__press('Enter'));
+  await sim(8);
+  await shot(`31_pause_${item}`);
+  if (item === 1) { await page.evaluate(() => window.__press('Enter')); await sim(8); }
+  await page.evaluate(() => { const p = Game.scene.world.pause; if (p) while (p.stack.stack.length > 1) p.stack.stack.pop(); });
+  await sim(4);
+}
+await page.evaluate(() => { const w = Game.scene.world; w.pause = null; });
 await sim(10);
 await log('after pause');
+// viajar entre universos
+await page.evaluate(() => { const w = Game.scene.world; w.openPause(); const p = w.pause; p.stack.push(new TravelScreen(w)); const top = p.stack.top; top.menu.sel = 0; top.menu.items[0].act(); });
+await sim(60, `if (i % 6 === 0) Input.keyLatch.Enter = true;`);
+console.log('travel ->', await page.evaluate(() => Game.scene.world && Game.scene.world.universe));
 
 // Mando simulado (mapeo estándar)
 await page.evaluate(() => {

@@ -70,8 +70,10 @@ class World {
     this.mode = mode;
     this.missionIdx = opts.mission !== undefined ? opts.mission : -1;
     this.t = 0;
-    if (mode === 'city') this.level = Levels.city(CITY_SKY[Game.save.stage] || 'day');
+    this.universe = mode === 'city' ? (opts.universe || Game.save.universe || '616') : MISSIONS[this.missionIdx].universe;
+    if (mode === 'city') this.level = Levels.city(this.universe);
     else this.level = Levels.mission(this.missionIdx);
+    ENEMY_THEME = this.level.pals || 'thugs';
     const lv = this.level;
     const sx = opts.x !== undefined ? opts.x : (mode === 'city' ? 400 : 40);
     this.player = new Player(sx, 0);
@@ -97,37 +99,42 @@ class World {
     this.objective = '';
     this.lockInput = 0;
     this.civSayCd = 0;
+    this.flash = null; this.choice = null; this.pops = []; this.bossArena = null; this.markerMission = -1;
     // enemigos colocados
     for (const s of lv.spawns) this.spawnEnemy(s.type, s.x, s.y || null);
     if (mode === 'city') this.setupCity(opts);
     else this.setupMission(opts);
   }
 
-  get inputEnabled() { return !this.dialog && this.state === 'play' && !this.pause && this.lockInput <= 0; }
+  get inputEnabled() { return !this.dialog && !this.flash && !this.choice && this.state === 'play' && !this.pause && this.lockInput <= 0; }
+
+  missionMusic() { return this.universe === 'miles' ? 'verse' : this.universe === 'ruina' ? 'ruin' : 'action'; }
 
   setupMission() {
     const m = MISSIONS[this.missionIdx];
-    this.card = { small: 'MISIÓN ' + (this.missionIdx + 1), big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
+    this.card = { small: this.missionIdx === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + this.missionIdx, big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
     this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
-    Audio2.music('action');
+    Audio2.music(this.missionMusic());
   }
 
   setupCity(opts) {
-    const stage = Game.save.stage;
-    if (stage >= 1 && stage <= 4) {
-      this.markerX = MARKER_X[stage];
-      this.objective = 'OBJETIVO: VE AL FARO AZUL (' + MARKER_PLACE[stage].toUpperCase() + ')';
+    const stage = Game.save.stage, uid = this.universe, U = UNIVERSES[uid];
+    Game.save.universe = uid;
+    const mi = MISSIONS.findIndex((m) => m.universe === uid && m.markerX);
+    if (mi > 0 && (stage === mi || stage >= 5)) {
+      this.markerX = MISSIONS[mi].markerX; this.markerMission = mi;
+      this.objective = stage === mi ? 'OBJETIVO: VE AL FARO AZUL' : 'REPETIR CAPÍTULO: FARO AZUL';
       if (Math.abs(this.player.cx - this.markerX) < 80) this.markerArmed = false;
-    } else {
-      this.objective = 'MODO LIBRE: PROTEGE LA CIUDAD';
-    }
-    Audio2.music('city');
-    const after = opts.afterMission;
-    const lines = after !== undefined && STORY.afterCity[after] ? STORY.afterCity[after] : null;
+    } else if (stage >= 5) this.objective = 'MODO LIBRE: ' + U.name.toUpperCase();
+    else this.objective = 'UNIVERSO VISITADO · VIAJA DESDE EL MENÚ DE PAUSA';
+    Audio2.music(U.music);
+    if (!Array.isArray(Game.save.visited)) Game.save.visited = [];
+    let lines = null;
+    if (!Game.save.visited.includes(uid)) { Game.save.visited.push(uid); lines = STORY.arrival[uid]; Game.saveGame(); }
     const showTip = () => { if (!Game.save.seenCityTip) { Game.save.seenCityTip = true; Game.saveGame(); this.showTip('tip_city', 9); } };
-    if (lines) this.startDialog(lines, showTip);
+    this.card = { small: U.name.toUpperCase(), big: U.city.toUpperCase(), sub: 'Fragmentos: ' + Game.save.tokens.filter((k) => String(k).startsWith(uid + ':')).length + '/5', t: 0, dur: 2.8 };
+    if (lines) this.startDialog(prepLines(lines), showTip);
     else showTip();
-    if (!opts.afterMission && stage >= 5) this.card = { small: 'NUEVA YORK', big: 'MODO LIBRE', sub: 'Tecnología Stark: ' + Game.save.tokens.length + '/20', t: 0, dur: 2.5 };
   }
 
   // ---------------- utilidades para entidades ----------------
@@ -188,6 +195,7 @@ class World {
     this.player.gainFocus(heavy ? 10 : 6);
     this.combo.n++; this.combo.t = 2.2;
     this.stats.hits++;
+    if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
   }
 
@@ -315,7 +323,7 @@ class World {
     np.focus = p.focus; np.inv = 1.5;
     this.player = np;
     this.state = 'play';
-    Audio2.music(this.mode === 'city' ? 'city' : 'action');
+    Audio2.music(this.mode === 'city' ? UNIVERSES[this.universe].music : this.missionMusic());
   }
 
   // ---------------- arenas ----------------
@@ -379,8 +387,73 @@ class World {
       a.introDone = true;
       this.showTip('tip_boss', 5);
     };
-    if (!a.introDone) this.startDialog(STORY.bossIntro[this.missionIdx], begin);
+    b.escapeAt = a.escape || 0;
+    this.bossArena = a;
+    const intro = STORY.bossIntro[a.boss];
+    if (!a.introDone && intro) this.startDialog(prepLines(intro), begin);
     else begin();
+  }
+
+  afterBoss() {
+    const a = this.bossArena, b = this.boss;
+    if (!a) { this.complete(); return; }
+    Audio2.music('sad');
+    const finish = () => {
+      if (a.final) {
+        if (a.boss === 'desconocido4') this.finalChoice();
+        else this.complete();
+        return;
+      }
+      a.done = true; a.active = false;
+      this.arena = null; this.boss = null; this.bossArena = null;
+      this.enemies = this.enemies.filter((e) => e !== b);
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+      Audio2.music(this.missionMusic());
+      this.float('¡SIGUE ADELANTE!', this.player.cx, this.player.y - 20, '#80ff80');
+    };
+    const next = () => { if (a.canonAfter) this.startCanon(a.canonAfter, finish); else finish(); };
+    const outro = STORY.bossOutro[a.boss];
+    if (outro) this.startDialog(prepLines(outro), next); else next();
+  }
+
+  // ---------------- eventos canónicos ----------------
+  startCanon(id, cb) {
+    const C = CANONS[id];
+    const p = this.player;
+    p.anchor = null; p.attack = null;
+    if (p.state !== 'dead') p.state = 'cutscene';
+    Audio2.music(null);
+    if (!Game.save.seenCanonTip) { Game.save.seenCanonTip = true; }
+    this.flash = new FlashSeq(C.flashes, () => {
+      this.flash = null;
+      this.choice = new ChoiceBox('EVENTO CANÓNICO: ' + C.title, C.text, [{ id: 'save', label: C.save }, { id: 'keep', label: C.keep }], (opt) => {
+        this.choice = null;
+        if (!Game.save.canon) Game.save.canon = {};
+        Game.save.canon[id] = opt === 'save';
+        Game.saveGame();
+        if (opt === 'save') { this.shake(8); Audio2.sfx('explode'); Input.rumble(1, 1, 500); }
+        else Audio2.sfx('fail');
+        Audio2.music('sad');
+        this.startDialog(prepLines(opt === 'save' ? C.saved : C.kept), () => {
+          if (opt === 'save') this.float('CANON ROTO (' + canonCount() + '/5)', this.player.cx, this.player.y - 20, '#ff60c0');
+          Audio2.music(this.missionMusic());
+          if (cb) cb();
+        });
+      });
+    });
+  }
+
+  finalChoice() {
+    const n = canonCount();
+    const text = 'Cánones rotos: ' + n + '/5. ' + (n <= 3 ? 'Las grietas todavía pueden cerrarse.' : 'Las grietas son enormes. Quizás demasiado.');
+    Audio2.music('sad');
+    this.choice = new ChoiceBox(STORY.finalChoice.title, text, STORY.finalChoice.options, (id) => {
+      this.choice = null;
+      Game.save.lastChoice = id;
+      const ending = id === 'dentro' ? 'neutral' : id === 'deshacer' ? 'triste' : (n <= 3 ? 'feliz' : 'triste');
+      this.state = 'complete';
+      Game.finishGame(ending, this.stats);
+    });
   }
 
   // ---------------- ciudad: crímenes ----------------
@@ -391,10 +464,10 @@ class World {
       const d = Math.abs(p.cx - this.markerX);
       if (d > 70) this.markerArmed = true;
       if (this.markerArmed && d < 16 && p.feet > this.level.groundY - 70 && this.state === 'play' && !this.dialog) {
-        const m = Game.save.stage;
+        const m = this.markerMission;
         this.markerArmed = false;
-        this.startDialog(STORY.briefing[m], () => {
-          Game.save.cityX = this.markerX - 100;
+        this.startDialog(prepLines(STORY.briefing[m] || [['peter', 'Allá vamos otra vez.']]), () => {
+          Game.save.cityPos[this.universe] = this.markerX - 100;
           Game.saveGame();
           Game.startMission(m);
         });
@@ -406,10 +479,11 @@ class World {
       if (Math.abs(p.cx - tk.x) < 9 && Math.abs(p.cy - tk.y) < 14) {
         Game.save.tokens.push(tk.id);
         this.addTech(3, false);
-        this.float('TECNOLOGÍA STARK ' + Game.save.tokens.length + '/20', tk.x, tk.y - 10, UI.gold);
+        this.float('FRAGMENTO ' + Game.save.tokens.length + '/25', tk.x, tk.y - 10, UI.gold);
+        this.showTip('"' + STORY.fragments[tk.idx] + '"', 6);
         Audio2.sfx('coin');
-        this.particles.burst(tk.x, tk.y, 12, UI.gold, 80);
-        if (Game.save.tokens.length === 20) this.bubble('peter', '¡Todas las piezas! Con esto puedo mejorar mucho el traje.');
+        this.particles.burst(tk.x, tk.y, 12, '#60ffe0', 80);
+        if (Game.save.tokens.length === 25) this.bubble('peter', 'Todos los fragmentos... Ahora entiendo un poco mejor el multiverso.');
         Game.saveGame();
       }
     }
@@ -427,7 +501,7 @@ class World {
     }
     // J. Jonah Jameson
     this.jjjT -= dt;
-    if (this.jjjT <= 0 && !this.radio) { this.jjjT = rand(70, 110); this.bubble('jjj', pick(STORY.jjjQuips)); }
+    if (this.jjjT <= 0 && !this.radio) { this.jjjT = rand(70, 110); const q = pick(STORY.radio[this.universe] || STORY.radio['616']); this.bubble(q[0], q[1]); }
     // crímenes
     if (!this.crime) {
       this.crimeT -= dt;
@@ -435,14 +509,13 @@ class World {
     } else this.updateCrime(dt);
     // autoguardado
     this.autoSaveT -= dt;
-    if (this.autoSaveT <= 0 && p.onGround && this.state === 'play') { this.autoSaveT = 20; Game.save.cityX = p.x; Game.saveGame(); }
+    if (this.autoSaveT <= 0 && p.onGround && this.state === 'play') { this.autoSaveT = 20; Game.save.cityPos[this.universe] = p.x; Game.save.universe = this.universe; Game.saveGame(); }
   }
 
   spawnCrime() {
     const p = this.player, lv = this.level;
     const stage = Game.save.stage;
-    const types = ['robo', 'caida', 'persecucion', 'robo'];
-    if (stage >= 3) types.push('drones');
+    const types = UNIVERSES[this.universe].crimes.slice();
     const type = pick(types);
     let x = 0;
     for (let i = 0; i < 20; i++) {
@@ -456,14 +529,19 @@ class World {
       const n = randi(2, 3);
       for (let i = 0; i < n; i++) {
         const e = this.spawnEnemy(i === 0 && stage >= 2 ? 'gunner' : pick(['thug', 'thug', 'bat']), x + (i - 1) * 26, lv.groundY - 22 - (i === 0 && stage >= 2 ? 0 : 0));
-        e.y = lv.groundY - e.h;
+        e.y = lv.surfaceY(e.cx, lv.groundY - 40) - e.h;
         c.enemies.push(e);
       }
       const civ = new Civilian(x + 50, lv.groundY, 'cower'); civ.crime = true; civ.say('¡AYUDA!');
       this.civs.push(civ); c.civ = civ;
-    } else if (type === 'drones') {
-      c.label = 'DRONES DESCONTROLADOS';
-      for (let i = 0; i < 3; i++) { const e = this.spawnEnemy('drone', x + (i - 1) * 40, lv.groundY - 150 - i * 12); c.enemies.push(e); }
+    } else if (type === 'zombies') {
+      c.label = 'ZOMBIS';
+      for (let i = 0; i < 4; i++) { const e = this.spawnEnemy('zombie', x + (i - 1.5) * 24, null); c.enemies.push(e); }
+      const civ = new Civilian(x + 60, lv.surfaceY(x + 60, lv.groundY - 40), 'cower'); civ.crime = true; civ.say('¡AYUDA!');
+      this.civs.push(civ); c.civ = civ;
+    } else if (type === 'drones' || type === 'ultron') {
+      c.label = type === 'ultron' ? 'ULTRONES' : 'DRONES DESCONTROLADOS';
+      for (let i = 0; i < 3; i++) { const e = this.spawnEnemy(type === 'ultron' ? 'ultron' : 'drone', x + (i - 1) * 40, lv.groundY - 150 - i * 12); c.enemies.push(e); }
     } else if (type === 'caida') {
       c.label = 'CIVIL EN PELIGRO';
       // buscar un edificio alto cerca
@@ -480,7 +558,7 @@ class World {
       c.car = { x, y: lv.groundY - 16, w: 34, h: 16, vx: dir * 105, hp: 4, stopped: false, color: pick(['#2a2a2a', '#6a1a1a', '#1a3a6a']) };
     }
     this.crime = c;
-    this.bubble('radio', { robo: 'Atraco en curso. Varios sospechosos.', caida: '¡Alguien va a caer de un edificio!', persecucion: 'Coche huyendo a toda velocidad. ¡Detenedlo!', drones: 'Drones fuera de control atacando a civiles.' }[type]);
+    this.bubble('radio', { robo: 'Atraco en curso. Varios sospechosos.', caida: '¡Alguien va a caer de un edificio!', persecucion: 'Coche huyendo a toda velocidad. ¡Detenedlo!', drones: 'Drones fuera de control atacando a civiles.', zombies: 'Zombis cerca de un superviviente.', ultron: 'Ultrones patrullando la zona.' }[type]);
     Audio2.sfx('alert');
   }
 
@@ -581,6 +659,8 @@ class World {
       this.particles.update(dt);
       return;
     }
+    if (this.flash) { this.flash.update(dt); return; }
+    if (this.choice) { this.choice.update(dt); return; }
     if (this.dialog) {
       this.dialog.update(dt);
       this.updateFloats(dt);
@@ -620,16 +700,20 @@ class World {
     for (const cp of this.level.checkpoints) {
       if (p.cx > cp.x && cp.x > this.checkpoint.x) this.checkpoint = { x: cp.x };
     }
+    for (const lc of this.level.canons) {
+      if (!lc.done && p.cx > lc.x && this.state === 'play' && !this.arena && !this.dialog) { lc.done = true; this.startCanon(lc.id); break; }
+    }
     this.updateArenas(dt);
     if (this.mode === 'city') this.updateCity(dt);
+    for (const pp of this.pops) pp.t += dt;
+    this.pops = this.pops.filter((pp) => pp.t < 0.5);
 
     // jefe derrotado
     if (this.bossDoneT > 0) {
       this.bossDoneT -= dt;
       if (this.bossDoneT <= 0) {
         this.bossDoneT = -1;
-        Audio2.music('title');
-        this.startDialog(STORY.bossOutro[this.missionIdx], () => this.complete());
+        this.afterBoss();
       }
     }
     // muerte
@@ -644,7 +728,7 @@ class World {
     }
     // objetivo
     if (this.mode === 'mission') {
-      if (this.boss && !this.boss.dead) this.objective = 'OBJETIVO: DERROTA A ' + this.boss.name;
+      if (this.boss && !this.boss.dead) this.objective = 'OBJETIVO: DERROTA ' + (this.boss.name.startsWith('EL ') ? 'AL ' + this.boss.name.slice(3) : 'A ' + this.boss.name);
       else if (this.arena) this.objective = 'OBJETIVO: DERROTA A LOS ENEMIGOS';
       else if (!this.boss) this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
       else this.objective = '';
@@ -685,7 +769,7 @@ class World {
   openGameOver() {
     const items = [
       { label: 'Reintentar desde el punto de control', act: () => { this.respawn(); } },
-      { label: 'Volver a la ciudad', act: () => Game.goCity({ x: MARKER_X[this.missionIdx] ? MARKER_X[this.missionIdx] - 100 : 400 }) },
+      { label: 'Volver a la ciudad', act: () => Game.goCity({ universe: this.universe, x: MISSIONS[this.missionIdx].markerX ? MISSIONS[this.missionIdx].markerX - 100 : 400 }) },
     ];
     if (Game.save.stage === 0) items[1] = { label: 'Menú principal', act: () => Game.toMenu() };
     this.gameOver = new Menu(items);
@@ -708,7 +792,7 @@ class World {
       for (let x = -(cam.x * 0.5 % 60); x < W; x += 60) ctx.fillRect(Math.round(x), 0, 30, H);
       ctx.fillStyle = '#20242c';
       for (let x = -(cam.x * 0.5 % 120); x < W; x += 120) ctx.fillRect(Math.round(x) + 10, 60, 50, 30);
-    } else Scenery.drawBackground(ctx, lv.sky, cam.x, cam.y, lv.height);
+    } else Scenery.drawBackground(ctx, lv.sky, cam.x, cam.y, lv.height, lv.landmark);
     if (this.boss && this.boss.drawIllusion) this.boss.drawIllusion(ctx, cam, t, this.boss.arena);
     lv.draw(ctx, cam.x, cam.y, t);
     // faro de misión
@@ -728,11 +812,11 @@ class World {
     if (this.mode === 'city') {
       for (const tk of lv.tokens) {
         if (Game.save.tokens.includes(tk.id)) continue;
-        const x = Math.round(tk.x - cam.x), y = Math.round(tk.y - cam.y + Math.sin(t * 3 + tk.id) * 2);
+        const x = Math.round(tk.x - cam.x), y = Math.round(tk.y - cam.y + Math.sin(t * 3 + tk.idx) * 2);
         if (x < -10 || x > W + 10 || y < -10 || y > H + 10) continue;
         ctx.fillStyle = 'rgba(255,220,80,0.25)'; ctx.fillRect(x - 6, y - 6, 12, 12);
         ctx.fillStyle = UI.ink; ctx.fillRect(x - 4, y - 4, 9, 9);
-        ctx.fillStyle = Math.floor(t * 4 + tk.id) % 2 ? '#80e0ff' : '#ffd040'; ctx.fillRect(x - 3, y - 3, 7, 7);
+        ctx.fillStyle = Math.floor(t * 4 + tk.idx) % 2 ? '#80ffe8' : '#ff60c0'; ctx.fillRect(x - 3, y - 3, 7, 7);
         ctx.fillStyle = '#20304a'; ctx.fillRect(x - 1, y - 1, 3, 3);
       }
     }
@@ -742,6 +826,9 @@ class World {
       drawDecor(ctx, { type: 'car', x: car.x, y: car.y + car.h, color: car.flash > 0 ? '#ffffff' : car.color }, cam.x, cam.y, t, lv);
       if (!car.stopped && Math.floor(t * 8) % 2) { ctx.fillStyle = '#ff3030'; ctx.fillRect(Math.round(car.x - cam.x) + 14, Math.round(car.y - cam.y), 5, 2); }
     }
+    // sombras (profundidad 2.5D)
+    for (const e of this.enemies) if (!e.dead && this.onScreen(e)) lv.shadow(ctx, e.cx, e.y + e.h, cam, e.w + 4);
+    lv.shadow(ctx, this.player.cx, this.player.feet, cam, 12);
     for (const c of this.civs) c.draw(ctx, cam, t);
     for (const pk of this.pickups) pk.draw(ctx, cam, t);
     for (const e of this.enemies) e.draw(ctx, cam, t);
@@ -749,6 +836,17 @@ class World {
     for (const pr of this.projs) pr.draw(ctx, cam, t);
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
+    // onomatopeyas de cómic
+    for (const pp of this.pops) {
+      const s2 = pp.t < 0.1 ? 2 : 1;
+      Font.draw(ctx, pp.text, Math.round(pp.x - cam.x), Math.round(pp.y - cam.y - pp.t * 20), pp.c, { align: 'center', scale: s2, outline: '#000000' });
+    }
+    // tinte del universo
+    if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
+    if (lv.comic) {
+      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      for (let yy = 0; yy < H; yy += 3) ctx.fillRect(0, yy, W, 1);
+    }
     // efecto de ilusión (Mysterio)
     if (this.illusion && this.boss && !this.boss.dead) {
       ctx.fillStyle = 'rgba(80,255,140,' + (0.05 + Math.sin(t * 3) * 0.04) + ')';
@@ -785,7 +883,9 @@ class World {
     }
     drawHUD(ctx, this, t);
     if (this.dialog) this.dialog.draw(ctx, t);
-    else drawTouch(ctx);
+    else if (!this.flash && !this.choice) drawTouch(ctx);
+    if (this.choice) this.choice.draw(ctx, t);
+    if (this.flash) this.flash.draw(ctx, t);
     if (this.state === 'dead' || this.gameOver) {
       const a = this.gameOver ? 0.7 : clamp(1 - this.deadT / 1.8, 0, 0.7);
       ctx.fillStyle = 'rgba(40,0,0,' + a + ')'; ctx.fillRect(0, 0, W, H);

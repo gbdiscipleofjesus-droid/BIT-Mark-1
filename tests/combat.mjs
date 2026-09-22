@@ -16,17 +16,20 @@ const result = await page.evaluate(() => {
   const step = () => { Input.poll(); Game.step(1 / 60); };
   const clear = () => { for (const k in Input.keys) Input.keys[k] = false; };
   Game.save.started = true;
-  for (let m = 0; m < 5; m++) {
+  const list = [[0, 'desconocido0'], [1, 'sandman'], [1, 'venom'], [2, 'rino'], [2, 'electro'], [3, 'mancha'], [3, 'miguel'], [4, 'desconocido4']];
+  for (const [m, bossId] of list) {
     Game.fade = null;
-    Game.startMission(m);
-    for (let i = 0; i < 40; i++) step();
+    Game.scene = Game.missionScene(m);
+    for (let i = 0; i < 5; i++) step();
     const w = Game.scene.world;
-    for (const a of w.level.arenas) if (!a.boss) a.done = true;
+    const a = w.level.arenas.find((x) => x.boss === bossId);
+    for (const o of w.level.arenas) if (o !== a) o.done = true;
+    for (const c of w.level.canons) c.done = true;
     w.enemies = [];
-    const a = w.level.arenas.find((x) => x.boss);
     w.player.x = a.x1 + 40; w.player.y = w.level.surfaceY(a.x1 + 45) - 22;
     let dmgTaken = 0, frames = 0, deaths = 0;
     for (let i = 0; i < 60 * 240 && !(w.boss && w.boss.dead); i++) {
+      if (w.flash || w.choice) break;
       clear();
       const p = w.player, b = w.boss;
       if (w.dialog) { if (i % 6 === 0) Input.keyLatch.Enter = true; step(); continue; }

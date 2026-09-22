@@ -22,6 +22,7 @@ class Level {
     this.spawns = [];
     this.arenas = [];
     this.tips = [];
+    this.canons = [];
     this.checkpoints = [];
     this.tokens = [];
     this.groundSegs = []; // {x0,x1,type}
@@ -175,18 +176,28 @@ class Level {
 
   // ---------------- Dibujo ----------------
   draw(ctx, cx, cy, t) {
-    const x0 = cx - 40, x1 = cx + W + 40;
-    // agua
+    const x0 = cx - 60, x1 = cx + W + 60;
+    // agua o vacío
     if (this.water) {
       const wy = Math.round(this.water - cy);
       if (wy < H) {
-        ctx.fillStyle = this.sky === 'rift' ? '#0a2a2a' : (this.night ? '#0c1838' : '#1c4a7a');
-        ctx.fillRect(0, wy, W, H - wy);
-        ctx.fillStyle = this.sky === 'rift' ? '#2a6a50' : (this.night ? '#2a4a80' : '#4a8ac0');
-        for (let i = 0; i < 40; i++) {
-          const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (W + 40)) - 20;
-          const yy = wy + 3 + (i * 7) % Math.max(1, H - wy);
-          ctx.fillRect(W - xx, yy, 6, 1);
+        if (this.sky === 'ruin') {
+          ctx.fillStyle = '#0a0204'; ctx.fillRect(0, wy - 20, W, H - wy + 20);
+          ctx.fillStyle = 'rgba(255,70,20,0.18)'; ctx.fillRect(0, wy - 20, W, 6);
+          for (let i = 0; i < 24; i++) {
+            const xx = (i * 61 + Math.floor(t * 12) - Math.floor(cx * 0.6)) % (W + 20);
+            ctx.fillStyle = i % 3 ? '#8a2a0c' : '#ff7020';
+            ctx.fillRect((xx + W + 20) % (W + 20) - 10, wy - 10 + ((i * 13 + Math.floor(t * 20)) % 40), 1, 1);
+          }
+        } else {
+          ctx.fillStyle = this.sky === 'rift' ? '#0a2a2a' : (this.night ? '#0c1838' : '#1c4a7a');
+          ctx.fillRect(0, wy, W, H - wy);
+          ctx.fillStyle = this.sky === 'rift' ? '#2a6a50' : (this.night ? '#2a4a80' : '#4a8ac0');
+          for (let i = 0; i < 40; i++) {
+            const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (W + 40)) - 20;
+            const yy = wy + 3 + (i * 7) % Math.max(1, H - wy);
+            ctx.fillRect(W - xx, yy, 6, 1);
+          }
         }
       }
     }
@@ -195,7 +206,18 @@ class Level {
       if (d.x + (d.w || 200) < x0 || d.x - 200 > x1) continue;
       drawDecor(ctx, d, cx, cy, t, this);
     }
-    for (const s of this.near(x0, x1)) {
+    const vis = this.near(x0, x1);
+    // 2.5D: caras laterales y superiores en perspectiva (primero lo más lejano al centro)
+    const ext = [];
+    for (const s of vis) {
+      const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
+      if (sx > W + 40 || sx + s.w < -40 || sy > H) continue;
+      ext.push({ s, sx, sy, d: Math.abs(sx + s.w / 2 - VP.x) });
+    }
+    ext.sort((a, b) => b.d - a.d);
+    for (const e of ext) drawExtrusion(ctx, e.s, e.sx, e.sy, this, cx);
+    // caras frontales
+    for (const s of vis) {
       if (s.climb === undefined) {
         drawOneway(ctx, s, cx, cy, this);
         continue;
@@ -212,11 +234,89 @@ class Level {
     }
   }
 
+  // Sombra en el suelo bajo un personaje (efecto de profundidad)
+  shadow(ctx, x, feetY, cam, w = 10) {
+    const sY = this.surfaceY(x, feetY - 2);
+    const d = sY - feetY;
+    if (d > 90 || sY > this.height) return;
+    const a = 0.35 * (1 - d / 90);
+    const ww = Math.round(w * (1 - d / 180));
+    ctx.fillStyle = 'rgba(0,0,0,' + a.toFixed(2) + ')';
+    const sx = Math.round(x - cam.x), sy = Math.round(sY - cam.y);
+    ctx.fillRect(sx - ww / 2, sy - 1, ww, 2);
+    ctx.fillRect(sx - ww / 2 + 2, sy - 2, ww - 4, 4);
+  }
+
   drawFront(ctx, cx, cy, t) {
     for (const d of this.front) {
       if (d.x + (d.w || 100) < cx - 40 || d.x > cx + W + 40) continue;
       drawDecor(ctx, d, cx, cy, t, this);
     }
+  }
+}
+
+// ---------------- 2.5D ----------------
+const VP = { x: W / 2, y: 64 };
+const DEPTH = 0.16;
+function backPt(px, py, k = DEPTH) { return [px + (VP.x - px) * k, py + (VP.y - py) * k]; }
+function poly(ctx, col, pts) {
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  ctx.closePath(); ctx.fill();
+}
+const EXT_COLS = {
+  crate: ['#4a3218', '#9a7a4a'], truck: ['#909098', '#e0e0e8'], pillar: ['#3a3020', '#8a7a58'], tower: ['#2e343c', '#7a8492'],
+  beam: ['#4a2818', '#8a4a2a'],
+};
+const GROUND_TOP = { street: '#3c3c46', floor: '#34383e', bridge: '#50565e', stone: '#6a6654', void: '#2a1414' };
+function drawExtrusion(ctx, s, sx, sy, lv, cx) {
+  if (s.kind === 'block' || s.kind === 'ceiling') return;
+  let side, top, h = s.h;
+  if (s.climb === undefined) {
+    // plataforma de un sentido: solo la cara superior fina
+    if (sy <= VP.y) return;
+    const [a, b] = backPt(sx, sy, DEPTH * 0.6), [c, d] = backPt(sx + s.w, sy, DEPTH * 0.6);
+    poly(ctx, s.kind === 'scaffold' ? '#8a7030' : s.kind === 'catwalk' ? '#5a5e66' : '#2a2a30', [sx, sy, sx + s.w, sy, c, d, a, b]);
+    return;
+  }
+  if (s.kind === 'building') {
+    const st = BSTYLES[s.style] || BSTYLES.brick;
+    side = s.sideCol || (s.sideCol = shade(st.dark, -0.2));
+    top = s.topCol || (s.topCol = shade(st.ledge, -0.35));
+    h = s.vis;
+  } else if (s.kind === 'ground') {
+    if (sy <= VP.y) return;
+    const x1 = Math.max(sx, -60), x2 = Math.min(sx + s.w, W + 60);
+    const [a, b] = backPt(x1, sy), [c, d] = backPt(x2, sy);
+    poly(ctx, GROUND_TOP[s.style] || '#3c3c46', [x1, sy, x2, sy, c, d, a, b]);
+    if (s.style === 'street') {
+      // líneas de carril en perspectiva
+      ctx.fillStyle = '#b8a840';
+      const off = Math.floor(s.x + cx) % 1;
+      for (let wx = Math.floor((cx + x1) / 40) * 40; wx < cx + x2; wx += 40) {
+        const px = wx - cx - off;
+        const [p1, q1] = backPt(px, sy, DEPTH * 0.55), [p2] = backPt(px + 18, sy, DEPTH * 0.55);
+        ctx.fillRect(Math.round(p1), Math.round(q1), Math.max(1, Math.round(p2 - p1)), 1);
+      }
+    }
+    return;
+  } else {
+    const c = EXT_COLS[s.kind] || ['#3a3e48', '#6a7280'];
+    side = c[0]; top = c[1];
+    h = Math.min(s.h, H + 40);
+  }
+  const x1 = sx, x2 = sx + s.w, y1 = sy, y2 = sy + Math.min(h, H - sy + 20);
+  if (y1 > VP.y) {
+    const [a, b] = backPt(x1, y1), [c, d] = backPt(x2, y1);
+    poly(ctx, top, [x1, y1, x2, y1, c, d, a, b]);
+  }
+  if (x2 < VP.x) {
+    const [a, b] = backPt(x2, y1), [c, d] = backPt(x2, y2);
+    poly(ctx, side, [x2, y1, a, b, c, d, x2, y2]);
+  } else if (x1 > VP.x) {
+    const [a, b] = backPt(x1, y1), [c, d] = backPt(x1, y2);
+    poly(ctx, side, [x1, y1, a, b, c, d, x1, y2]);
   }
 }
 
@@ -318,6 +418,25 @@ function drawOneway(ctx, p, cx, cy, lv) {
 function drawDecor(ctx, d, cx, cy, t, lv) {
   const sx = Math.round(d.x - cx), sy = Math.round(d.y - cy);
   switch (d.type) {
+    case 'clock': // esfera de la torre del reloj
+      ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(sx, sy, 22, 0, TAU); ctx.fill();
+      ctx.fillStyle = lv.night ? '#f0e8c0' : '#e8e0c8'; ctx.beginPath(); ctx.arc(sx, sy, 19, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#2a2a2a';
+      for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; ctx.fillRect(Math.round(sx + Math.cos(a) * 16) - 1, Math.round(sy + Math.sin(a) * 16) - 1, 2, 2); }
+      thickLine(ctx, sx, sy, sx + Math.cos(t * 0.5) * 14, sy + Math.sin(t * 0.5) * 14, 1);
+      thickLine(ctx, sx, sy, sx, sy - 10, 2);
+      break;
+    case 'rift': { // grieta multiversal
+      const cols = ['#ffffff', '#60ffe0', '#ff40c0', '#ffe040'];
+      for (let i = 0; i < 70; i++) {
+        const yy = sy - 70 + i * 2;
+        const w = Math.max(1, 12 - Math.abs(35 - i) * 0.3) + Math.sin(t * 8 + i) * 2;
+        ctx.fillStyle = cols[(i + Math.floor(t * 10)) % cols.length];
+        ctx.fillRect(Math.round(sx + Math.sin(i * 0.4 + t * 3) * 5 - w / 2), yy, Math.round(w), 2);
+      }
+      ctx.fillStyle = 'rgba(160,255,230,0.12)'; ctx.fillRect(sx - 30, sy - 80, 60, 150);
+      break;
+    }
     case 'tank': // tanque de agua en azotea
       ctx.fillStyle = '#3a2a1e';
       ctx.fillRect(sx + 2, sy - 8, 2, 8); ctx.fillRect(sx + 14, sy - 8, 2, 8);
@@ -437,9 +556,12 @@ const STYLE_SETS = {
   queens: ['brick', 'brown', 'brick', 'concrete'],
   manhattan: ['concrete', 'glass', 'stone', 'glass', 'steel'],
   times: ['glass', 'steel', 'concrete', 'glass'],
+  andrew: ['glass', 'steel', 'glass', 'stone'],
+  verse: ['verse', 'verse2', 'brown', 'verse'],
+  ruin: ['ruin'],
 };
 const NEON = ['#e03080', '#30c0e0', '#e0c030', '#40e070', '#a050e0', '#e06030'];
-const BILLBOARD_TEXT = ['STARK', 'BUGLE.NET', 'DELMAR', 'ROXXON', 'OSCORP', 'FERIA', 'PIZZA', 'BRAVO', 'MIDTOWN', 'SNACKS', 'MARVELOSO', 'TACOS'];
+const BILLBOARD_TEXT = ['BUGLE.NET', 'DELMAR', 'ROXXON', 'OSCORP', 'FERIA', 'PIZZA', 'MIDTOWN', 'SNACKS', 'TACOS', 'ALCHEMAX', 'STARK', 'HORIZON'];
 
 function roofRun(lv, x0, x1, r, o) {
   let x = x0;
@@ -451,9 +573,9 @@ function roofRun(lv, x0, x1, r, o) {
     const b = lv.addBuilding(x, w, h, r.pick(o.styles), r.int(1, 99999));
     out.push(b);
     const top = lv.groundY - h;
-    if (r.chance(0.5)) lv.decor.push({ type: r.pick(['tank', 'ac', 'antenna', 'ac']), x: x + r.int(6, Math.max(7, w - 24)), y: top });
+    if (r.chance(0.5) && o.styles[0] !== 'ruin') lv.decor.push({ type: r.pick(['tank', 'ac', 'antenna', 'ac']), x: x + r.int(6, Math.max(7, w - 24)), y: top });
     if (o.billboards && r.chance(0.5) && h > 90) {
-      lv.decor.push({ type: 'billboard', x: x + 6, y: top + r.int(20, 50), w: Math.min(w - 12, 70), h: 22, color: r.pick(NEON), text: r.pick(BILLBOARD_TEXT) });
+      lv.decor.push({ type: 'billboard', x: x + 6, y: top + r.int(20, 50), w: Math.min(w - 12, 70), h: 22, color: r.pick(NEON), text: r.pick(o.boardText || BILLBOARD_TEXT) });
     }
     if (o.ledges && r.chance(0.45)) {
       const side = r.chance(0.5) ? -1 : 1;
@@ -466,7 +588,7 @@ function roofRun(lv, x0, x1, r, o) {
   return out;
 }
 
-function streetDecor(lv, x0, x1, r, night) {
+function streetDecor(lv, x0, x1, r) {
   for (let x = x0 + 20; x < x1 - 20; x += r.int(60, 130)) {
     const ty = r.pick(['lamp', 'hydrant', 'car', 'lamp', 'car']);
     if (ty === 'car') lv.decor.push({ type: 'car', x, y: lv.groundY, color: r.pick(['#c0a020', '#a02828', '#2a4a8a', '#e8e8e8', '#3a3a3a']), taxi: r.chance(0.3) });
@@ -475,194 +597,186 @@ function streetDecor(lv, x0, x1, r, night) {
 }
 
 function addArena(lv, x1, x2, waves, opts = {}) {
-  lv.arenas.push({ x1, x2, waves, wave: -1, active: false, done: false, boss: opts.boss || null, title: opts.title || null });
+  lv.arenas.push({ x1, x2, waves, wave: -1, active: false, done: false, boss: opts.boss || null, final: !!opts.final, canonAfter: opts.canonAfter || null, escape: opts.escape || 0 });
   lv.checkpoints.push({ x: x1 + 20 });
 }
 
+function bounds(lv) {
+  lv.addSolid(-40, 0, 40, lv.height, 'block', null, false);
+  lv.addSolid(lv.width, 0, 40, lv.height, 'block', null, false);
+}
+
+function styledLevel(uid, o) {
+  const U = UNIVERSES[uid];
+  const lv = new Level(Object.assign({ sky: U.sky, theme: 'city' }, o));
+  lv.universe = uid; lv.landmark = U.landmark; lv.tint = U.tint; lv.comic = !!U.comic; lv.pals = U.pals;
+  return lv;
+}
+
+// Torre del reloj (Tierra-120703)
+function clockTower(lv, x) {
+  const b = lv.addBuilding(x, 70, 280, 'stone', 7);
+  lv.decor.push({ type: 'clock', x: x + 35, y: lv.groundY - 250 });
+  return b;
+}
+
 const Levels = {
-  // ---------------- Ciudad abierta ----------------
-  city(sky) {
-    const lv = new Level({ name: 'Nueva York', width: 7200, height: 480, groundY: 440, sky, theme: 'city' });
-    const r = makeRng(2019);
-    lv.addGround(0, 2620, 'street');
-    lv.addGround(2620, 3520, 'bridge');
-    lv.addGround(3520, 7200, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block');
-    lv.addSolid(7200, 0, 40, 480, 'block');
-    const q = roofRun(lv, 120, 2500, r, { wmin: 70, wmax: 140, hmin: 60, hmax: 170, gmin: 20, gmax: 70, styles: STYLE_SETS.queens, ledges: true });
-    streetDecor(lv, 0, 2600, r);
-    lv.decor.push({ type: 'sign', x: 40, y: 380, w: 60, text: 'QUEENS' });
-    lv.decor.push({ type: 'sign', x: 2520, y: 380, w: 66, text: 'MUELLE 7' });
-    // Puente de Queensboro
-    lv.addSolid(2760, 150, 36, 290, 'tower', null, true);
-    lv.addSolid(3340, 150, 36, 290, 'tower', null, true);
-    lv.decor.push({ type: 'cable', x: 2620, y: 330, x2: 2778, y2: 152, sag: 30 });
-    lv.decor.push({ type: 'cable', x: 2778, y: 152, x2: 3358, y2: 152, sag: 120 });
-    lv.decor.push({ type: 'cable', x: 3358, y: 152, x2: 3520, y2: 330, sag: 30 });
-    lv.decor.push({ type: 'car', x: 2900, y: 440, color: '#e8e8e8' });
-    lv.decor.push({ type: 'car', x: 3150, y: 440, color: '#c0a020', taxi: true });
-    const m = roofRun(lv, 3600, 4850, r, { wmin: 90, wmax: 160, hmin: 140, hmax: 300, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
-    const ts = roofRun(lv, 4950, 5700, r, { wmin: 90, wmax: 150, hmin: 120, hmax: 260, gmin: 40, gmax: 90, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    const m2 = roofRun(lv, 5800, 6850, r, { wmin: 90, wmax: 170, hmin: 150, hmax: 320, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
-    streetDecor(lv, 3520, 7200, r);
-    lv.decor.push({ type: 'sign', x: 3560, y: 380, w: 72, text: 'MANHATTAN' });
-    lv.decor.push({ type: 'sign', x: 4990, y: 380, w: 84, text: 'TIMES SQUARE' });
-    lv.decor.push({ type: 'sign', x: 6960, y: 380, w: 84, text: 'BATTERY PARK' });
-    lv.decor.push({ type: 'dock', x: 6900, y: 440, w: 300 });
-    // Fichas de tecnología Stark coleccionables (20)
-    const all = q.concat(m, ts, m2);
-    const rr = makeRng(77);
+  // ---------------- Ciudades abiertas (una por universo) ----------------
+  city(uid) {
+    const U = UNIVERSES[uid];
+    const ruin = uid === 'ruina';
+    const lv = styledLevel(uid, { name: U.city, width: 7200, height: 480, groundY: 440, water: ruin ? 470 : null });
+    const r = makeRng(2019 + UNIVERSE_ORDER.indexOf(uid) * 101);
+    bounds(lv);
+    const all = [];
+    if (uid === '616') {
+      lv.addGround(0, 2620, 'street');
+      lv.addGround(2620, 3520, 'bridge');
+      lv.addGround(3520, 7200, 'street');
+      all.push(...roofRun(lv, 120, 2500, r, { wmin: 70, wmax: 140, hmin: 60, hmax: 170, gmin: 20, gmax: 70, styles: STYLE_SETS.queens, ledges: true }));
+      lv.addSolid(2760, 150, 36, 290, 'tower', null, true);
+      lv.addSolid(3340, 150, 36, 290, 'tower', null, true);
+      lv.decor.push({ type: 'cable', x: 2620, y: 330, x2: 2778, y2: 152, sag: 30 });
+      lv.decor.push({ type: 'cable', x: 2778, y: 152, x2: 3358, y2: 152, sag: 120 });
+      lv.decor.push({ type: 'cable', x: 3358, y: 152, x2: 3520, y2: 330, sag: 30 });
+      all.push(...roofRun(lv, 3600, 7000, r, { wmin: 90, wmax: 160, hmin: 140, hmax: 300, gmin: 30, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true, billboards: true }));
+      streetDecor(lv, 0, 2600, r); streetDecor(lv, 3520, 7200, r);
+    } else if (ruin) {
+      // suelo roto sobre el vacío
+      const gaps = [[900, 980], [1900, 2000], [2800, 2880], [3900, 3990], [4800, 4880], [5800, 5890]];
+      let x = 0;
+      for (const [g0, g1] of gaps) { lv.addGround(x, g0, 'stone'); lv.addOneway(g0 + 10, 400, g1 - g0 - 20, 'scaffold'); x = g1; }
+      lv.addGround(x, 7200, 'stone');
+      all.push(...roofRun(lv, 100, 7000, r, { wmin: 70, wmax: 150, hmin: 60, hmax: 260, gmin: 50, gmax: 140, styles: STYLE_SETS.ruin, ledges: true }));
+      for (let i = 0; i < 14; i++) lv.addOneway(r.int(200, 7000), r.int(200, 330), r.int(30, 60), 'scaffold');
+    } else {
+      lv.addGround(0, 7200, 'street');
+      const st = { tobey: STYLE_SETS.queens, andrew: STYLE_SETS.andrew, miles: STYLE_SETS.verse }[uid];
+      const bt = { tobey: ['DAILY BUGLE', 'PIZZA DE JOE', 'OSCORP', 'MIDTOWN'], andrew: ['OSCORP', 'ROXXON', 'MIDTOWN', 'STACY'], miles: ['ALCHEMAX', 'VISIONS', 'BROOKLYN', '¡THWIP!'] }[uid];
+      all.push(...roofRun(lv, 120, 4700, r, { wmin: 70, wmax: 150, hmin: 80, hmax: 260, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
+      if (uid === 'andrew') clockTower(lv, 4800);
+      all.push(...roofRun(lv, 4960, 7000, r, { wmin: 70, wmax: 150, hmin: 90, hmax: 280, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
+      streetDecor(lv, 0, 7200, r);
+    }
+    U.signs.forEach((sg, i) => lv.decor.push({ type: 'sign', x: 40 + i * 2400, y: 380, w: Font.width(sg) + 10, text: sg }));
+    // 5 fragmentos del multiverso por universo
+    const rr = makeRng(77 + UNIVERSE_ORDER.indexOf(uid));
     const used = new Set();
     let id = 0;
-    while (id < 20 && used.size < all.length) {
+    while (id < 5 && used.size < all.length) {
       const b = all[rr.int(0, all.length - 1)];
       if (used.has(b)) continue;
       used.add(b);
-      const high = rr.chance(0.35);
-      lv.tokens.push({ id: id++, x: b.x + b.w / 2, y: b.y - (high ? rr.int(60, 110) : 14) });
+      lv.tokens.push({ id: uid + ':' + id, idx: UNIVERSE_ORDER.indexOf(uid) * 5 + id, x: b.x + b.w / 2, y: b.y - (rr.chance(0.4) ? rr.int(60, 110) : 14) });
+      id++;
     }
     return lv.build();
   },
 
   mission(n) {
-    const fn = [this.m1, this.m2, this.m3, this.m4, this.m5][n];
+    const fn = [this.m0, this.m1, this.m2, this.m3, this.m4][n];
     return fn.call(this).build();
   },
 
-  // ---------------- Misión 1: Queens ----------------
-  m1() {
-    const lv = new Level({ name: 'Queens', width: 3400, sky: 'sunset', theme: 'city' });
+  // ---------------- Prólogo: Tierra-616 ----------------
+  m0() {
+    const lv = styledLevel('616', { name: 'La grieta', width: 3400 });
     const r = makeRng(101);
     lv.addGround(0, 3400, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3400, 0, 40, 480, 'block', null, false);
+    bounds(lv);
     lv.addBuilding(300, 90, 60, 'brick', 11);
     lv.addBuilding(430, 110, 130, 'brown', 12);
-    roofRun(lv, 600, 1400, r, { wmin: 80, wmax: 130, hmin: 110, hmax: 190, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true });
+    roofRun(lv, 600, 1400, r, { wmin: 80, wmax: 130, hmin: 110, hmax: 190, gmin: 50, gmax: 100, styles: STYLE_SETS.manhattan, ledges: true, billboards: true });
     streetDecor(lv, 0, 3400, r);
-    roofRun(lv, 1900, 2600, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 180, gmin: 40, gmax: 90, styles: STYLE_SETS.queens, ledges: true });
+    roofRun(lv, 1900, 2600, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 180, gmin: 40, gmax: 90, styles: STYLE_SETS.manhattan, ledges: true });
     lv.tips.push({ x: 40, text: 'tip_move' }, { x: 250, text: 'tip_wall' }, { x: 560, text: 'tip_swing' }, { x: 1000, text: 'tip_swing2' },
       { x: 1480, text: 'tip_fight' }, { x: 1560, text: 'tip_sense' }, { x: 1950, text: 'tip_web' }, { x: 2690, text: 'tip_brute' }, { x: 2400, text: 'tip_special' });
     addArena(lv, 1440, 1840, [['thug', 'thug', 'thug'], ['thug', 'gunner', 'thug']]);
-    lv.spawns.push({ type: 'thug', x: 2050, y: 0 }, { type: 'gunner', x: 2300, y: 0 }, { type: 'thug', x: 2450, y: 0 });
+    lv.spawns.push({ type: 'thug', x: 2050 }, { type: 'gunner', x: 2300 }, { type: 'thug', x: 2450 });
     addArena(lv, 2660, 3000, [['bat', 'thug', 'thug'], ['brute', 'thug']]);
-    lv.decor.push({ type: 'car', x: 3100, y: 440, color: '#3a3a3a' });
-    lv.addSolid(2604, 412, 50, 28, 'truck', '#4a6a3a', false);
-    addArena(lv, 3040, 3400, [], { boss: 'shocker' });
+    lv.decor.push({ type: 'rift', x: 3330, y: 330 });
+    addArena(lv, 3040, 3400, [], { boss: 'desconocido0', final: true, escape: 0.5 });
     return lv;
   },
 
-  // ---------------- Misión 2: Almacén de Control de Daños ----------------
-  m2() {
-    const lv = new Level({ name: 'Almacén de Control de Daños', width: 3000, height: 300, groundY: 270, sky: 'night', theme: 'warehouse', indoor: true, anchorMinY: 0, topY: 112 });
+  // ---------------- Tierra-96283 ----------------
+  m1() {
+    const lv = styledLevel('tobey', { name: 'Un gran poder', width: 3700 });
     const r = makeRng(202);
-    lv.addGround(0, 3000, 'floor');
-    lv.addSolid(-40, 0, 40, 300, 'block', null, false);
-    lv.addSolid(3000, 0, 40, 300, 'block', null, false);
-    lv.addSolid(0, 0, 3000, 110, 'ceiling', null, false);
-    for (let x = 60; x < 3000; x += 180) lv.decor.push({ type: 'light', x, y: 110, len: 10 });
-    const crates = (x0, x1) => {
-      for (let x = x0; x < x1; x += r.int(70, 140)) {
-        const w = r.pick([20, 24, 30]), h = r.pick([20, 24, 36, 48]);
-        lv.addSolid(x, 270 - h, w, h, 'crate');
-        if (r.chance(0.4) && h < 40) lv.addSolid(x + 2, 270 - h - 20, 20, 20, 'crate');
-      }
-    };
-    const catwalks = (x0, x1) => {
-      for (let x = x0; x < x1; x += r.int(130, 200)) lv.addOneway(x, r.int(175, 205), r.int(60, 110), 'catwalk');
-    };
-    for (let x = 100; x < 2900; x += r.int(160, 260)) lv.decor.push({ type: 'shelf', x, y: 270, w: r.int(40, 70), h: r.int(60, 110) });
-    crates(120, 640); catwalks(80, 660);
-    lv.decor.push({ type: 'dodc', x: 160, y: 124 });
-    lv.spawns.push({ type: 'thug', x: 380, y: 0 }, { type: 'gunner', x: 560, y: 0 });
-    addArena(lv, 700, 1060, [['thug', 'thug', 'gunner'], ['chitauri', 'thug', 'thug']]);
-    crates(1120, 1640); catwalks(1100, 1660);
-    lv.spawns.push({ type: 'chitauri', x: 1300, y: 0 }, { type: 'thug', x: 1450, y: 0 }, { type: 'gunner', x: 1580, y: 0 });
-    addArena(lv, 1700, 2060, [['brute', 'chitauri'], ['thug', 'thug', 'bat', 'gunner']]);
-    crates(2120, 2520); catwalks(2100, 2540);
-    lv.spawns.push({ type: 'bat', x: 2300, y: 0 }, { type: 'chitauri', x: 2450, y: 0 });
-    lv.decor.push({ type: 'vault', x: 2880, y: 270 });
-    lv.tips.push({ x: 60, text: 'tip_indoor' });
-    addArena(lv, 2600, 3000, [], { boss: 'exo' });
+    lv.addGround(0, 3700, 'street');
+    bounds(lv);
+    roofRun(lv, 150, 1000, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 200, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true, billboards: true, boardText: ['DAILY BUGLE', 'PIZZA DE JOE'] });
+    streetDecor(lv, 0, 3700, r);
+    lv.decor.push({ type: 'sign', x: 60, y: 380, w: 80, text: 'PIZZA DE JOE' });
+    lv.spawns.push({ type: 'thug', x: 500 }, { type: 'gunner', x: 800 });
+    addArena(lv, 1060, 1420, [['thug', 'bat', 'thug'], ['gunner', 'thug', 'bat']]);
+    addArena(lv, 1500, 1900, [], { boss: 'sandman' });
+    roofRun(lv, 1960, 2800, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 200, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true });
+    lv.spawns.push({ type: 'gunner', x: 2300 }, { type: 'thug', x: 2500 });
+    addArena(lv, 2860, 3220, [['brute', 'thug'], ['bat', 'bat', 'gunner']]);
+    addArena(lv, 3280, 3700, [], { boss: 'venom', final: true, canonAfter: 'harry' });
     return lv;
   },
 
-  // ---------------- Misión 3: Puente ----------------
-  m3() {
-    const lv = new Level({ name: 'Puente de Brooklyn', width: 3600, sky: 'dusk', theme: 'bridge', water: 470 });
+  // ---------------- Tierra-120703 ----------------
+  m2() {
+    const lv = styledLevel('andrew', { name: 'Tiempo roto', width: 3900 });
     const r = makeRng(303);
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3600, 0, 40, 480, 'block', null, false);
-    // tablero con huecos destrozados
-    const gaps = [[560, 640], [1450, 1530], [1720, 1800], [2560, 2650]];
-    let x = 0;
-    for (const [g0, g1] of gaps) { lv.addGround(x, g0, 'bridge'); x = g1; }
-    lv.addGround(x, 3600, 'bridge');
-    for (const tx of [400, 1300, 2450, 3050]) lv.addSolid(tx, 130, 40, 310, 'tower');
-    lv.decor.push({ type: 'cable', x: 0, y: 300, x2: 420, y2: 132, sag: 30 });
-    lv.decor.push({ type: 'cable', x: 420, y: 132, x2: 1320, y2: 132, sag: 150 });
-    lv.decor.push({ type: 'cable', x: 1320, y: 132, x2: 2470, y2: 132, sag: 170 });
-    lv.decor.push({ type: 'cable', x: 2470, y: 132, x2: 3070, y2: 132, sag: 120 });
-    lv.decor.push({ type: 'cable', x: 3070, y: 132, x2: 3600, y2: 300, sag: 30 });
-    for (const [tx, col] of [[250, '#8a2a2a'], [760, '#2a5a8a'], [1100, '#5a5a5a'], [2200, '#8a6a2a']]) lv.addSolid(tx, 414, 64, 26, 'truck', col, false);
-    for (let i = 0; i < 8; i++) lv.decor.push({ type: 'car', x: r.int(100, 3500), y: 440, color: r.pick(['#c0a020', '#a02828', '#2a4a8a', '#e8e8e8']), taxi: r.chance(0.4) });
-    lv.addOneway(560, 380, 80, 'scaffold');
-    lv.addOneway(1450, 370, 80, 'scaffold');
-    lv.addOneway(1720, 380, 80, 'scaffold');
-    lv.addOneway(2560, 370, 90, 'scaffold');
-    lv.spawns.push({ type: 'thug', x: 700, y: 0 }, { type: 'gunner', x: 820, y: 0 }, { type: 'drone', x: 1600, y: 360 }, { type: 'thug', x: 1900, y: 0 });
-    addArena(lv, 900, 1260, [['thug', 'gunner', 'thug'], ['chitauri', 'chitauri', 'thug']]);
-    addArena(lv, 1950, 2360, [['drone', 'drone', 'thug', 'thug'], ['brute', 'gunner']]);
-    lv.spawns.push({ type: 'drone', x: 2700, y: 360 }, { type: 'chitauri', x: 2850, y: 0 });
-    lv.tips.push({ x: 60, text: 'tip_water' });
-    addArena(lv, 3140, 3600, [], { boss: 'vulture' });
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.canons.push({ x: 120, id: 'padres' });
+    lv.tips.push({ x: 60, text: 'tip_canon' });
+    roofRun(lv, 250, 1100, r, { wmin: 80, wmax: 140, hmin: 120, hmax: 240, gmin: 50, gmax: 100, styles: STYLE_SETS.andrew, ledges: true, billboards: true, boardText: ['OSCORP', 'ROXXON'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'gunner', x: 700 }, { type: 'thug', x: 900 });
+    addArena(lv, 1160, 1520, [['thug', 'gunner', 'thug'], ['brute', 'gunner']]);
+    addArena(lv, 1600, 2000, [], { boss: 'rino' });
+    lv.canons.push({ x: 2120, id: 'ben' });
+    roofRun(lv, 2200, 3000, r, { wmin: 80, wmax: 140, hmin: 120, hmax: 240, gmin: 50, gmax: 100, styles: STYLE_SETS.andrew, ledges: true });
+    lv.spawns.push({ type: 'drone', x: 2500, y: 330 }, { type: 'gunner', x: 2700 });
+    clockTower(lv, 3060);
+    addArena(lv, 3160, 3520, [['drone', 'gunner', 'thug'], ['brute', 'bat', 'drone']]);
+    addArena(lv, 3520, 3900, [], { boss: 'electro', final: true, canonAfter: 'gwen' });
     return lv;
   },
 
-  // ---------------- Misión 4: Times Square ----------------
-  m4() {
-    const lv = new Level({ name: 'Times Square', width: 3400, sky: 'night', theme: 'times' });
+  // ---------------- Tierra-1610 ----------------
+  m3() {
+    const lv = styledLevel('miles', { name: 'Salto de fe', width: 3900 });
     const r = makeRng(404);
-    lv.addGround(0, 3400, 'street');
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3400, 0, 40, 480, 'block', null, false);
-    roofRun(lv, 150, 950, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    roofRun(lv, 1400, 1950, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    roofRun(lv, 2400, 2900, r, { wmin: 90, wmax: 140, hmin: 130, hmax: 250, gmin: 50, gmax: 100, styles: STYLE_SETS.times, ledges: true, billboards: true });
-    streetDecor(lv, 0, 3400, r);
-    for (let i = 0; i < 6; i++) lv.decor.push({ type: 'billboard', x: 980 + i * 70 + (i > 2 ? 600 : 0), y: 300, w: 56, h: 30, color: NEON[i % NEON.length], text: ['BUGLE.NET', 'MYSTERIO', '¿HÉROE?', 'E.D.I.T.H.', 'DELMAR', 'STARK'][i] });
-    lv.spawns.push({ type: 'drone', x: 500, y: 300 }, { type: 'thug', x: 700, y: 0 }, { type: 'drone', x: 1600, y: 250 }, { type: 'gunner', x: 1700, y: 0 }, { type: 'drone', x: 2600, y: 260 });
-    addArena(lv, 1000, 1360, [['drone', 'drone', 'drone'], ['thug', 'thug', 'drone', 'gunner']]);
-    addArena(lv, 2000, 2360, [['chitauri', 'brute', 'drone'], ['drone', 'drone', 'bat', 'thug']]);
-    lv.tips.push({ x: 60, text: 'tip_illusion' });
-    addArena(lv, 2980, 3400, [], { boss: 'mysterio' });
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_verse' });
+    roofRun(lv, 150, 1000, r, { wmin: 80, wmax: 140, hmin: 110, hmax: 230, gmin: 50, gmax: 100, styles: STYLE_SETS.verse, ledges: true, billboards: true, boardText: ['ALCHEMAX', '¡THWIP!', 'VISIONS'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'thug', x: 600 }, { type: 'drone', x: 900, y: 320 });
+    addArena(lv, 1060, 1420, [['thug', 'thug', 'gunner'], ['drone', 'bat', 'brute']]);
+    addArena(lv, 1500, 1900, [], { boss: 'mancha' });
+    roofRun(lv, 1960, 2900, r, { wmin: 80, wmax: 140, hmin: 110, hmax: 230, gmin: 50, gmax: 100, styles: STYLE_SETS.verse, ledges: true, billboards: true, boardText: ['ALCHEMAX', 'BROOKLYN'] });
+    lv.spawns.push({ type: 'gunner', x: 2300 }, { type: 'drone', x: 2600, y: 320 });
+    addArena(lv, 2960, 3320, [['drone', 'drone', 'thug'], ['brute', 'gunner', 'bat']]);
+    addArena(lv, 3400, 3900, [], { boss: 'miguel', final: true, canonAfter: 'davis' });
     return lv;
   },
 
-  // ---------------- Misión 5: Estatua de la Libertad ----------------
-  m5() {
-    const lv = new Level({ name: 'Isla de la Libertad', width: 3300, sky: 'rift', theme: 'liberty', water: 470 });
+  // ---------------- Universo ¿Y si...? ----------------
+  m4() {
+    const lv = styledLevel('ruina', { name: 'Nada es canon', width: 3700, water: 470 });
     const r = makeRng(505);
-    lv.addSolid(-40, 0, 40, 480, 'block', null, false);
-    lv.addSolid(3300, 0, 40, 480, 'block', null, false);
-    lv.addGround(0, 420, 'stone');
-    lv.decor.push({ type: 'statue', x: 2950, y: 440 });
-    // andamios sobre el agua
-    const pillars = [[480, 330], [620, 290], [760, 350]];
-    for (const [px, py] of pillars) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px - 30, py + 30, 30, 'scaffold'); }
-    lv.addGround(820, 1200, 'stone');
-    const p2 = [[1260, 320], [1380, 260], [1500, 300], [1620, 250], [1740, 330]];
-    for (const [px, py] of p2) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px + 22, py + 40, 34, 'scaffold'); }
-    lv.addGround(1800, 2200, 'stone');
-    const p3 = [[2260, 300], [2400, 260], [2540, 320]];
-    for (const [px, py] of p3) { lv.addSolid(px, py, 22, 480 - py, 'pillar'); lv.addOneway(px - 34, py + 36, 34, 'scaffold'); }
-    lv.addGround(2620, 3300, 'stone');
-    for (let x = 900; x < 3300; x += 700) lv.addSolid(x + 200, 390, 16, 50, 'pillar');
-    lv.spawns.push({ type: 'thug', x: 250, y: 0 }, { type: 'drone', x: 700, y: 250 }, { type: 'drone', x: 1500, y: 200 }, { type: 'chitauri', x: 2000, y: 0 });
-    addArena(lv, 840, 1190, [['thug', 'thug', 'chitauri', 'gunner'], ['brute', 'brute']]);
-    addArena(lv, 1820, 2190, [['drone', 'chitauri', 'chitauri'], ['bat', 'bat', 'brute']]);
-    lv.tips.push({ x: 60, text: 'tip_final' });
-    addArena(lv, 2660, 3300, [], { boss: 'scorpion' });
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_ruin' });
+    lv.addGround(0, 520, 'stone');
+    for (const [px, py] of [[580, 380], [700, 340], [820, 370]]) lv.addOneway(px, py, 60, 'scaffold');
+    lv.addGround(900, 1500, 'stone');
+    roofRun(lv, 960, 1440, r, { wmin: 60, wmax: 110, hmin: 60, hmax: 180, gmin: 70, gmax: 120, styles: STYLE_SETS.ruin, ledges: true });
+    lv.spawns.push({ type: 'zombie', x: 300 }, { type: 'zombie', x: 420 }, { type: 'ultron', x: 1100, y: 300 });
+    for (const [px, py] of [[1560, 370], [1680, 320], [1800, 360], [1920, 310]]) lv.addOneway(px, py, 70, 'scaffold');
+    lv.addGround(2000, 2600, 'stone');
+    addArena(lv, 2040, 2560, [['zombie', 'zombie', 'zombie', 'zombie'], ['ultron', 'zombie', 'brute', 'ultron']]);
+    for (const [px, py] of [[2660, 360], [2790, 330]]) lv.addOneway(px, py, 70, 'scaffold');
+    lv.addGround(2900, 3700, 'stone');
+    lv.decor.push({ type: 'rift', x: 3620, y: 300 });
+    addArena(lv, 3000, 3700, [], { boss: 'desconocido4', final: true });
     return lv;
   },
 };

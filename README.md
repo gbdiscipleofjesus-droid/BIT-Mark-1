@@ -1,6 +1,6 @@
-# Spider-Man: Ecos de Nueva York
+# Spider-Man: Rompecánones
 
-Videojuego de fans **no oficial** en pixel art (estilo 16-bit) para el navegador. Mezcla **plataformas**, **beat 'em up** y **mundo abierto**, con una historia original ambientada en el MCU seis meses después de *Spider-Man: No Way Home*.
+Videojuego de fans **no oficial** en pixel art **2.5D** para el navegador. Mezcla **plataformas**, **beat 'em up** y **mundo abierto**, con una historia original ambientada entre *Spider-Man: Brand New Day* y la llegada de Doctor Doom.
 
 > Juego de fans sin fines de lucro. Spider-Man y todos sus personajes son propiedad de Marvel.
 
@@ -13,17 +13,20 @@ La partida se guarda sola en el navegador.
 
 ## Historia
 
-Nadie recuerda a Peter Parker. Mac Gargan y el Hojalatero asaltan el almacén de Control de Daños y roban la tecnología del Buitre, los drones de Mysterio, armas chitauri y **un fragmento del hechizo de Doctor Strange** que podría reabrir el multiverso.
+Una grieta se abre en el cielo de la Tierra-616 y un Spider-Man con el traje quemado, **El Desconocido**, roba un dispositivo y huye entre universos. Peter lo persigue por cuatro mundos. En cada uno puede **romper un evento canónico** para salvar a alguien que siempre muere, pero cada canon roto agrieta el multiverso y acerca a Doom.
 
-| Misión | Lugar | Jefe |
-|---|---|---|
-| 1. Tu amigable vecino | Queens | Shocker |
-| 2. Control de Daños | Almacén del Muelle 7 | Exo-Matón |
-| 3. Alas de acero | Puente de Brooklyn | Buitre Mk II |
-| 4. Nada es lo que parece | Times Square | Mysterio (drones) |
-| 5. El Escorpión | Isla de la Libertad | Escorpión |
+| Capítulo | Universo | Jefes | Evento canónico |
+|---|---|---|---|
+| Prólogo: La grieta | Tierra-616 | El Desconocido | — |
+| 1. Un gran poder | Tierra-96283 (Tobey) | Hombre de Arena, Venom | Harry Osborn |
+| 2. Tiempo roto | Tierra-120703 (Andrew) | Rino, Electro | Sus padres, el tío Ben y Gwen |
+| 3. Salto de fe | Tierra-1610 (Miles y Gwen) | La Mancha, Miguel O'Hara | El capitán Davis |
+| 4. Nada es canon | Universo ¿Y si...? | ??? | La última decisión |
 
-Entre misiones, Nueva York es libre: crímenes aleatorios (atracos, persecuciones, civiles en peligro, drones), 20 piezas de tecnología Stark ocultas, un taller con 5 mejoras y 6 trajes desbloqueables. J. Jonah Jameson opina de todo por la radio.
+- **Tres finales:** feliz, triste y neutro (pero triste). Dependen de cuántos cánones rompas y de lo que elijas al final.
+- **Mundo abierto:** cada universo es una ciudad libre con su propio estilo, crímenes aleatorios y 5 fragmentos con frases con significado (25 en total). Desde el menú de pausa se puede viajar entre los universos ya visitados.
+- **Más contenido:** taller con 5 mejoras y 11 trajes.
+- **Música:** la de los créditos es original. En Opciones puedes cargar tu propia canción (MP3) para que suene en los créditos.
 
 ## Controles
 
@@ -48,7 +51,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 
 ```
 index.html        página principal (carga los scripts de js/)
-js/               motor y juego: entrada, audio sintetizado, gráficos, niveles, jugador, enemigos, historia, interfaz
+js/               motor y juego: entrada, audio sintetizado, gráficos 2.5D, niveles, jugador, enemigos, historia, interfaz
 tools/build.mjs   genera dist/spiderman.html (todo en un archivo)
 tests/            pruebas automáticas con Playwright
 ```
@@ -60,7 +63,7 @@ Todo (gráficos, música y efectos) se genera por código: no hay imágenes ni a
 ```
 node tools/build.mjs          # genera dist/spiderman.html
 node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y menús buscando errores
-node tests/combat.mjs         # un bot derrota a los 5 jefes jugando
+node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
 node tests/rebind.mjs         # reasignación de teclado y mando
 ```
