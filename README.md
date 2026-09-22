@@ -48,6 +48,19 @@ can generate. Until it's placed and its scores are measured on real
 audio, `BIT_WAKE_THRESHOLD` stays unset and the wake word never
 auto-triggers — by design, not as a bug.
 
+**2026-09-22 update:** a "Hey BIT" model is now also being trained on
+microWakeWord's own official page — hardware for the real board arrives
+2026-09-25, demo target 2026-10-15. microWakeWord runs **on the ESP32**
+(TFLite Micro), not Hub-side like openWakeWord, which conflicts with
+this project's own "wake word lives in the Hub" ground rule below. That
+architecture question is genuinely open, but not resolved yet: no
+`.tflite` file exists to test, and no hardware exists yet to test it on
+either. The Hub-side openWakeWord path above stays the live plan for
+now; see `bit_hub/backend/models/wake/README.md`'s new note for exactly
+what would have to change (firmware on-device inference + a new
+`wake_detected` protocol message) if/when a trained microWakeWord model
+actually needs wiring in. `force_listen` keeps standing in either way.
+
 ### Phase 8 — verified working end-to-end, jumped ahead of Phase 7 on purpose
 
 Normally Phase 8 waits for Phase 7 to close, but wake word training is
