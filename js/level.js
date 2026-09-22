@@ -202,8 +202,10 @@ class Level {
       }
     }
     // decoración trasera
+    const streetDecor = [];
     for (const d of this.decor) {
       if (d.x + (d.w || 200) < x0 || d.x - 200 > x1) continue;
+      if (d.y === this.groundY && STREET_DECOR.has(d.type)) { streetDecor.push(d); continue; }
       drawDecor(ctx, d, cx, cy, t, this);
     }
     const vis = this.near(x0, x1);
@@ -232,6 +234,14 @@ class Level {
         drawBlock(ctx, s, sx, sy, this);
       }
     }
+    // franja de profundidad de la calle (por donde se camina con arriba/abajo)
+    for (const s of vis) {
+      if (s.kind !== 'ground') continue;
+      const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
+      if (sx > W + 40 || sx + s.w < -40 || sy - STREET_D > H) continue;
+      drawStreetBand(ctx, s, sx, sy, cx);
+    }
+    for (const d of streetDecor) drawDecor(ctx, d, cx, cy + STREET_D - 2, t, this);
   }
 
   // Sombra en el suelo bajo un personaje (efecto de profundidad)
@@ -286,20 +296,6 @@ function drawExtrusion(ctx, s, sx, sy, lv, cx) {
     top = s.topCol || (s.topCol = shade(st.ledge, -0.35));
     h = s.vis;
   } else if (s.kind === 'ground') {
-    if (sy <= VP.y) return;
-    const x1 = Math.max(sx, -60), x2 = Math.min(sx + s.w, W + 60);
-    const [a, b] = backPt(x1, sy), [c, d] = backPt(x2, sy);
-    poly(ctx, GROUND_TOP[s.style] || '#3c3c46', [x1, sy, x2, sy, c, d, a, b]);
-    if (s.style === 'street') {
-      // líneas de carril en perspectiva
-      ctx.fillStyle = '#b8a840';
-      const off = Math.floor(s.x + cx) % 1;
-      for (let wx = Math.floor((cx + x1) / 40) * 40; wx < cx + x2; wx += 40) {
-        const px = wx - cx - off;
-        const [p1, q1] = backPt(px, sy, DEPTH * 0.55), [p2] = backPt(px + 18, sy, DEPTH * 0.55);
-        ctx.fillRect(Math.round(p1), Math.round(q1), Math.max(1, Math.round(p2 - p1)), 1);
-      }
-    }
     return;
   } else {
     const c = EXT_COLS[s.kind] || ['#3a3e48', '#6a7280'];
@@ -320,16 +316,52 @@ function drawExtrusion(ctx, s, sx, sy, lv, cx) {
   }
 }
 
+const STREET_D = DEPTH_MAX + 6;
+const STREET_DECOR = new Set(['car', 'lamp', 'hydrant']);
+const BAND_COLS = {
+  street: { back: '#8a8a94', mid: '#46464f', line: '#c8b440', front: '#5a5a64' },
+  bridge: { back: '#7a8088', mid: '#4a4e56', line: '#d0d0d8', front: '#5a5e66' },
+  stone: { back: '#8a8672', mid: '#5e5a4a', line: '#4a4638', front: '#6e6a58' },
+  floor: { back: '#6a6e76', mid: '#3a3e46', line: '#e0b020', front: '#4a4e56' },
+};
+function drawStreetBand(ctx, s, sx, sy, cx) {
+  const c = BAND_COLS[s.style] || BAND_COLS.street;
+  const x1 = Math.max(sx, -80), x2 = Math.min(sx + s.w, W + 80);
+  const top = sy - STREET_D;
+  const k = 0.10;
+  const tx1 = x1 + (VP.x - x1) * k, tx2 = x2 + (VP.x - x2) * k;
+  // cuerpo de la calle
+  poly(ctx, c.mid, [x1, sy, x2, sy, tx2, top, tx1, top]);
+  // acera del fondo
+  const sw = 5;
+  const bx1 = x1 + (VP.x - x1) * k * (1 - sw / STREET_D), bx2 = x2 + (VP.x - x2) * k * (1 - sw / STREET_D);
+  poly(ctx, c.back, [bx1, top + sw, bx2, top + sw, tx2, top, tx1, top]);
+  ctx.fillStyle = shade(c.back, -0.25);
+  ctx.fillRect(Math.round(Math.min(bx1, bx2)), top + sw, Math.round(Math.abs(bx2 - bx1)), 1);
+  // líneas del carril en el centro
+  if (s.style !== 'stone') {
+    const ly = Math.round(sy - STREET_D * 0.45);
+    ctx.fillStyle = c.line;
+    const step = 32, off = ((Math.floor(cx) % step) + step) % step;
+    for (let x = x1 - off; x < x2; x += step) {
+      const lx = x + (VP.x - x) * k * 0.45;
+      ctx.fillRect(Math.round(lx), ly, 14, 1);
+    }
+  } else {
+    ctx.fillStyle = c.line;
+    for (let x = x1 - ((Math.floor(cx) % 24) + 24) % 24; x < x2; x += 24) ctx.fillRect(Math.round(x + (VP.x - x) * k * 0.5), Math.round(sy - STREET_D * 0.5), 1, 6);
+  }
+  // borde frontal (bordillo)
+  ctx.fillStyle = c.front; ctx.fillRect(x1, sy - 2, x2 - x1, 2);
+}
+
 function drawGround(ctx, s, sx, sy, lv, cx) {
   const type = s.style;
   const w = s.w, h = H;
   if (type === 'street') {
     ctx.fillStyle = '#9a9aa2'; ctx.fillRect(sx, sy, w, 4);
     ctx.fillStyle = '#6a6a72'; ctx.fillRect(sx, sy + 4, w, 2);
-    ctx.fillStyle = '#34343c'; ctx.fillRect(sx, sy + 6, w, h);
-    ctx.fillStyle = '#d8c850';
-    const off = Math.floor(s.x) % 32;
-    for (let xx = -off; xx < w; xx += 32) if (sx + xx > -20 && sx + xx < W) ctx.fillRect(sx + xx, sy + 20, 14, 2);
+    ctx.fillStyle = '#2a2a32'; ctx.fillRect(sx, sy + 6, w, h);
   } else if (type === 'floor') {
     ctx.fillStyle = '#5a5e66'; ctx.fillRect(sx, sy, w, 3);
     ctx.fillStyle = '#3a3e46'; ctx.fillRect(sx, sy + 3, w, h);

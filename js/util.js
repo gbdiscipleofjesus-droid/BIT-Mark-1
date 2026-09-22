@@ -4,6 +4,9 @@
 // ---------------------------------------------------------------------------
 const W = 384, H = 216;
 const TAU = Math.PI * 2;
+const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
+const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
+function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function lerp(a, b, t) { return a + (b - a) * t; }

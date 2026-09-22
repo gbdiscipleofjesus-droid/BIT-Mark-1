@@ -18,27 +18,33 @@ const CHORDS = {
 
 // Pistas originales. lead: "nota:duración" en semicorcheas; '.' = silencio
 const TRACKS = {
+  // Temas heroicos originales con aire de dibujo animado arácnido de los 60:
+  // metales (brass), acordes de golpe (stabs) y bajo caminante (walk).
   title: {
-    bpm: 112, chords: ['Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'Gm', 'A'],
-    bass: 'x...x.x.x...x.x.', arp: true, drums: { k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.' },
-    lead: 'D5:4 F5:2 A5:6 G5:2 F5:2 | F5:4 D5:2 Bb4:6 C5:4 | E5:4 G5:2 C6:6 Bb5:2 A5:2 | A5:12 .:4 | ' +
-      'D5:4 F5:2 A5:6 D6:4 | D6:2 C6:2 Bb5:4 F5:8 | G5:4 Bb5:4 D6:4 C6:2 Bb5:2 | A5:8 C#5:4 E5:4',
+    bpm: 138, lead2: 'brass', walk: true, stabs: '..x...x...x..x..',
+    chords: ['Em', 'Em', 'C', 'B', 'Em', 'Em', 'Am', 'B'],
+    drums: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.xx' },
+    lead: 'E5:3 G5:1 B5:4 A#5:2 A5:2 G5:4 | E5:2 F#5:2 G5:2 A5:2 B5:8 | C6:3 B5:1 A5:4 G5:2 F#5:2 E5:4 | D#5:4 F#5:4 B5:8 | ' +
+      'E5:3 G5:1 B5:4 D6:4 C#6:2 C6:2 | B5:4 G5:4 E5:8 | A5:3 C6:1 E6:4 D6:2 C6:2 B5:2 A5:2 | B5:4 D#6:4 E6:8',
   },
   city: {
-    bpm: 132, chords: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am', 'D'],
-    bass: 'x..x..x.x..x..x.', arp: false, drums: { k: 'x...x...x...x...', s: '....x.......x..x', h: 'x.x.x.x.x.x.x.x.' },
-    lead: 'B4:2 D5:2 G5:4 F#5:2 G5:2 A5:4 | G5:2 E5:2 B4:4 .:4 E5:4 | C5:2 E5:2 G5:4 A5:2 G5:2 E5:4 | F#5:6 A5:2 D5:8 | ' +
-      'B4:2 D5:2 G5:4 B5:4 A5:4 | G5:2 E5:2 G5:4 B5:8 | A5:2 C6:2 E5:4 D5:2 C5:2 A4:4 | D5:4 F#5:4 A5:8',
+    bpm: 144, lead2: 'brass', walk: true, stabs: '...x...x...x..x.',
+    chords: ['Gm', 'Gm', 'Eb', 'D', 'Gm', 'Gm', 'Cm', 'D'],
+    drums: { k: 'x.......x.......', s: '....x.......x..x', h: 'x..xx..xx..xx..x' },
+    lead: 'G4:2 A#4:2 D5:2 G5:4 F#5:2 G5:2 D5:2 | D#5:4 D5:4 A#4:8 | G4:2 A#4:2 D5:2 G5:2 A#5:4 A5:2 G5:2 | F#5:8 D5:8 | ' +
+      'G5:2 G5:2 F5:2 D#5:2 D5:4 A#4:4 | C5:2 D5:2 D#5:4 G5:8 | C6:3 A#5:1 A5:4 G5:2 F#5:2 D#5:4 | D5:4 F#5:4 A5:8',
   },
   action: {
-    bpm: 142, chords: ['Em', 'C', 'D', 'Bm', 'Em', 'C', 'Am', 'B'],
-    bass: 'x.xx.xx.x.xx.xx.', arp: true, drums: { k: 'x..x..x.x..x..x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
-    lead: 'E5:2 .:2 E5:2 G5:2 B5:4 A5:4 | G5:4 E5:4 C5:8 | D5:2 .:2 D5:2 F#5:2 A5:4 G5:4 | F#5:8 B4:8 | ' +
-      'E5:2 G5:2 B5:4 E6:4 D6:4 | C6:4 B5:4 G5:8 | A5:4 C6:4 E5:4 A5:4 | B5:6 A5:2 G5:4 F#5:4',
+    bpm: 152, lead2: 'brass', walk: true, stabs: 'x..x..x...x..x..', arp: true,
+    chords: ['Am', 'Am', 'F', 'E', 'Am', 'Am', 'Dm', 'E'],
+    drums: { k: 'x..x..x.x..x..x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+    lead: 'A4:2 C5:2 E5:2 A5:2 G#5:2 A5:2 B5:2 C6:2 | B5:4 A5:4 E5:8 | F5:2 A5:2 C6:2 F6:2 E6:2 D6:2 C6:2 A5:2 | G#5:8 E5:4 B4:4 | ' +
+      'A5:3 A5:1 C6:2 A5:2 E5:4 A4:4 | C5:2 D5:2 E5:4 A5:8 | D6:3 C6:1 A5:2 F5:2 D5:4 F5:4 | E5:4 G#5:4 B5:4 E6:4',
   },
   boss: {
-    bpm: 156, chords: ['Cm', 'Cm', 'Ab', 'Bb', 'Cm', 'Cm', 'Fm', 'G'],
-    bass: 'xxxxxxxxxxxxxxxx', arp: true, drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'x.xxx.xxx.xxx.xx' },
+    bpm: 160, lead2: 'brass', stabs: 'x.x...x.x...x.x.', arp: true, bass: 'xxxxxxxxxxxxxxxx',
+    chords: ['Cm', 'Cm', 'Ab', 'Bb', 'Cm', 'Cm', 'Fm', 'G'],
+    drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'x.xxx.xxx.xxx.xx' },
     lead: 'C5:2 Eb5:2 G5:2 C6:2 B5:4 G5:4 | C6:2 Bb5:2 Ab5:2 G5:2 Eb5:8 | Ab5:4 G5:4 F5:4 Eb5:4 | F5:4 G5:4 Bb5:8 | ' +
       'C6:2 .:2 C6:2 Eb6:2 D6:4 C6:4 | G5:8 Eb5:8 | F5:4 Ab5:4 C6:4 Ab5:4 | B5:8 D6:4 G5:4',
   },
@@ -204,8 +210,23 @@ const Audio2 = {
     const chord = CHORDS[def.chords[bar]] || CHORDS.C;
     const sd = t.stepDur;
     const ln = t.lead[step];
-    if (ln) this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
-    if (def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
+    if (ln) {
+      if (def.lead2 === 'brass') {
+        // metales: sierra brillante + cuadrada una octava abajo
+        this.tone('sawtooth', ln.f, time, ln.d * sd * 0.9, 0.065, this.musicGain, 0.012);
+        this.tone('square', ln.f / 2, time, ln.d * sd * 0.9, 0.04, this.musicGain, 0.012);
+      } else this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
+    }
+    if (def.walk) {
+      // bajo caminante: una nota del acorde por pulso
+      if (s % 4 === 0) {
+        const n = chord[[0, 1, 2, 1][s / 4 % 4]];
+        this.tone('triangle', noteFreq(n + '2'), time, sd * 3.2, 0.34, this.musicGain, 0.01);
+      }
+    } else if (def.bass && def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
+    if (def.stabs && def.stabs[s] === 'x') {
+      for (const n of chord) this.tone('sawtooth', noteFreq(n + '4'), time, sd * 0.8, 0.022, this.musicGain, 0.004);
+    }
     if (def.harp) {
       const idx = def.arpPattern[s % def.arpPattern.length];
       const oct = s % 4 === 3 ? '5' : '4';

@@ -34,7 +34,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 
 | Acción | Teclado | Mando (posición Xbox) |
 |---|---|---|
-| Moverse | Flechas / WASD | Stick izquierdo / cruceta |
+| Moverse (en la calle, arriba/abajo = fondo/frente) | Flechas / WASD | Stick izquierdo / cruceta |
 | Saltar (doble salto) | Espacio / Z / K | A |
 | Golpear (combos) | X / J | X |
 | Balancearse (mantener) | C / L | RB / RT |
@@ -45,7 +45,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.
 - **Táctil:** en el móvil aparecen joystick y botones en pantalla.
-- **Trucos:** Arriba + Golpear lanza al enemigo al aire. Abajo + Golpear en el aire es una patada en picado. Cuando aparecen líneas sobre la cabeza (el hormigueo), esquiva.
+- **Trucos:** en la calle te mueves en profundidad como en *Maximum Carnage*: solo golpeas (y te golpean) si estáis a la misma altura. En tejados, Arriba + Golpear lanza al enemigo al aire. Abajo + Golpear en el aire es una patada en picado. Cuando aparecen líneas sobre la cabeza (el hormigueo), esquiva.
 
 ## Estructura
 

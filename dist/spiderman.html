@@ -20,6 +20,9 @@
 // ---------------------------------------------------------------------------
 const W = 384, H = 216;
 const TAU = Math.PI * 2;
+const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
+const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
+function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -247,27 +250,33 @@ const CHORDS = {
 
 // Pistas originales. lead: "nota:duración" en semicorcheas; '.' = silencio
 const TRACKS = {
+  // Temas heroicos originales con aire de dibujo animado arácnido de los 60:
+  // metales (brass), acordes de golpe (stabs) y bajo caminante (walk).
   title: {
-    bpm: 112, chords: ['Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'Gm', 'A'],
-    bass: 'x...x.x.x...x.x.', arp: true, drums: { k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.' },
-    lead: 'D5:4 F5:2 A5:6 G5:2 F5:2 | F5:4 D5:2 Bb4:6 C5:4 | E5:4 G5:2 C6:6 Bb5:2 A5:2 | A5:12 .:4 | ' +
-      'D5:4 F5:2 A5:6 D6:4 | D6:2 C6:2 Bb5:4 F5:8 | G5:4 Bb5:4 D6:4 C6:2 Bb5:2 | A5:8 C#5:4 E5:4',
+    bpm: 138, lead2: 'brass', walk: true, stabs: '..x...x...x..x..',
+    chords: ['Em', 'Em', 'C', 'B', 'Em', 'Em', 'Am', 'B'],
+    drums: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.xx' },
+    lead: 'E5:3 G5:1 B5:4 A#5:2 A5:2 G5:4 | E5:2 F#5:2 G5:2 A5:2 B5:8 | C6:3 B5:1 A5:4 G5:2 F#5:2 E5:4 | D#5:4 F#5:4 B5:8 | ' +
+      'E5:3 G5:1 B5:4 D6:4 C#6:2 C6:2 | B5:4 G5:4 E5:8 | A5:3 C6:1 E6:4 D6:2 C6:2 B5:2 A5:2 | B5:4 D#6:4 E6:8',
   },
   city: {
-    bpm: 132, chords: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am', 'D'],
-    bass: 'x..x..x.x..x..x.', arp: false, drums: { k: 'x...x...x...x...', s: '....x.......x..x', h: 'x.x.x.x.x.x.x.x.' },
-    lead: 'B4:2 D5:2 G5:4 F#5:2 G5:2 A5:4 | G5:2 E5:2 B4:4 .:4 E5:4 | C5:2 E5:2 G5:4 A5:2 G5:2 E5:4 | F#5:6 A5:2 D5:8 | ' +
-      'B4:2 D5:2 G5:4 B5:4 A5:4 | G5:2 E5:2 G5:4 B5:8 | A5:2 C6:2 E5:4 D5:2 C5:2 A4:4 | D5:4 F#5:4 A5:8',
+    bpm: 144, lead2: 'brass', walk: true, stabs: '...x...x...x..x.',
+    chords: ['Gm', 'Gm', 'Eb', 'D', 'Gm', 'Gm', 'Cm', 'D'],
+    drums: { k: 'x.......x.......', s: '....x.......x..x', h: 'x..xx..xx..xx..x' },
+    lead: 'G4:2 A#4:2 D5:2 G5:4 F#5:2 G5:2 D5:2 | D#5:4 D5:4 A#4:8 | G4:2 A#4:2 D5:2 G5:2 A#5:4 A5:2 G5:2 | F#5:8 D5:8 | ' +
+      'G5:2 G5:2 F5:2 D#5:2 D5:4 A#4:4 | C5:2 D5:2 D#5:4 G5:8 | C6:3 A#5:1 A5:4 G5:2 F#5:2 D#5:4 | D5:4 F#5:4 A5:8',
   },
   action: {
-    bpm: 142, chords: ['Em', 'C', 'D', 'Bm', 'Em', 'C', 'Am', 'B'],
-    bass: 'x.xx.xx.x.xx.xx.', arp: true, drums: { k: 'x..x..x.x..x..x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
-    lead: 'E5:2 .:2 E5:2 G5:2 B5:4 A5:4 | G5:4 E5:4 C5:8 | D5:2 .:2 D5:2 F#5:2 A5:4 G5:4 | F#5:8 B4:8 | ' +
-      'E5:2 G5:2 B5:4 E6:4 D6:4 | C6:4 B5:4 G5:8 | A5:4 C6:4 E5:4 A5:4 | B5:6 A5:2 G5:4 F#5:4',
+    bpm: 152, lead2: 'brass', walk: true, stabs: 'x..x..x...x..x..', arp: true,
+    chords: ['Am', 'Am', 'F', 'E', 'Am', 'Am', 'Dm', 'E'],
+    drums: { k: 'x..x..x.x..x..x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+    lead: 'A4:2 C5:2 E5:2 A5:2 G#5:2 A5:2 B5:2 C6:2 | B5:4 A5:4 E5:8 | F5:2 A5:2 C6:2 F6:2 E6:2 D6:2 C6:2 A5:2 | G#5:8 E5:4 B4:4 | ' +
+      'A5:3 A5:1 C6:2 A5:2 E5:4 A4:4 | C5:2 D5:2 E5:4 A5:8 | D6:3 C6:1 A5:2 F5:2 D5:4 F5:4 | E5:4 G#5:4 B5:4 E6:4',
   },
   boss: {
-    bpm: 156, chords: ['Cm', 'Cm', 'Ab', 'Bb', 'Cm', 'Cm', 'Fm', 'G'],
-    bass: 'xxxxxxxxxxxxxxxx', arp: true, drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'x.xxx.xxx.xxx.xx' },
+    bpm: 160, lead2: 'brass', stabs: 'x.x...x.x...x.x.', arp: true, bass: 'xxxxxxxxxxxxxxxx',
+    chords: ['Cm', 'Cm', 'Ab', 'Bb', 'Cm', 'Cm', 'Fm', 'G'],
+    drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'x.xxx.xxx.xxx.xx' },
     lead: 'C5:2 Eb5:2 G5:2 C6:2 B5:4 G5:4 | C6:2 Bb5:2 Ab5:2 G5:2 Eb5:8 | Ab5:4 G5:4 F5:4 Eb5:4 | F5:4 G5:4 Bb5:8 | ' +
       'C6:2 .:2 C6:2 Eb6:2 D6:4 C6:4 | G5:8 Eb5:8 | F5:4 Ab5:4 C6:4 Ab5:4 | B5:8 D6:4 G5:4',
   },
@@ -433,8 +442,23 @@ const Audio2 = {
     const chord = CHORDS[def.chords[bar]] || CHORDS.C;
     const sd = t.stepDur;
     const ln = t.lead[step];
-    if (ln) this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
-    if (def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
+    if (ln) {
+      if (def.lead2 === 'brass') {
+        // metales: sierra brillante + cuadrada una octava abajo
+        this.tone('sawtooth', ln.f, time, ln.d * sd * 0.9, 0.065, this.musicGain, 0.012);
+        this.tone('square', ln.f / 2, time, ln.d * sd * 0.9, 0.04, this.musicGain, 0.012);
+      } else this.tone('square', ln.f, time, ln.d * sd * 0.92, 0.1, this.musicGain, 0.02);
+    }
+    if (def.walk) {
+      // bajo caminante: una nota del acorde por pulso
+      if (s % 4 === 0) {
+        const n = chord[[0, 1, 2, 1][s / 4 % 4]];
+        this.tone('triangle', noteFreq(n + '2'), time, sd * 3.2, 0.34, this.musicGain, 0.01);
+      }
+    } else if (def.bass && def.bass[s] === 'x') this.tone('triangle', noteFreq(chord[0] + '2'), time, sd * 1.6, 0.32, this.musicGain, 0.01);
+    if (def.stabs && def.stabs[s] === 'x') {
+      for (const n of chord) this.tone('sawtooth', noteFreq(n + '4'), time, sd * 0.8, 0.022, this.musicGain, 0.004);
+    }
     if (def.harp) {
       const idx = def.arpPattern[s % def.arpPattern.length];
       const oct = s % 4 === 3 ? '5' : '4';
@@ -1775,8 +1799,10 @@ class Level {
       }
     }
     // decoración trasera
+    const streetDecor = [];
     for (const d of this.decor) {
       if (d.x + (d.w || 200) < x0 || d.x - 200 > x1) continue;
+      if (d.y === this.groundY && STREET_DECOR.has(d.type)) { streetDecor.push(d); continue; }
       drawDecor(ctx, d, cx, cy, t, this);
     }
     const vis = this.near(x0, x1);
@@ -1805,6 +1831,14 @@ class Level {
         drawBlock(ctx, s, sx, sy, this);
       }
     }
+    // franja de profundidad de la calle (por donde se camina con arriba/abajo)
+    for (const s of vis) {
+      if (s.kind !== 'ground') continue;
+      const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
+      if (sx > W + 40 || sx + s.w < -40 || sy - STREET_D > H) continue;
+      drawStreetBand(ctx, s, sx, sy, cx);
+    }
+    for (const d of streetDecor) drawDecor(ctx, d, cx, cy + STREET_D - 2, t, this);
   }
 
   // Sombra en el suelo bajo un personaje (efecto de profundidad)
@@ -1859,20 +1893,6 @@ function drawExtrusion(ctx, s, sx, sy, lv, cx) {
     top = s.topCol || (s.topCol = shade(st.ledge, -0.35));
     h = s.vis;
   } else if (s.kind === 'ground') {
-    if (sy <= VP.y) return;
-    const x1 = Math.max(sx, -60), x2 = Math.min(sx + s.w, W + 60);
-    const [a, b] = backPt(x1, sy), [c, d] = backPt(x2, sy);
-    poly(ctx, GROUND_TOP[s.style] || '#3c3c46', [x1, sy, x2, sy, c, d, a, b]);
-    if (s.style === 'street') {
-      // líneas de carril en perspectiva
-      ctx.fillStyle = '#b8a840';
-      const off = Math.floor(s.x + cx) % 1;
-      for (let wx = Math.floor((cx + x1) / 40) * 40; wx < cx + x2; wx += 40) {
-        const px = wx - cx - off;
-        const [p1, q1] = backPt(px, sy, DEPTH * 0.55), [p2] = backPt(px + 18, sy, DEPTH * 0.55);
-        ctx.fillRect(Math.round(p1), Math.round(q1), Math.max(1, Math.round(p2 - p1)), 1);
-      }
-    }
     return;
   } else {
     const c = EXT_COLS[s.kind] || ['#3a3e48', '#6a7280'];
@@ -1893,16 +1913,52 @@ function drawExtrusion(ctx, s, sx, sy, lv, cx) {
   }
 }
 
+const STREET_D = DEPTH_MAX + 6;
+const STREET_DECOR = new Set(['car', 'lamp', 'hydrant']);
+const BAND_COLS = {
+  street: { back: '#8a8a94', mid: '#46464f', line: '#c8b440', front: '#5a5a64' },
+  bridge: { back: '#7a8088', mid: '#4a4e56', line: '#d0d0d8', front: '#5a5e66' },
+  stone: { back: '#8a8672', mid: '#5e5a4a', line: '#4a4638', front: '#6e6a58' },
+  floor: { back: '#6a6e76', mid: '#3a3e46', line: '#e0b020', front: '#4a4e56' },
+};
+function drawStreetBand(ctx, s, sx, sy, cx) {
+  const c = BAND_COLS[s.style] || BAND_COLS.street;
+  const x1 = Math.max(sx, -80), x2 = Math.min(sx + s.w, W + 80);
+  const top = sy - STREET_D;
+  const k = 0.10;
+  const tx1 = x1 + (VP.x - x1) * k, tx2 = x2 + (VP.x - x2) * k;
+  // cuerpo de la calle
+  poly(ctx, c.mid, [x1, sy, x2, sy, tx2, top, tx1, top]);
+  // acera del fondo
+  const sw = 5;
+  const bx1 = x1 + (VP.x - x1) * k * (1 - sw / STREET_D), bx2 = x2 + (VP.x - x2) * k * (1 - sw / STREET_D);
+  poly(ctx, c.back, [bx1, top + sw, bx2, top + sw, tx2, top, tx1, top]);
+  ctx.fillStyle = shade(c.back, -0.25);
+  ctx.fillRect(Math.round(Math.min(bx1, bx2)), top + sw, Math.round(Math.abs(bx2 - bx1)), 1);
+  // líneas del carril en el centro
+  if (s.style !== 'stone') {
+    const ly = Math.round(sy - STREET_D * 0.45);
+    ctx.fillStyle = c.line;
+    const step = 32, off = ((Math.floor(cx) % step) + step) % step;
+    for (let x = x1 - off; x < x2; x += step) {
+      const lx = x + (VP.x - x) * k * 0.45;
+      ctx.fillRect(Math.round(lx), ly, 14, 1);
+    }
+  } else {
+    ctx.fillStyle = c.line;
+    for (let x = x1 - ((Math.floor(cx) % 24) + 24) % 24; x < x2; x += 24) ctx.fillRect(Math.round(x + (VP.x - x) * k * 0.5), Math.round(sy - STREET_D * 0.5), 1, 6);
+  }
+  // borde frontal (bordillo)
+  ctx.fillStyle = c.front; ctx.fillRect(x1, sy - 2, x2 - x1, 2);
+}
+
 function drawGround(ctx, s, sx, sy, lv, cx) {
   const type = s.style;
   const w = s.w, h = H;
   if (type === 'street') {
     ctx.fillStyle = '#9a9aa2'; ctx.fillRect(sx, sy, w, 4);
     ctx.fillStyle = '#6a6a72'; ctx.fillRect(sx, sy + 4, w, 2);
-    ctx.fillStyle = '#34343c'; ctx.fillRect(sx, sy + 6, w, h);
-    ctx.fillStyle = '#d8c850';
-    const off = Math.floor(s.x) % 32;
-    for (let xx = -off; xx < w; xx += 32) if (sx + xx > -20 && sx + xx < W) ctx.fillRect(sx + xx, sy + 20, 14, 2);
+    ctx.fillStyle = '#2a2a32'; ctx.fillRect(sx, sy + 6, w, h);
   } else if (type === 'floor') {
     ctx.fillStyle = '#5a5e66'; ctx.fillRect(sx, sy, w, 3);
     ctx.fillStyle = '#3a3e46'; ctx.fillRect(sx, sy + 3, w, h);
@@ -2379,7 +2435,7 @@ const ATK = {
 class Player {
   constructor(x, y) {
     this.w = 10; this.h = 22;
-    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.z = 0;
     this.facing = 1; this.state = 'normal'; this.st = 0;
     this.onGround = false; this.anim = 0; this.runPhase = 0;
     this.attack = null; this.comboNext = null; this.comboT = 0; this.queued = false;
@@ -2534,6 +2590,8 @@ class Player {
     // ---- ataques activos ----
     if (this.attack) this.updAttack(dt, world);
 
+    // ---- profundidad: solo en la calle; en tejados, paredes y balanceo vuelve al frente ----
+    if (this.state === 'wall' || this.state === 'swing' || (this.onGround && !onStreet(this))) this.z = approach(this.z, 0, 160 * dt);
     // ---- aterrizaje ----
     if (this.onGround && !this.wasGround) {
       if (this.vyBefore > 250) { Audio2.sfx('land'); world.particles.dust(this.cx, this.feet, 4); this.landT = 0.1; }
@@ -2555,6 +2613,12 @@ class Player {
   updNormal(dt, world, ix, U, Dn, pr) {
     const lv = world.level;
     const control = this.lockT <= 0 && !(this.attack && this.onGround);
+    // moverse hacia el fondo (arriba) o hacia delante (abajo) en la calle
+    this.zMoving = false;
+    if (control && onStreet(this) && !(Dn && pr('JUMP'))) {
+      if (U && this.z < DEPTH_MAX) { this.z = Math.min(DEPTH_MAX, this.z + 78 * dt); this.zMoving = true; }
+      if (Dn && this.z > 0) { this.z = Math.max(0, this.z - 78 * dt); this.zMoving = true; }
+    }
     // movimiento horizontal
     if (control && ix) {
       const acc = this.onGround ? PHYS.gAcc : PHYS.aAcc;
@@ -2734,7 +2798,7 @@ class Player {
       if (Dn) type = 'dive';
       else if (Math.hypot(this.vx, this.vy) > 230) type = 'swingkick';
       else type = 'airkick';
-    } else if (U) type = 'uppercut';
+    } else if (U && !onStreet(this)) type = 'uppercut';
     else if (this.comboT > 0 && this.comboNext) type = this.comboNext;
     else type = 'punch1';
     this.attack = { type, t: 0, hit: new Set(), def: ATK[type] };
@@ -2761,6 +2825,7 @@ class Player {
       const box = { x: this.facing > 0 ? this.cx + bx : this.cx - bx - bw, y: this.feet + by, w: bw, h: bh };
       for (const e of world.enemies) {
         if (e.dead || at.hit.has(e) || !e.hittable()) continue;
+        if (Math.abs((e.z || 0) - this.z) > LANE) continue;
         if (overlap(box, e.hurtbox())) {
           at.hit.add(e);
           world.playerHits(e, d.dmg * this.dmgMul, d.kx * this.facing, d.ky, !!d.heavy);
@@ -2844,7 +2909,7 @@ class Player {
         if (this.attack) pose = Poses[this.attack.def.pose]();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
-          if (Math.abs(this.vx) > 12) { this.runPhase += Math.abs(this.vx) * 0.0022 * 6; pose = Poses.run(this.runPhase); }
+          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(this.runPhase); }
           else if (this.landT > 0) pose = Poses.crouch();
           else pose = Poses.idle(t);
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
@@ -2936,7 +3001,7 @@ class Enemy {
     this.id = ++ENEMY_ID;
     this.type = type; this.spec = sp;
     this.w = sp.w || 10; this.h = sp.h || 22;
-    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.z = 0;
     this.hp = this.maxHp = Math.ceil(sp.hp * DIFF_HP[Game.settings.difficulty]);
     this.facing = -1; this.state = 'idle'; this.t = 0; this.anim = rand(0, 5);
     this.cd = rand(0.4, 1.2); this.webbed = 0; this.flash = 0; this.dead = false; this.koT = 0;
@@ -2987,12 +3052,12 @@ class Enemy {
         if (sp.kind === 'ranged') {
           if (adx < sp.prefer[0]) want = -this.facing;
           else if (adx > sp.prefer[1]) want = this.facing;
-          if (this.cd <= 0 && adx < sp.prefer[1] + 60 && Math.abs(dy) < (this.fly ? 160 : 70) && world.onScreen(this)) {
+          if (this.cd <= 0 && adx < sp.prefer[1] + 60 && Math.abs(dy) < (this.fly ? 160 : 70) && Math.abs(this.z - p.z) < LANE && world.onScreen(this)) {
             this.state = 'windup'; this.t = sp.windup; want = 0;
           }
         } else {
           if (adx > sp.range) want = this.facing;
-          if (adx <= sp.range + 4 && Math.abs(dy) < 26 && this.cd <= 0 && this.takeToken(world)) {
+          if (adx <= sp.range + 4 && Math.abs(dy) < 26 && Math.abs(this.z - p.z) < 6 && this.cd <= 0 && this.takeToken(world)) {
             this.state = 'windup'; this.t = sp.windup; want = 0;
           }
         }
@@ -3017,7 +3082,7 @@ class Enemy {
           const box = { x: this.facing > 0 ? this.cx : this.cx - r - 4, y: this.y + 2, w: r + 4, h: this.h - 4 };
           if (overlap(box, p.hurtbox())) {
             this.hitDone = true;
-            world.damagePlayer(this.dmg(), this.cx);
+            world.damagePlayer(this.dmg(), this.cx, this.z);
           }
         }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.45; this.cd = rand(...this.spec.cd); this.releaseToken(world); }
@@ -3042,6 +3107,7 @@ class Enemy {
         break;
       default: this.state = 'chase';
     }
+    this.updZ(dt, p, 45);
     if (this.fly && this.state !== 'air' && this.state !== 'down') {
       const targetY = Math.min(this.hoverY, p.y - 50) + Math.sin(this.anim * 2) * 8;
       this.vy = approach(this.vy, clamp((targetY - this.y) * 2, -80, 80), 300 * dt);
@@ -3051,6 +3117,16 @@ class Enemy {
     world.level.move(this, dt);
     if (this.fly && (this.state === 'air' || this.state === 'down') && this.onGround && this.state === 'down' && this.t <= 0.05) this.hoverY = this.y - 50;
     this.clampArena();
+  }
+
+  // Profundidad (estilo beat 'em up): en la calle se alinean con Spider-Man
+  updZ(dt, p, speed) {
+    const street = onStreet(this);
+    if (street || this.fly) {
+      if (this.state !== 'idle' && this.state !== 'attack' && this.state !== 'hurt') {
+        this.z = approach(this.z, clamp(p.z, 0, DEPTH_MAX), speed * dt);
+      }
+    } else if (this.onGround) this.z = approach(this.z, 0, 120 * dt);
   }
 
   clampArena() {
@@ -3292,10 +3368,11 @@ class Boss extends Enemy {
       this.clampArena();
       return;
     }
+    this.updZ(dt, world.player, 28 * this.speedMul());
     this.ai(dt, world);
     this.clampArena();
     // daño por contacto en embestidas
-    if (this.contactDmg && overlap(this.hurtbox(), world.player.hurtbox())) world.damagePlayer(this.bdmg(), this.cx);
+    if (this.contactDmg && overlap(this.hurtbox(), world.player.hurtbox())) world.damagePlayer(this.bdmg(), this.cx, this.z);
   }
   ground(dt, world) {
     this.vy = Math.min(this.vy + GRAV * dt, 450);
@@ -3438,7 +3515,7 @@ class ExoBrute extends Boss {
       case 'punch': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx : this.cx - 38, y: this.y + 6, w: 38, h: this.h - 10 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.7; }
         break;
       }
@@ -3776,7 +3853,7 @@ class Scorpion extends Boss {
       case 'stab': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx + 6 : this.cx - 64, y: this.y + 4, w: 58, h: 14 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; }
         break;
       }
@@ -3787,7 +3864,7 @@ class Scorpion extends Boss {
       case 'sweep': {
         this.t -= dt;
         const box = { x: this.cx - 52, y: this.y + this.h - 12, w: 104, h: 12 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(0.9), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(0.9), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
         break;
       }
@@ -3884,7 +3961,7 @@ class Proj {
     this.life = { darkweb: 2, spot: 3, redweb: 2.5, web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
     this.g = { bomb: 600, acid: 700, redweb: 700, spot: 500, riftorb: 0 }[kind] || 0;
     this.r = { darkweb: 4, spot: 5, redweb: 4, web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
-    this.dead = false; this.t = 0;
+    this.dead = false; this.t = 0; this.z = undefined;
   }
   box() { return { x: this.x - this.r, y: this.y - this.r, w: this.r * 2, h: this.r * 2 }; }
   update(dt, world) {
@@ -3907,6 +3984,7 @@ class Proj {
     if (this.owner === 'p') {
       for (const e of world.enemies) {
         if (e.dead || !e.hittable()) continue;
+        if (Math.abs((e.z || 0) - (this.z || 0)) > LANE + 2) continue;
         if (overlap(this.box(), e.hurtbox())) {
           e.web(world.player.webStun, world);
           if (!e.isBoss) e.takeHit(0.5, sign(this.vx) * 40, 0, false, world);
@@ -3919,9 +3997,9 @@ class Proj {
       if (world.webObjects(this)) { this.dead = true; return; }
     } else {
       const p = world.player;
-      if (overlap(this.box(), p.hurtbox())) {
+      if (overlap(this.box(), p.hurtbox()) && Math.abs((this.z || 0) - p.z) <= LANE + 2) {
         if (this.kind === 'bomb' || this.kind === 'riftorb') { this.explode(world); return; }
-        if (world.damagePlayer(this.dmg, this.x)) { this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60); }
+        if (world.damagePlayer(this.dmg, this.x, this.z)) { this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60); }
       }
     }
   }
@@ -3931,7 +4009,7 @@ class Proj {
     world.particles.burst(this.x, this.y, 16, '#ffa040', 120);
     world.particles.burst(this.x, this.y, 8, '#606060', 60);
     const p = world.player;
-    if (dist(this.x, this.y, p.cx, p.cy) < 28) world.damagePlayer(this.dmg, this.x);
+    if (dist(this.x, this.y, p.cx, p.cy) < 28 && Math.abs((this.z || 0) - p.z) < 16) world.damagePlayer(this.dmg, this.x);
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y);
@@ -3998,7 +4076,7 @@ class Proj {
 class Pickup {
   constructor(kind, x, y) {
     this.kind = kind; this.x = x; this.y = y; this.vx = rand(-40, 40); this.vy = -150; this.w = 6; this.h = 6;
-    this.life = 12; this.dead = false; this.t = 0;
+    this.life = 12; this.dead = false; this.t = 0; this.z = 0;
   }
   update(dt, world) {
     this.t += dt; this.life -= dt;
@@ -4007,13 +4085,14 @@ class Pickup {
     const d = dist(p.cx, p.cy, this.x + 3, this.y + 3);
     if (d < 50 && this.t > 0.35) {
       this.vx = (p.cx - this.x) * 6; this.vy = (p.cy - this.y) * 6;
+      this.z = approach(this.z, p.z, 120 * dt);
       this.x += this.vx * dt; this.y += this.vy * dt;
     } else {
       this.vy = Math.min(this.vy + GRAV * dt, 300);
       this.vx = approach(this.vx, 0, 60 * dt);
       world.level.move(this, dt);
     }
-    if (d < 10 && this.t > 0.2) {
+    if (d < 10 && this.t > 0.2 && Math.abs(this.z - p.z) < 12) {
       this.dead = true;
       if (this.kind === 'health') {
         p.hp = Math.min(p.maxHp, p.hp + 15);
@@ -4127,7 +4206,7 @@ class Venom extends ExoBrute {
     } else if (this.state === 'whip') {
       this.t -= dt;
       const box = { x: this.facing > 0 ? this.cx : this.cx - 78, y: this.y + 8, w: 78, h: 14 };
-      if (!this.hitDone && overlap(box, world.player.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+      if (!this.hitDone && overlap(box, world.player.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx, this.z); }
       if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; }
     } else return false;
     this.ground(dt, world);
@@ -4413,7 +4492,7 @@ class Desconocido extends Boss {
       case 'punch': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx : this.cx - 22, y: this.y + 3, w: 22, h: 14 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
         break;
       }
@@ -4896,12 +4975,12 @@ const STORY = {
   },
   thanks: ['¡Gracias, Spider-Man!', '¡Eres el mejor, Spidey!', '¡Te debo una!', '¡Mi héroe!', '¡Sabía que vendrías!', '¡Otro Spider-Man!'],
   tips: {
-    tip_move: 'Muévete con {MOVE}. Salta con {JUMP} y pulsa otra vez en el aire para un doble salto.',
+    tip_move: 'Muévete con {MOVE}. En la calle, {UP} y {DOWN} te llevan al fondo o al frente. Salta con {JUMP} (dos veces = doble salto).',
     tip_wall: 'Salta contra un edificio para pegarte a la pared. Trepa con {UP}/{DOWN} y salta con {JUMP}.',
     tip_swing: '¡Balanceo! En el aire, mantén {WEB} para lanzar una telaraña. Suelta para salir disparado.',
     tip_swing2: 'Mientras te balanceas: {UP}/{DOWN} acorta o alarga la telaraña y {ATTACK} lanza una patada.',
-    tip_fight: '¡A pelear! {ATTACK} encadena golpes. {UP} + {ATTACK} lanza al aire. {DOWN} + {ATTACK} en el aire: patada en picado.',
-    tip_sense: '¿Ves las líneas sobre tu cabeza? Es el hormigueo arácnido: pulsa {DODGE} para esquivar a tiempo.',
+    tip_fight: '¡A pelear! Ponte a la misma altura que el enemigo con {UP}/{DOWN}. {ATTACK} encadena golpes; el tercero lo lanza por los aires.',
+    tip_sense: '¿Ves las líneas sobre tu cabeza? Es el hormigueo arácnido: esquiva con {DODGE} o apártate de su carril con {UP}/{DOWN}.',
     tip_web: '{SHOOT} dispara una bola de red que inmoviliza enemigos. Los enemigos atrapados reciben más daño.',
     tip_brute: 'Los enemigos grandes llevan blindaje: atrápalos con red ({SHOOT}) para romper su guardia.',
     tip_special: 'Golpear llena la barra de foco. {SPECIAL}: ataque giratorio. Mantén {SPECIAL} en el suelo para curarte.',
@@ -5517,7 +5596,7 @@ class World {
   }
   shake(a) { if (Game.settings.shake) this.shakeAmt = Math.max(this.shakeAmt, a); }
   hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); }
-  addProj(p) { this.projs.push(p); }
+  addProj(p) { if (p.z === undefined) p.z = this.emitterZ || 0; this.projs.push(p); }
   onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + W + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + H + 10; }
   bubble(who, text) { this.radio = { who, text, t: 0, dur: 3.5 }; }
   showTip(key, dur = 7) {
@@ -5542,6 +5621,7 @@ class World {
     if (y === null || y === undefined) e.y = this.level.surfaceY(x + e.w / 2, 0) - e.h;
     else e.y = Math.max(y, this.level.topY + (this.level.topY ? 2 : -9999));
     e.hoverY = e.y;
+    if (e.y + e.h >= this.level.groundY - 1 || e.fly) e.z = rand(0, DEPTH_MAX);
     this.enemies.push(e);
     return e;
   }
@@ -5556,7 +5636,9 @@ class World {
 
   shootWeb(x, y, dir, dy) {
     const l = Math.hypot(1, dy);
-    this.projs.push(new Proj('web', x, y, dir / l * 330, dy / l * 330, 'p', 0));
+    const w = new Proj('web', x, y, dir / l * 330, dy / l * 330, 'p', 0);
+    w.z = this.player.z;
+    this.projs.push(w);
   }
 
   playerHits(e, dmg, kx, ky, heavy) {
@@ -5576,7 +5658,7 @@ class World {
   areaHit(x, y, r, dmg, kx, ky, src, web) {
     for (const e of this.enemies) {
       if (e.dead || !e.hittable()) continue;
-      if (dist(x, y, e.cx, e.cy) < r) {
+      if (dist(x, y, e.cx, e.cy) < r && Math.abs((e.z || 0) - ((src && src.z) || 0)) < 18) {
         this.playerHits(e, dmg, sign(e.cx - x || 1) * kx, ky, true);
         if (web && !e.dead) e.web(2, this);
       }
@@ -5584,7 +5666,8 @@ class World {
     this.hitObjects({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, src);
   }
 
-  damagePlayer(dmg, srcX) {
+  damagePlayer(dmg, srcX, srcZ) {
+    if (srcZ !== undefined && Math.abs(srcZ - this.player.z) > LANE) return false;
     const hit = this.player.takeDamage(dmg, srcX, this);
     if (hit) { this.combo.n = 0; }
     return hit;
@@ -5620,8 +5703,8 @@ class World {
     this.stats.kos++;
     Game.save.stats.kos = (Game.save.stats.kos || 0) + 1;
     const n = e.spec.tech || 1;
-    for (let i = 0; i < n; i++) this.pickups.push(new Pickup('tech', e.cx, e.cy));
-    if (Math.random() < 0.25) this.pickups.push(new Pickup('health', e.cx, e.cy));
+    for (let i = 0; i < n; i++) { const pk = new Pickup('tech', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
+    if (Math.random() < 0.25) { const pk = new Pickup('health', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
   }
 
   onBossKO(b) {
@@ -5869,7 +5952,7 @@ class World {
       const x = side < 0 ? this.cam.x - rand(20, 200) : this.cam.x + W + rand(20, 200);
       if (x > 20 && x < this.level.width - 20 && this.level.surfaceY(x, 0) >= this.level.groundY) {
         const c = new Civilian(x, this.level.groundY);
-        c.dir = -side;
+        c.dir = -side; c.z = rand(0, DEPTH_MAX);
         this.civs.push(c);
       }
     }
@@ -6049,7 +6132,8 @@ class World {
 
     const p = this.player;
     p.update(gdt, this);
-    for (const e of this.enemies) e.update(gdt, this);
+    for (const e of this.enemies) { this.emitterZ = e.z || 0; e.update(gdt, this); }
+    this.emitterZ = 0;
     this.enemies = this.enemies.filter((e) => !e.remove);
     for (const pr of this.projs) pr.update(gdt, this);
     this.projs = this.projs.filter((pr) => !pr.dead);
@@ -6118,7 +6202,7 @@ class World {
   updateCamera(dt) {
     const p = this.player, lv = this.level;
     let tx = p.cx - W / 2 + clamp(p.vx * 0.25, -50, 50);
-    let ty = p.cy - H * 0.55;
+    let ty = p.cy - (p.z || 0) * 0.5 - H * 0.55;
     const k = Math.min(1, dt * 6);
     let minX = 0, maxX = lv.width - W;
     if (this.arena) {
@@ -6200,14 +6284,22 @@ class World {
       drawDecor(ctx, { type: 'car', x: car.x, y: car.y + car.h, color: car.flash > 0 ? '#ffffff' : car.color }, cam.x, cam.y, t, lv);
       if (!car.stopped && Math.floor(t * 8) % 2) { ctx.fillStyle = '#ff3030'; ctx.fillRect(Math.round(car.x - cam.x) + 14, Math.round(car.y - cam.y), 5, 2); }
     }
-    // sombras (profundidad 2.5D)
-    for (const e of this.enemies) if (!e.dead && this.onScreen(e)) lv.shadow(ctx, e.cx, e.y + e.h, cam, e.w + 4);
-    lv.shadow(ctx, this.player.cx, this.player.feet, cam, 12);
-    for (const c of this.civs) c.draw(ctx, cam, t);
-    for (const pk of this.pickups) pk.draw(ctx, cam, t);
-    for (const e of this.enemies) e.draw(ctx, cam, t);
-    this.player.draw(ctx, cam, t);
-    for (const pr of this.projs) pr.draw(ctx, cam, t);
+    // entidades ordenadas por profundidad (las del fondo primero), con sombra
+    const ents = [];
+    for (const c of this.civs) ents.push({ z: c.z || 0, o: c, k: 0 });
+    for (const pk of this.pickups) ents.push({ z: pk.z || 0, o: pk, k: 1 });
+    for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
+    ents.push({ z: this.player.z || 0, o: this.player, k: 3 });
+    ents.sort((a, b) => b.z - a.z || a.k - b.k);
+    for (const en of ents) {
+      const o = en.o, zo = Math.round(en.z);
+      ctx.save(); ctx.translate(0, -zo);
+      if (en.k === 3) lv.shadow(ctx, o.cx, o.feet, cam, 12);
+      else if (en.k === 2 && !o.dead && this.onScreen(o)) lv.shadow(ctx, o.cx, o.y + o.h, cam, o.w + 4);
+      o.draw(ctx, cam, t);
+      ctx.restore();
+    }
+    for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic

@@ -143,7 +143,7 @@ class World {
   }
   shake(a) { if (Game.settings.shake) this.shakeAmt = Math.max(this.shakeAmt, a); }
   hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); }
-  addProj(p) { this.projs.push(p); }
+  addProj(p) { if (p.z === undefined) p.z = this.emitterZ || 0; this.projs.push(p); }
   onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + W + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + H + 10; }
   bubble(who, text) { this.radio = { who, text, t: 0, dur: 3.5 }; }
   showTip(key, dur = 7) {
@@ -168,6 +168,7 @@ class World {
     if (y === null || y === undefined) e.y = this.level.surfaceY(x + e.w / 2, 0) - e.h;
     else e.y = Math.max(y, this.level.topY + (this.level.topY ? 2 : -9999));
     e.hoverY = e.y;
+    if (e.y + e.h >= this.level.groundY - 1 || e.fly) e.z = rand(0, DEPTH_MAX);
     this.enemies.push(e);
     return e;
   }
@@ -182,7 +183,9 @@ class World {
 
   shootWeb(x, y, dir, dy) {
     const l = Math.hypot(1, dy);
-    this.projs.push(new Proj('web', x, y, dir / l * 330, dy / l * 330, 'p', 0));
+    const w = new Proj('web', x, y, dir / l * 330, dy / l * 330, 'p', 0);
+    w.z = this.player.z;
+    this.projs.push(w);
   }
 
   playerHits(e, dmg, kx, ky, heavy) {
@@ -202,7 +205,7 @@ class World {
   areaHit(x, y, r, dmg, kx, ky, src, web) {
     for (const e of this.enemies) {
       if (e.dead || !e.hittable()) continue;
-      if (dist(x, y, e.cx, e.cy) < r) {
+      if (dist(x, y, e.cx, e.cy) < r && Math.abs((e.z || 0) - ((src && src.z) || 0)) < 18) {
         this.playerHits(e, dmg, sign(e.cx - x || 1) * kx, ky, true);
         if (web && !e.dead) e.web(2, this);
       }
@@ -210,7 +213,8 @@ class World {
     this.hitObjects({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, src);
   }
 
-  damagePlayer(dmg, srcX) {
+  damagePlayer(dmg, srcX, srcZ) {
+    if (srcZ !== undefined && Math.abs(srcZ - this.player.z) > LANE) return false;
     const hit = this.player.takeDamage(dmg, srcX, this);
     if (hit) { this.combo.n = 0; }
     return hit;
@@ -246,8 +250,8 @@ class World {
     this.stats.kos++;
     Game.save.stats.kos = (Game.save.stats.kos || 0) + 1;
     const n = e.spec.tech || 1;
-    for (let i = 0; i < n; i++) this.pickups.push(new Pickup('tech', e.cx, e.cy));
-    if (Math.random() < 0.25) this.pickups.push(new Pickup('health', e.cx, e.cy));
+    for (let i = 0; i < n; i++) { const pk = new Pickup('tech', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
+    if (Math.random() < 0.25) { const pk = new Pickup('health', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
   }
 
   onBossKO(b) {
@@ -495,7 +499,7 @@ class World {
       const x = side < 0 ? this.cam.x - rand(20, 200) : this.cam.x + W + rand(20, 200);
       if (x > 20 && x < this.level.width - 20 && this.level.surfaceY(x, 0) >= this.level.groundY) {
         const c = new Civilian(x, this.level.groundY);
-        c.dir = -side;
+        c.dir = -side; c.z = rand(0, DEPTH_MAX);
         this.civs.push(c);
       }
     }
@@ -675,7 +679,8 @@ class World {
 
     const p = this.player;
     p.update(gdt, this);
-    for (const e of this.enemies) e.update(gdt, this);
+    for (const e of this.enemies) { this.emitterZ = e.z || 0; e.update(gdt, this); }
+    this.emitterZ = 0;
     this.enemies = this.enemies.filter((e) => !e.remove);
     for (const pr of this.projs) pr.update(gdt, this);
     this.projs = this.projs.filter((pr) => !pr.dead);
@@ -744,7 +749,7 @@ class World {
   updateCamera(dt) {
     const p = this.player, lv = this.level;
     let tx = p.cx - W / 2 + clamp(p.vx * 0.25, -50, 50);
-    let ty = p.cy - H * 0.55;
+    let ty = p.cy - (p.z || 0) * 0.5 - H * 0.55;
     const k = Math.min(1, dt * 6);
     let minX = 0, maxX = lv.width - W;
     if (this.arena) {
@@ -826,14 +831,22 @@ class World {
       drawDecor(ctx, { type: 'car', x: car.x, y: car.y + car.h, color: car.flash > 0 ? '#ffffff' : car.color }, cam.x, cam.y, t, lv);
       if (!car.stopped && Math.floor(t * 8) % 2) { ctx.fillStyle = '#ff3030'; ctx.fillRect(Math.round(car.x - cam.x) + 14, Math.round(car.y - cam.y), 5, 2); }
     }
-    // sombras (profundidad 2.5D)
-    for (const e of this.enemies) if (!e.dead && this.onScreen(e)) lv.shadow(ctx, e.cx, e.y + e.h, cam, e.w + 4);
-    lv.shadow(ctx, this.player.cx, this.player.feet, cam, 12);
-    for (const c of this.civs) c.draw(ctx, cam, t);
-    for (const pk of this.pickups) pk.draw(ctx, cam, t);
-    for (const e of this.enemies) e.draw(ctx, cam, t);
-    this.player.draw(ctx, cam, t);
-    for (const pr of this.projs) pr.draw(ctx, cam, t);
+    // entidades ordenadas por profundidad (las del fondo primero), con sombra
+    const ents = [];
+    for (const c of this.civs) ents.push({ z: c.z || 0, o: c, k: 0 });
+    for (const pk of this.pickups) ents.push({ z: pk.z || 0, o: pk, k: 1 });
+    for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
+    ents.push({ z: this.player.z || 0, o: this.player, k: 3 });
+    ents.sort((a, b) => b.z - a.z || a.k - b.k);
+    for (const en of ents) {
+      const o = en.o, zo = Math.round(en.z);
+      ctx.save(); ctx.translate(0, -zo);
+      if (en.k === 3) lv.shadow(ctx, o.cx, o.feet, cam, 12);
+      else if (en.k === 2 && !o.dead && this.onScreen(o)) lv.shadow(ctx, o.cx, o.y + o.h, cam, o.w + 4);
+      o.draw(ctx, cam, t);
+      ctx.restore();
+    }
+    for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic

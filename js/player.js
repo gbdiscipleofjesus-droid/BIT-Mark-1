@@ -20,7 +20,7 @@ const ATK = {
 class Player {
   constructor(x, y) {
     this.w = 10; this.h = 22;
-    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.z = 0;
     this.facing = 1; this.state = 'normal'; this.st = 0;
     this.onGround = false; this.anim = 0; this.runPhase = 0;
     this.attack = null; this.comboNext = null; this.comboT = 0; this.queued = false;
@@ -175,6 +175,8 @@ class Player {
     // ---- ataques activos ----
     if (this.attack) this.updAttack(dt, world);
 
+    // ---- profundidad: solo en la calle; en tejados, paredes y balanceo vuelve al frente ----
+    if (this.state === 'wall' || this.state === 'swing' || (this.onGround && !onStreet(this))) this.z = approach(this.z, 0, 160 * dt);
     // ---- aterrizaje ----
     if (this.onGround && !this.wasGround) {
       if (this.vyBefore > 250) { Audio2.sfx('land'); world.particles.dust(this.cx, this.feet, 4); this.landT = 0.1; }
@@ -196,6 +198,12 @@ class Player {
   updNormal(dt, world, ix, U, Dn, pr) {
     const lv = world.level;
     const control = this.lockT <= 0 && !(this.attack && this.onGround);
+    // moverse hacia el fondo (arriba) o hacia delante (abajo) en la calle
+    this.zMoving = false;
+    if (control && onStreet(this) && !(Dn && pr('JUMP'))) {
+      if (U && this.z < DEPTH_MAX) { this.z = Math.min(DEPTH_MAX, this.z + 78 * dt); this.zMoving = true; }
+      if (Dn && this.z > 0) { this.z = Math.max(0, this.z - 78 * dt); this.zMoving = true; }
+    }
     // movimiento horizontal
     if (control && ix) {
       const acc = this.onGround ? PHYS.gAcc : PHYS.aAcc;
@@ -375,7 +383,7 @@ class Player {
       if (Dn) type = 'dive';
       else if (Math.hypot(this.vx, this.vy) > 230) type = 'swingkick';
       else type = 'airkick';
-    } else if (U) type = 'uppercut';
+    } else if (U && !onStreet(this)) type = 'uppercut';
     else if (this.comboT > 0 && this.comboNext) type = this.comboNext;
     else type = 'punch1';
     this.attack = { type, t: 0, hit: new Set(), def: ATK[type] };
@@ -402,6 +410,7 @@ class Player {
       const box = { x: this.facing > 0 ? this.cx + bx : this.cx - bx - bw, y: this.feet + by, w: bw, h: bh };
       for (const e of world.enemies) {
         if (e.dead || at.hit.has(e) || !e.hittable()) continue;
+        if (Math.abs((e.z || 0) - this.z) > LANE) continue;
         if (overlap(box, e.hurtbox())) {
           at.hit.add(e);
           world.playerHits(e, d.dmg * this.dmgMul, d.kx * this.facing, d.ky, !!d.heavy);
@@ -485,7 +494,7 @@ class Player {
         if (this.attack) pose = Poses[this.attack.def.pose]();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
-          if (Math.abs(this.vx) > 12) { this.runPhase += Math.abs(this.vx) * 0.0022 * 6; pose = Poses.run(this.runPhase); }
+          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(this.runPhase); }
           else if (this.landT > 0) pose = Poses.crouch();
           else pose = Poses.idle(t);
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);

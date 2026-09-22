@@ -50,7 +50,7 @@ class Enemy {
     this.id = ++ENEMY_ID;
     this.type = type; this.spec = sp;
     this.w = sp.w || 10; this.h = sp.h || 22;
-    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.z = 0;
     this.hp = this.maxHp = Math.ceil(sp.hp * DIFF_HP[Game.settings.difficulty]);
     this.facing = -1; this.state = 'idle'; this.t = 0; this.anim = rand(0, 5);
     this.cd = rand(0.4, 1.2); this.webbed = 0; this.flash = 0; this.dead = false; this.koT = 0;
@@ -101,12 +101,12 @@ class Enemy {
         if (sp.kind === 'ranged') {
           if (adx < sp.prefer[0]) want = -this.facing;
           else if (adx > sp.prefer[1]) want = this.facing;
-          if (this.cd <= 0 && adx < sp.prefer[1] + 60 && Math.abs(dy) < (this.fly ? 160 : 70) && world.onScreen(this)) {
+          if (this.cd <= 0 && adx < sp.prefer[1] + 60 && Math.abs(dy) < (this.fly ? 160 : 70) && Math.abs(this.z - p.z) < LANE && world.onScreen(this)) {
             this.state = 'windup'; this.t = sp.windup; want = 0;
           }
         } else {
           if (adx > sp.range) want = this.facing;
-          if (adx <= sp.range + 4 && Math.abs(dy) < 26 && this.cd <= 0 && this.takeToken(world)) {
+          if (adx <= sp.range + 4 && Math.abs(dy) < 26 && Math.abs(this.z - p.z) < 6 && this.cd <= 0 && this.takeToken(world)) {
             this.state = 'windup'; this.t = sp.windup; want = 0;
           }
         }
@@ -131,7 +131,7 @@ class Enemy {
           const box = { x: this.facing > 0 ? this.cx : this.cx - r - 4, y: this.y + 2, w: r + 4, h: this.h - 4 };
           if (overlap(box, p.hurtbox())) {
             this.hitDone = true;
-            world.damagePlayer(this.dmg(), this.cx);
+            world.damagePlayer(this.dmg(), this.cx, this.z);
           }
         }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.45; this.cd = rand(...this.spec.cd); this.releaseToken(world); }
@@ -156,6 +156,7 @@ class Enemy {
         break;
       default: this.state = 'chase';
     }
+    this.updZ(dt, p, 45);
     if (this.fly && this.state !== 'air' && this.state !== 'down') {
       const targetY = Math.min(this.hoverY, p.y - 50) + Math.sin(this.anim * 2) * 8;
       this.vy = approach(this.vy, clamp((targetY - this.y) * 2, -80, 80), 300 * dt);
@@ -165,6 +166,16 @@ class Enemy {
     world.level.move(this, dt);
     if (this.fly && (this.state === 'air' || this.state === 'down') && this.onGround && this.state === 'down' && this.t <= 0.05) this.hoverY = this.y - 50;
     this.clampArena();
+  }
+
+  // Profundidad (estilo beat 'em up): en la calle se alinean con Spider-Man
+  updZ(dt, p, speed) {
+    const street = onStreet(this);
+    if (street || this.fly) {
+      if (this.state !== 'idle' && this.state !== 'attack' && this.state !== 'hurt') {
+        this.z = approach(this.z, clamp(p.z, 0, DEPTH_MAX), speed * dt);
+      }
+    } else if (this.onGround) this.z = approach(this.z, 0, 120 * dt);
   }
 
   clampArena() {
@@ -406,10 +417,11 @@ class Boss extends Enemy {
       this.clampArena();
       return;
     }
+    this.updZ(dt, world.player, 28 * this.speedMul());
     this.ai(dt, world);
     this.clampArena();
     // daño por contacto en embestidas
-    if (this.contactDmg && overlap(this.hurtbox(), world.player.hurtbox())) world.damagePlayer(this.bdmg(), this.cx);
+    if (this.contactDmg && overlap(this.hurtbox(), world.player.hurtbox())) world.damagePlayer(this.bdmg(), this.cx, this.z);
   }
   ground(dt, world) {
     this.vy = Math.min(this.vy + GRAV * dt, 450);
@@ -552,7 +564,7 @@ class ExoBrute extends Boss {
       case 'punch': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx : this.cx - 38, y: this.y + 6, w: 38, h: this.h - 10 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.7; }
         break;
       }
@@ -890,7 +902,7 @@ class Scorpion extends Boss {
       case 'stab': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx + 6 : this.cx - 64, y: this.y + 4, w: 58, h: 14 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(1.1), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; }
         break;
       }
@@ -901,7 +913,7 @@ class Scorpion extends Boss {
       case 'sweep': {
         this.t -= dt;
         const box = { x: this.cx - 52, y: this.y + this.h - 12, w: 104, h: 12 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(0.9), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(0.9), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
         break;
       }
@@ -998,7 +1010,7 @@ class Proj {
     this.life = { darkweb: 2, spot: 3, redweb: 2.5, web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
     this.g = { bomb: 600, acid: 700, redweb: 700, spot: 500, riftorb: 0 }[kind] || 0;
     this.r = { darkweb: 4, spot: 5, redweb: 4, web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
-    this.dead = false; this.t = 0;
+    this.dead = false; this.t = 0; this.z = undefined;
   }
   box() { return { x: this.x - this.r, y: this.y - this.r, w: this.r * 2, h: this.r * 2 }; }
   update(dt, world) {
@@ -1021,6 +1033,7 @@ class Proj {
     if (this.owner === 'p') {
       for (const e of world.enemies) {
         if (e.dead || !e.hittable()) continue;
+        if (Math.abs((e.z || 0) - (this.z || 0)) > LANE + 2) continue;
         if (overlap(this.box(), e.hurtbox())) {
           e.web(world.player.webStun, world);
           if (!e.isBoss) e.takeHit(0.5, sign(this.vx) * 40, 0, false, world);
@@ -1033,9 +1046,9 @@ class Proj {
       if (world.webObjects(this)) { this.dead = true; return; }
     } else {
       const p = world.player;
-      if (overlap(this.box(), p.hurtbox())) {
+      if (overlap(this.box(), p.hurtbox()) && Math.abs((this.z || 0) - p.z) <= LANE + 2) {
         if (this.kind === 'bomb' || this.kind === 'riftorb') { this.explode(world); return; }
-        if (world.damagePlayer(this.dmg, this.x)) { this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60); }
+        if (world.damagePlayer(this.dmg, this.x, this.z)) { this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60); }
       }
     }
   }
@@ -1045,7 +1058,7 @@ class Proj {
     world.particles.burst(this.x, this.y, 16, '#ffa040', 120);
     world.particles.burst(this.x, this.y, 8, '#606060', 60);
     const p = world.player;
-    if (dist(this.x, this.y, p.cx, p.cy) < 28) world.damagePlayer(this.dmg, this.x);
+    if (dist(this.x, this.y, p.cx, p.cy) < 28 && Math.abs((this.z || 0) - p.z) < 16) world.damagePlayer(this.dmg, this.x);
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y);
@@ -1112,7 +1125,7 @@ class Proj {
 class Pickup {
   constructor(kind, x, y) {
     this.kind = kind; this.x = x; this.y = y; this.vx = rand(-40, 40); this.vy = -150; this.w = 6; this.h = 6;
-    this.life = 12; this.dead = false; this.t = 0;
+    this.life = 12; this.dead = false; this.t = 0; this.z = 0;
   }
   update(dt, world) {
     this.t += dt; this.life -= dt;
@@ -1121,13 +1134,14 @@ class Pickup {
     const d = dist(p.cx, p.cy, this.x + 3, this.y + 3);
     if (d < 50 && this.t > 0.35) {
       this.vx = (p.cx - this.x) * 6; this.vy = (p.cy - this.y) * 6;
+      this.z = approach(this.z, p.z, 120 * dt);
       this.x += this.vx * dt; this.y += this.vy * dt;
     } else {
       this.vy = Math.min(this.vy + GRAV * dt, 300);
       this.vx = approach(this.vx, 0, 60 * dt);
       world.level.move(this, dt);
     }
-    if (d < 10 && this.t > 0.2) {
+    if (d < 10 && this.t > 0.2 && Math.abs(this.z - p.z) < 12) {
       this.dead = true;
       if (this.kind === 'health') {
         p.hp = Math.min(p.maxHp, p.hp + 15);
@@ -1241,7 +1255,7 @@ class Venom extends ExoBrute {
     } else if (this.state === 'whip') {
       this.t -= dt;
       const box = { x: this.facing > 0 ? this.cx : this.cx - 78, y: this.y + 8, w: 78, h: 14 };
-      if (!this.hitDone && overlap(box, world.player.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+      if (!this.hitDone && overlap(box, world.player.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx, this.z); }
       if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; }
     } else return false;
     this.ground(dt, world);
@@ -1527,7 +1541,7 @@ class Desconocido extends Boss {
       case 'punch': {
         this.t -= dt;
         const box = { x: this.facing > 0 ? this.cx : this.cx - 22, y: this.y + 3, w: 22, h: 14 };
-        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx); }
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(), this.cx, this.z); }
         if (this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
         break;
       }
