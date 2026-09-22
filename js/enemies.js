@@ -112,7 +112,7 @@ class Enemy {
         }
         // no caer por bordes
         if (want && !this.fly && this.onGround) {
-          const ahead = world.level.pointSolid(this.cx + want * (this.w / 2 + 4), this.y + this.h + 4);
+          const ahead = world.level.groundAhead(this.cx + want * (this.w / 2 + 4), this.y + this.h);
           if (!ahead) want = 0;
         }
         this.vx = approach(this.vx, want * sp.speed, 500 * dt);
@@ -1024,7 +1024,7 @@ class Proj {
       if (Math.abs(s - (this.y + 6)) > 10) { this.dead = true; return; }
       this.y = s - 6;
       if (Math.floor(this.t * 30) % 2) world.particles.spark(this.x, this.y + 4, this.dmg > 0 ? '#80d0ff' : '#90ff90', 1);
-    } else if (lv.pointSolid(this.x, this.y, false) || this.y > lv.killY) {
+    } else if (lv.pointSolid(this.x, this.y, false, false) || this.y > lv.killY) {
       if (this.kind === 'bomb' || this.kind === 'riftorb') this.explode(world);
       else if (this.kind === 'acid' || this.kind === 'redweb' || this.kind === 'spot') { world.particles.burst(this.x, this.y, 8, '#90ff60', 60); this.dead = true; }
       else { world.particles.burst(this.x, this.y, 4, this.owner === 'p' ? '#ffffff' : '#ffe060', 50); this.dead = true; }

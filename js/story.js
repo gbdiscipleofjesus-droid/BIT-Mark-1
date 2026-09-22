@@ -432,7 +432,7 @@ const STORY = {
   thanks: ['¡Gracias, Spider-Man!', '¡Eres el mejor, Spidey!', '¡Te debo una!', '¡Mi héroe!', '¡Sabía que vendrías!', '¡Otro Spider-Man!'],
   tips: {
     tip_move: 'Muévete con {MOVE}. En la calle, {UP} y {DOWN} te llevan al fondo o al frente. Salta con {JUMP} (dos veces = doble salto).',
-    tip_wall: 'Salta contra un edificio para pegarte a la pared. Trepa con {UP}/{DOWN} y salta con {JUMP}.',
+    tip_wall: 'Para trepar un edificio: salta delante de él y mantén {UP}. Arriba del todo subes al tejado. {JUMP} para soltarte.',
     tip_swing: '¡Balanceo! En el aire, mantén {WEB} para lanzar una telaraña. Suelta para salir disparado.',
     tip_swing2: 'Mientras te balanceas: {UP}/{DOWN} acorta o alarga la telaraña y {ATTACK} lanza una patada.',
     tip_fight: '¡A pelear! Ponte a la misma altura que el enemigo con {UP}/{DOWN}. {ATTACK} encadena golpes; el tercero lo lanza por los aires.',

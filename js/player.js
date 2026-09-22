@@ -84,7 +84,7 @@ class Player {
     }
 
     // ---- esquiva (disponible en casi todos los estados) ----
-    if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing'].includes(this.state)) {
+    if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing', 'facade'].includes(this.state)) {
       this.attack = null;
       const dir = ix || this.facing;
       this.facing = dir;
@@ -99,7 +99,7 @@ class Player {
     }
 
     // ---- disparo de red ----
-    if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall'].includes(this.state)) {
+    if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
       if (this.webs > 0) {
         this.webs--; this.shootCd = 0.3;
         let dy = 0;
@@ -129,6 +129,7 @@ class Player {
     switch (this.state) {
       case 'normal': this.updNormal(dt, world, ix, U, Dn, pr); break;
       case 'wall': this.updWall(dt, world, ix, U, Dn, pr); break;
+      case 'facade': this.updFacade(dt, world, ix, U, Dn, pr); break;
       case 'swing': this.updSwing(dt, world, ix, U, Dn, pr); break;
       case 'dodge':
         this.st -= dt;
@@ -176,7 +177,7 @@ class Player {
     if (this.attack) this.updAttack(dt, world);
 
     // ---- profundidad: solo en la calle; en tejados, paredes y balanceo vuelve al frente ----
-    if (this.state === 'wall' || this.state === 'swing' || (this.onGround && !onStreet(this))) this.z = approach(this.z, 0, 160 * dt);
+    if (this.state === 'wall' || this.state === 'facade' || this.state === 'swing' || (this.onGround && !onStreet(this))) this.z = approach(this.z, 0, 160 * dt);
     // ---- aterrizaje ----
     if (this.onGround && !this.wasGround) {
       if (this.vyBefore > 250) { Audio2.sfx('land'); world.particles.dust(this.cx, this.feet, 4); this.landT = 0.1; }
@@ -188,7 +189,10 @@ class Player {
       this.coyote = 0.1;
       if (this.groundObj && this.groundObj.climb !== undefined && this.state === 'normal') {
         this.safeT += dt;
-        if (this.safeT > 0.3) { this.lastSafe.x = this.x; this.lastSafe.y = this.y; this.safeT = 0; }
+        // solo se guarda si hay suelo firme a ambos lados (lejos de los bordes)
+        const fy = this.y + this.h;
+        const firm = Math.abs(lv.surfaceY(this.cx - 28, fy - 4) - fy) < 2 && Math.abs(lv.surfaceY(this.cx + 28, fy - 4) - fy) < 2;
+        if (this.safeT > 0.3 && firm) { this.lastSafe.x = this.x; this.lastSafe.y = this.y; this.safeT = 0; }
       }
     }
     // caída al agua / fuera del mapa
@@ -256,6 +260,35 @@ class Player {
       this.state = 'wall'; this.wallDir = this.hitWall; this.facing = this.hitWall;
       this.vx = 0; this.vy = 0; this.airJumps = 1;
     }
+    // trepar por la fachada de un edificio: en el aire, delante del edificio, mantén ARRIBA
+    if (!this.onGround && U && this.grabCd <= 0 && !this.attack) {
+      const f = lv.facadeAt(this);
+      if (f) { this.state = 'facade'; this.facadeObj = f; this.vx = 0; this.vy = 0; this.airJumps = 1; }
+    }
+  }
+
+  updFacade(dt, world, ix, U, Dn, pr) {
+    const lv = world.level, f = this.facadeObj;
+    if (!f) { this.state = 'normal'; return; }
+    if (pr('JUMP')) {
+      this.state = 'normal'; this.vy = PHYS.jump * 0.9; this.vx = (ix || this.facing) * 90;
+      this.grabCd = 0.3; this.jumpBuf = 0; Audio2.sfx('jump');
+      return;
+    }
+    if (pr('WEB')) { this.state = 'normal'; this.grabCd = 0.3; this.vy = -150; this.tryAttach(world, ix || this.facing); return; }
+    if (ix) this.facing = ix;
+    this.vx = ix * 70;
+    this.vy = U ? -PHYS.climb : Dn ? PHYS.climb : 0;
+    lv.move(this, dt);
+    // arriba del todo: subir al tejado
+    if (this.y + this.h <= f.y + 3) {
+      this.y = f.y - this.h; this.vy = 0; this.vx = 0; this.state = 'normal'; this.grabCd = 0.25;
+      return;
+    }
+    // se salió por un lado o llegó al suelo
+    const cx = this.cx;
+    if (cx < f.x || cx > f.x + f.w || this.onGround) { this.state = 'normal'; this.grabCd = 0.25; }
+    if ((this.vx || this.vy) && Math.floor(this.anim * 8) !== Math.floor((this.anim - dt) * 8)) Audio2.sfx('step');
   }
 
   updWall(dt, world, ix, U, Dn, pr) {
@@ -480,6 +513,7 @@ class Player {
       case 'hurt': pose = Poses.hurt(); break;
       case 'dodge': pose = this.onGround ? Poses.crouch() : Poses.flip(0.28 - this.st); if (this.onGround) pose = Poses.flip((0.28 - this.st) * 1.2); break;
       case 'wall': pose = Poses.wall(this.vy !== 0 ? this.anim : 0); f = this.wallDir; dx = f * 2; break;
+      case 'facade': pose = Poses.wall((this.vy !== 0 || this.vx !== 0) ? this.anim : 0); pose.t = 0; break;
       case 'charge': pose = Poses.heal(this.anim); break;
       case 'special': pose = Poses.special(0.55 - this.st); break;
       case 'swing': {

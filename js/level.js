@@ -36,6 +36,8 @@ class Level {
 
   addSolid(x, y, w, h, kind = 'block', style = null, climb = true) {
     const s = { x, y, w, h, kind, style, climb, _q: 0, canvas: null };
+    // Fachadas: están detrás de la calle. No bloquean de lado; solo se puede aterrizar encima.
+    s.facade = kind === 'building' || kind === 'tower';
     this.solids.push(s);
     return s;
   }
@@ -96,7 +98,7 @@ class Level {
       // Eje X
       e.x += e.vx * sdt;
       for (const s of cand) {
-        if (s.climb === undefined) continue;
+        if (s.climb === undefined || s.facade) continue;
         if (overlap(e, s)) {
           if (e.vx > 0 || (e.vx === 0 && e.x + e.w / 2 < s.x + s.w / 2)) { e.x = s.x - e.w; e.hitWall = 1; }
           else { e.x = s.x + s.w; e.hitWall = -1; }
@@ -108,6 +110,14 @@ class Level {
       const prevBottom = e.y + e.h;
       e.y += e.vy * sdt;
       for (const s of cand) {
+        if (s.facade) {
+          // tejado: solo se aterriza cayendo desde arriba
+          if (e.vy >= 0 && !(e.dropTimer > 0) && e.x + e.w > s.x && e.x < s.x + s.w &&
+            prevBottom <= s.y + 0.5 && e.y + e.h >= s.y) {
+            e.y = s.y - e.h; e.vy = 0; e.onGround = true; e.groundObj = s;
+          }
+          continue;
+        }
         if (s.climb === undefined) {
           // plataforma de un sentido
           if (e.vy >= 0 && !(e.dropTimer > 0) && e.x + e.w > s.x && e.x < s.x + s.w &&
@@ -127,17 +137,18 @@ class Level {
       // comprobación de suelo "pegado" (para detectar que seguimos apoyados)
       const probe = { x: e.x, y: e.y + e.h, w: e.w, h: 1 };
       for (const s of this.near(e.x - 4, e.x + e.w + 4)) {
-        if (s.climb === undefined) {
+        if (s.climb === undefined || s.facade) {
           if (!(e.dropTimer > 0) && e.vy >= 0 && Math.abs(e.y + e.h - s.y) < 0.5 && e.x + e.w > s.x && e.x < s.x + s.w) { e.onGround = true; e.groundObj = s; }
         } else if (overlap(probe, s) && e.vy >= 0) { e.onGround = true; e.groundObj = s; }
       }
     }
   }
 
-  pointSolid(x, y, includeOneway = true) {
+  pointSolid(x, y, includeOneway = true, includeFacade = true) {
     for (const s of this.near(x - 1, x + 1)) {
       if (x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h) {
         if (s.climb === undefined && !includeOneway) continue;
+        if (s.facade && !includeFacade) continue;
         return s;
       }
     }
@@ -146,7 +157,7 @@ class Level {
 
   rectFree(r) {
     for (const s of this.near(r.x - 2, r.x + r.w + 2)) {
-      if (s.climb !== undefined && overlap(r, s)) return false;
+      if (s.climb !== undefined && !s.facade && overlap(r, s)) return false;
     }
     return true;
   }
@@ -160,6 +171,19 @@ class Level {
       if (y < 0) return null;
       const s = this.pointSolid(x, y, true);
       if (s) return { x, y, d, s };
+    }
+    return null;
+  }
+
+  // ¿Hay suelo a la altura de los pies en x? (tejados cuentan solo si estás encima)
+  groundAhead(x, feetY) {
+    return Math.abs(this.surfaceY(x, feetY - 6) - feetY) < 6;
+  }
+
+  // Fachada que tiene delante un cuerpo (para trepar)
+  facadeAt(e) {
+    for (const s of this.near(e.x, e.x + e.w)) {
+      if (s.facade && e.x + e.w / 2 > s.x + 1 && e.x + e.w / 2 < s.x + s.w - 1 && e.y + e.h > s.y + 2 && e.y < s.y + (s.vis || s.h)) return s;
     }
     return null;
   }

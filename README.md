@@ -45,7 +45,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.
 - **Táctil:** en el móvil aparecen joystick y botones en pantalla.
-- **Trucos:** en la calle te mueves en profundidad como en *Maximum Carnage*: solo golpeas (y te golpean) si estáis a la misma altura. En tejados, Arriba + Golpear lanza al enemigo al aire. Abajo + Golpear en el aire es una patada en picado. Cuando aparecen líneas sobre la cabeza (el hormigueo), esquiva.
+- **Trucos:** los edificios están detrás de la calle: para trepar uno, salta delante de él y mantén Arriba. En la calle te mueves en profundidad como en *Maximum Carnage*: solo golpeas (y te golpean) si estáis a la misma altura. En tejados, Arriba + Golpear lanza al enemigo al aire. Abajo + Golpear en el aire es una patada en picado. Cuando aparecen líneas sobre la cabeza (el hormigueo), esquiva.
 
 ## Estructura
 
@@ -66,4 +66,6 @@ node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y me
 node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
 node tests/rebind.mjs         # reasignación de teclado y mando
+node tests/streets.mjs        # las 5 ciudades se recorren sin bloquearse y se puede trepar
+node tests/depth.mjs          # movimiento en profundidad y golpes por carril
 ```
