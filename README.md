@@ -47,6 +47,14 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 - **Táctil:** en el móvil aparecen joystick y botones en pantalla.
 - **Trucos:** los edificios están detrás de la calle: para trepar uno, salta delante de él y mantén Arriba. En la calle te mueves en profundidad como en *Maximum Carnage*: solo golpeas (y te golpean) si estáis a la misma altura. En tejados, Arriba + Golpear lanza al enemigo al aire. Abajo + Golpear en el aire es una patada en picado. Cuando aparecen líneas sobre la cabeza (el hormigueo), esquiva.
 
+## Si el mando no responde
+
+1. **Juega con el archivo descargado** (`dist/spiderman.html`), no desde el enlace: dentro de otra página, Chrome bloquea los mandos por seguridad. El juego te avisa en la portada si pasa esto.
+2. **Pulsa un botón del mando** con la ventana del juego seleccionada: el navegador no muestra el mando hasta ese momento. Verás el aviso "MANDO CONECTADO".
+3. **Mac:** usa Chrome o Safari. Firefox reconoce mal el mando Pro de Nintendo.
+4. **Mando Nintendo Pro por Bluetooth:** si no se empareja, mantén pulsado el botón pequeño de arriba (sincronizar) hasta que las luces parpadeen y conéctalo desde Ajustes → Bluetooth.
+5. Si algún botón no hace lo que esperas, cámbialo en **Controles**.
+
 ## Estructura
 
 ```
@@ -65,6 +73,7 @@ node tools/build.mjs          # genera dist/spiderman.html
 node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y menús buscando errores
 node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
+node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea
 node tests/rebind.mjs         # reasignación de teclado y mando
 node tests/streets.mjs        # las 5 ciudades se recorren sin bloquearse y se puede trepar
 node tests/depth.mjs          # movimiento en profundidad y golpes por carril

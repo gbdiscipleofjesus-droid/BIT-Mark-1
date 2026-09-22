@@ -149,8 +149,8 @@ class ControlsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'CONTROLES');
-    const dev = Input.padConnected ? 'MANDO: ' + (Input.padName || 'DESCONOCIDO').slice(0, 40) : 'SIN MANDO (CONECTA UNO Y PULSA UN BOTÓN)';
-    Font.draw(ctx, dev, W / 2, 28, Input.padConnected ? '#80ff80' : UI.dim, { align: 'center' });
+    const dev = Input.padBlocked ? 'MANDO BLOQUEADO POR EL NAVEGADOR: DESCARGA EL JUEGO' : Input.padConnected ? 'MANDO: ' + (Input.padName || 'DESCONOCIDO').slice(0, 40) : 'SIN MANDO (CONECTA UNO Y PULSA UN BOTÓN)';
+    Font.draw(ctx, dev, W / 2, 28, Input.padBlocked ? '#ff9080' : Input.padConnected ? '#80ff80' : UI.dim, { align: 'center' });
     Font.draw(ctx, 'ACCIÓN', 30, 40, UI.gold); Font.draw(ctx, 'TECLADO', 170, 40, UI.gold); Font.draw(ctx, 'MANDO', 262, 40, UI.gold);
     this.rects = [];
     this.rows.forEach((row, i) => {
@@ -361,6 +361,20 @@ function drawLogo(ctx, t, y = 30) {
   Font.draw(ctx, 'ROMPECÁNONES', W / 2 + g, y + 36, '#60ffe0', { align: 'center', scale: 2, shadow: '#ff40c0' });
 }
 
+// Aviso breve cuando se conecta o desconecta un mando
+function drawPadToast(ctx) {
+  const tt = Input.toast;
+  if (!tt) return;
+  tt.t += 1 / 60;
+  if (tt.t > 4) { Input.toast = null; return; }
+  const a = Math.min(1, tt.t * 4, (4 - tt.t) * 2);
+  ctx.globalAlpha = a;
+  UI.panel(ctx, W / 2 - 120, 4, 240, 26, 'rgba(10,40,20,0.92)', '#80ff80');
+  Font.draw(ctx, tt.title, W / 2, 9, '#80ff80', { align: 'center' });
+  Font.draw(ctx, tt.sub, W / 2, 19, UI.paper, { align: 'center' });
+  ctx.globalAlpha = 1;
+}
+
 class TitleScene {
   constructor() { this.t = 0; Audio2.music('title'); Input.clearAny(); }
   update(dt) {
@@ -373,7 +387,11 @@ class TitleScene {
     drawSwinger(ctx, this.t);
     drawLogo(ctx, this.t, 40);
     if (Math.floor(this.t * 2) % 2) Font.draw(ctx, 'PULSA CUALQUIER BOTÓN', W / 2, 140, UI.paper, { align: 'center', shadow: UI.ink });
-    Font.draw(ctx, 'Teclado · Mando · Pantalla táctil', W / 2, 172, '#9aa0c0', { align: 'center', shadow: UI.ink });
+    let padMsg = 'Teclado · Mando · Pantalla táctil', padCol = '#9aa0c0';
+    if (Input.padBlocked) { padMsg = 'Este navegador bloquea el mando aquí: descarga el juego'; padCol = '#ff9080'; }
+    else if (Input.padConnected) { padMsg = 'Mando listo: ' + (Input.padName || '').replace(/\(.*$/, '').trim().slice(0, 30); padCol = '#80ff80'; }
+    else padMsg = '¿Mando? Pulsa cualquier botón del mando para activarlo';
+    Font.draw(ctx, padMsg, W / 2, 172, padCol, { align: 'center', shadow: UI.ink });
     Font.draw(ctx, 'Juego de fans no oficial y sin fines de lucro.', W / 2, 192, '#7a7a98', { align: 'center', shadow: UI.ink });
     Font.draw(ctx, 'Spider-Man y sus personajes son propiedad de Marvel.', W / 2, 203, '#7a7a98', { align: 'center', shadow: UI.ink });
   }
@@ -745,6 +763,7 @@ const Game = {
   render() {
     const ctx = this.ctx;
     this.scene.draw(ctx);
+    drawPadToast(ctx);
     if (this.fade) {
       const a = this.fade.phase === 'out' ? this.fade.t / 0.25 : 1 - this.fade.t / 0.25;
       ctx.fillStyle = 'rgba(0,0,0,' + clamp(a, 0, 1) + ')';

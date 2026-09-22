@@ -37,6 +37,7 @@ const Input = {
   down: {}, prev: {}, pressedMap: {}, releasedMap: {},
   keyBinds: null, padBinds: null,
   lastDevice: 'kb', padType: 'xbox', padConnected: false, padName: '',
+  padBlocked: false, seenPads: new Set(), toast: null, // aviso en pantalla sobre mandos
   touch: { active: false, stick: null, buttons: {}, used: false },
   tap: null, // {x,y} último toque/clic en coordenadas del juego
   capture: null, // función de captura para reasignar controles
@@ -77,7 +78,17 @@ const Input = {
     });
     window.addEventListener('blur', () => { this.keys = {}; this.keyLatch = {}; this.touch.buttons = {}; this.touch.stick = null; });
     window.addEventListener('gamepadconnected', (e) => { this.onPad(e.gamepad); });
-    window.addEventListener('gamepaddisconnected', () => { this.padConnected = false; });
+    window.addEventListener('gamepaddisconnected', (e) => {
+      this.padConnected = false;
+      if (e && e.gamepad) this.seenPads.delete(e.gamepad.id);
+      this.showToast('MANDO DESCONECTADO', 'Vuelve a conectarlo y pulsa un botón.');
+    });
+    // Algunos navegadores bloquean los mandos dentro de marcos (iframes)
+    try {
+      const pp = document.permissionsPolicy || document.featurePolicy;
+      if (pp && pp.allowsFeature && !pp.allowsFeature('gamepad')) this.padBlocked = true;
+    } catch (e) { /* sin política */ }
+    try { if (navigator.getGamepads) navigator.getGamepads(); } catch (e) { this.padBlocked = true; }
 
     const toGame = (cx, cy) => {
       const r = canvas.getBoundingClientRect();
@@ -131,15 +142,23 @@ const Input = {
     this.padConnected = true;
     this.padName = gp.id || '';
     const id = this.padName.toLowerCase();
+    const first = !this.seenPads.has(gp.id);
+    this.seenPads.add(gp.id);
     if (/054c|playstation|dualsense|dualshock|ps4|ps5|sony/.test(id)) this.padType = 'ps';
     else if (/057e|nintendo|pro controller|joy-con|switch/.test(id)) this.padType = 'nintendo';
     else if (gp.mapping === 'standard' || /xbox|045e|xinput/.test(id)) this.padType = 'xbox';
     else this.padType = 'generic';
+    if (first) {
+      const nice = { ps: 'PLAYSTATION', nintendo: 'NINTENDO PRO', xbox: 'XBOX', generic: 'GENÉRICO' }[this.padType];
+      this.showToast('MANDO CONECTADO: ' + nice, gp.mapping === 'standard' ? '¡Listo para jugar!' : 'Si algún botón no va, reasígnalo en Controles.');
+    }
   },
+
+  showToast(title, sub) { this.toast = { title, sub, t: 0 }; },
 
   getPads() {
     let pads = [];
-    try { pads = navigator.getGamepads ? Array.from(navigator.getGamepads() || []) : []; } catch (e) { pads = []; }
+    try { pads = navigator.getGamepads ? Array.from(navigator.getGamepads() || []) : []; } catch (e) { pads = []; this.padBlocked = true; }
     return pads.filter((p) => p && p.connected !== false);
   },
 
