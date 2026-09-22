@@ -99,6 +99,7 @@ class World {
     this.objective = '';
     this.lockInput = 0;
     this.civSayCd = 0;
+    this.ally = null; this.allyCd = Game.allyCd || 0;
     this.flash = null; this.choice = null; this.pops = []; this.bossArena = null; this.markerMission = -1;
     // enemigos colocados
     for (const s of lv.spawns) this.spawnEnemy(s.type, s.x, s.y || null);
@@ -131,7 +132,10 @@ class World {
     if (!Array.isArray(Game.save.visited)) Game.save.visited = [];
     let lines = null;
     if (!Game.save.visited.includes(uid)) { Game.save.visited.push(uid); lines = STORY.arrival[uid]; Game.saveGame(); }
-    const showTip = () => { if (!Game.save.seenCityTip) { Game.save.seenCityTip = true; Game.saveGame(); this.showTip('tip_city', 9); } };
+    const showTip = () => {
+      if (!Game.save.seenCityTip) { Game.save.seenCityTip = true; Game.saveGame(); this.showTip('tip_city', 9); }
+      if (!Game.save.seenAllyTip && this.allyList().length) { Game.save.seenAllyTip = true; Game.saveGame(); this.showTip('tip_ally', 8); }
+    };
     this.card = { small: U.name.toUpperCase(), big: U.city.toUpperCase(), sub: 'Fragmentos: ' + Game.save.tokens.filter((k) => String(k).startsWith(uid + ':')).length + '/5', t: 0, dur: 2.8 };
     if (lines) this.startDialog(prepLines(lines), showTip);
     else showTip();
@@ -420,6 +424,69 @@ class World {
     if (outro) this.startDialog(prepLines(outro), next); else next();
   }
 
+  // ---------------- refuerzo multiversal ----------------
+  allyList() {
+    const s = Game.save.stage, l = [];
+    if (s >= 2) l.push('tobey');
+    if (s >= 3) l.push('andrew');
+    if (s >= 4) l.push('miles', 'gwen');
+    return l;
+  }
+  callAlly() {
+    const p = this.player;
+    const list = this.allyList();
+    if (!list.length) { this.float('AÚN NO CONOCES A OTROS SPIDER-MAN', p.cx, p.y - 12, '#c0c0d0'); Audio2.sfx('back'); return; }
+    if (this.ally) return;
+    if (this.allyCd > 0) { this.float('REFUERZO EN ' + Math.ceil(this.allyCd) + 's', p.cx, p.y - 12, '#c0c0d0'); Audio2.sfx('back'); return; }
+    // se prefiere el aliado del universo actual
+    const who = list.includes(this.universe) ? this.universe : pick(list);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    this.ally = { who, t: 0, dur: 1.5, dir, hit: false, z: p.z };
+    this.allyCd = 40; Game.allyCd = 40;
+    const lines = { tobey: '¡Aquí estoy, Peter!', andrew: 'Estoy bien, estoy bien... ¡Voy!', miles: '¡Salto de fe!', gwen: '¿Me echabas de menos?' };
+    this.bubble(who === 'gwen' ? 'gwen' : who, lines[who]);
+    Audio2.sfx('glitch'); Audio2.sfx('thwip');
+    this.shake(3);
+  }
+  updateAlly(dt) {
+    const a = this.ally;
+    a.t += dt;
+    if (!a.hit && a.t > a.dur * 0.5) {
+      a.hit = true;
+      Audio2.sfx('special'); this.shake(6); Input.rumble(0.8, 0.8, 250);
+      for (const e of this.enemies) {
+        if (e.dead || !e.hittable() || !this.onScreen(e)) continue;
+        const dmg = e.isBoss ? 6 * this.player.dmgMul : 4 * this.player.dmgMul;
+        this.playerHits(e, dmg, (e.cx > this.cam.x + W / 2 ? 1 : -1) * 160, e.isBoss ? -40 : -220, true);
+        if (!e.dead && !e.isBoss) e.web(2.5, this);
+      }
+      // detiene también el coche de una persecución
+      if (this.crime && this.crime.car && !this.crime.car.stopped) this.stopCar();
+    }
+    if (a.t >= a.dur) this.ally = null;
+  }
+  drawAlly(ctx, cam, t) {
+    const a = this.ally;
+    const u = a.t / a.dur;
+    const x = a.dir > 0 ? -30 + u * (W + 60) : W + 30 - u * (W + 60);
+    const y = 60 + Math.sin(u * Math.PI) * 80;
+    // portales de entrada y salida
+    const px = a.dir > 0 ? 16 : W - 16, qx = a.dir > 0 ? W - 16 : 16;
+    for (const [xx, vis] of [[px, u < 0.3], [qx, u > 0.7]]) {
+      if (!vis) continue;
+      const cols = ['#ffffff', '#60ffe0', '#ff40c0', '#ffe040'];
+      for (let i = 0; i < 40; i++) { ctx.fillStyle = cols[(i + Math.floor(t * 12)) % 4]; ctx.fillRect(Math.round(xx + Math.sin(i * 0.5 + t * 6) * 4), 40 + i * 2, 3, 2); }
+    }
+    const anchorX = x + a.dir * 30, anchorY = 0;
+    ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, Math.round(y) - 16); ctx.lineTo(Math.round(anchorX) + 0.5, anchorY); ctx.stroke();
+    const pal = a.who === 'gwen' ? GWEN_PAL : SUITS.find((s) => s.id === { tobey: 'raimi', andrew: 'tasm', miles: 'verse' }[a.who]).palObj;
+    const pose = u > 0.45 && u < 0.62 ? Poses.swingkick() : Poses.swing(170);
+    if (!(u > 0.45 && u < 0.62)) pose.rot = Math.atan2(anchorX - x, y - anchorY) / D2R * a.dir * 0.9;
+    Rig.draw(ctx, Math.round(x), Math.round(y), a.dir, pose, pal, { scale: 1.3 });
+    if (a.hit && a.t < a.dur * 0.62) { ctx.fillStyle = 'rgba(255,255,255,' + (0.5 - (a.t - a.dur * 0.5) * 3) + ')'; ctx.fillRect(0, 0, W, H); }
+  }
+
   // ---------------- eventos canónicos ----------------
   startCanon(id, cb) {
     const C = CANONS[id];
@@ -695,6 +762,10 @@ class World {
       if (p.sense <= 0 && this.senseCd <= 0) { Audio2.sfx('sense'); this.senseCd = 0.5; }
       p.sense = 0.25;
     }
+    // Refuerzo multiversal (R3)
+    if (this.allyCd > 0) { this.allyCd -= dt; Game.allyCd = this.allyCd; }
+    if (this.inputEnabled && Input.pressed('ALLY') && p.state !== 'dead') this.callAlly();
+    if (this.ally) this.updateAlly(gdt);
     if (this.combo.t > 0) { this.combo.t -= dt; if (this.combo.t <= 0) this.combo.n = 0; }
     if (this.shakeAmt > 0) this.shakeAmt = Math.max(0, this.shakeAmt - dt * 20);
 
@@ -846,6 +917,7 @@ class World {
       o.draw(ctx, cam, t);
       ctx.restore();
     }
+    if (this.ally) this.drawAlly(ctx, cam, t);
     for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);

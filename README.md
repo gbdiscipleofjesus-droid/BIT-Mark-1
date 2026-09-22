@@ -41,6 +41,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 | Disparar red | V / I | Y |
 | Esquivar | Shift / O | B |
 | Especial (mantener = curar) | B / U / Q | LB / LT |
+| Refuerzo multiversal (otro Spider-Man te ayuda) | E / F | R3 (hundir stick derecho) |
 | Pausa | Esc / P | Start / Select |
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.
@@ -54,6 +55,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 3. **Mac:** usa Chrome o Safari. Firefox reconoce mal el mando Pro de Nintendo.
 4. **Mando Nintendo Pro por Bluetooth:** si no se empareja, mantén pulsado el botón pequeño de arriba (sincronizar) hasta que las luces parpadeen y conéctalo desde Ajustes → Bluetooth.
 5. Si algún botón no hace lo que esperas, cámbialo en **Controles**.
+6. **El stick:** el juego lo calibra solo (centro y recorrido), así que funciona aunque el mando lo envíe descentrado. En **Controles** hay un cuadrito que muestra el stick en vivo. Los dos sticks sirven para moverse.
 
 ## Estructura
 

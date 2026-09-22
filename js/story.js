@@ -441,6 +441,7 @@ const STORY = {
     tip_brute: 'Los enemigos grandes llevan blindaje: atrápalos con red ({SHOOT}) para romper su guardia.',
     tip_special: 'Golpear llena la barra de foco. {SPECIAL}: ataque giratorio. Mantén {SPECIAL} en el suelo para curarte.',
     tip_boss: 'Consejo: atrapa a los jefes con {SHOOT} varias veces para aturdirlos.',
+    tip_ally: '¡Nuevo! Pulsa {ALLY} para llamar a un Spider-Man de otro universo: golpea a todos los enemigos de la pantalla.',
     tip_city: 'Ciudad libre: detén crímenes (!), busca 5 fragmentos del multiverso y ve al faro azul para seguir. {PAUSE}: menú, taller, trajes y viajes.',
     tip_canon: 'Eventos canónicos: puedes salvar a quien el canon condena. Pero cada canon roto agrieta el multiverso.',
     tip_ruin: 'Aquí nada sigue las reglas. Cuidado con los zombis: son lentos, pero no se rinden.',

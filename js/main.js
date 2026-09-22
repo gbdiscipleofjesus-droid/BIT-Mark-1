@@ -152,6 +152,14 @@ class ControlsScreen {
     const dev = Input.padBlocked ? 'MANDO BLOQUEADO POR EL NAVEGADOR: DESCARGA EL JUEGO' : Input.padConnected ? 'MANDO: ' + (Input.padName || 'DESCONOCIDO').slice(0, 40) : 'SIN MANDO (CONECTA UNO Y PULSA UN BOTÓN)';
     Font.draw(ctx, dev, W / 2, 28, Input.padBlocked ? '#ff9080' : Input.padConnected ? '#80ff80' : UI.dim, { align: 'center' });
     Font.draw(ctx, 'ACCIÓN', 30, 40, UI.gold); Font.draw(ctx, 'TECLADO', 170, 40, UI.gold); Font.draw(ctx, 'MANDO', 262, 40, UI.gold);
+    if (Input.padConnected && !Input.padBlocked) {
+      // prueba del stick en vivo
+      const bx = W - 30, by = 44;
+      ctx.fillStyle = '#2a2a3a'; ctx.fillRect(bx - 9, by - 9, 19, 19);
+      ctx.fillStyle = '#80ff80';
+      ctx.fillRect(Math.round(bx + clamp(Input.stick.x, -1, 1) * 7) - 1, Math.round(by + clamp(Input.stick.y, -1, 1) * 7) - 1, 3, 3);
+      Font.draw(ctx, 'STICK', bx, by + 12, UI.dim, { align: 'center' });
+    }
     this.rects = [];
     this.rows.forEach((row, i) => {
       const y = 52 + i * 11;

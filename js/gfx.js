@@ -42,6 +42,7 @@ const SUITS = [
   { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', eye: '#ffb060' } },
 ];
 const START_SUITS = ['nwh', 'casero', 'stark', 'ffh', 'iron'];
+const GWEN_PAL = makePal({ outline: '#140a12', head: '#f4f4f8', torso: '#f4f4f8', torsoLow: '#f4f4f8', arm: '#e04a9a', arm2: '#f4f4f8', leg: '#f4f4f8', boot: '#40c0d0', face: 'spider', emblem: '#e04a9a', eye: '#ffffff' });
 SUITS.forEach((s) => { s.palObj = makePal(Object.assign({ outline: '#140a12' }, s.pal)); });
 
 // ---------------- Poses ----------------

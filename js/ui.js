@@ -199,6 +199,16 @@ function drawHUD(ctx, w, t) {
     ctx.fillStyle = i < p.webs ? '#ffffff' : '#3a3a4a';
     ctx.fillRect(28 + i * 5, 21, 3, 3);
   }
+  // Refuerzo multiversal
+  if (w.allyList && w.allyList().length) {
+    const ready = w.allyCd <= 0 && !w.ally;
+    const ix = 104, iy = 8;
+    ctx.fillStyle = UI.ink; ctx.fillRect(ix - 1, iy - 1, 16, 16);
+    ctx.fillStyle = ready ? (Math.floor(t * 3) % 2 ? '#60ffe0' : '#ff40c0') : '#2a2a3a'; ctx.fillRect(ix, iy, 14, 14);
+    if (!ready) { ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * (1 - w.allyCd / 40)), 14, Math.round(14 * (1 - w.allyCd / 40))); }
+    UI.spiderIcon(ctx, ix + 3, iy + 4, UI.ink);
+    Font.draw(ctx, Input.label('ALLY'), ix + 7, iy + 17, ready ? UI.paper : UI.dim, { align: 'center', shadow: UI.ink });
+  }
   // Tecnología
   const tech = String(Game.save.tech);
   const tw = Font.width(tech) + 16;

@@ -35,6 +35,29 @@ for (const [name, id, mapping, block] of [
     window.__pad.buttons[0].pressed = false; window.__pad.axes[0] = 0; step(60);
     window.__pad.buttons[2].pressed = true; step(2); res.attacked = !!p.attack; window.__pad.buttons[2].pressed = false; step(30);
     window.__pad.buttons[12].pressed = true; step(20); res.dpadUpDepth = Math.round(p.z); window.__pad.buttons[12].pressed = false;
+    // stick descalibrado (típico del Nintendo Pro por Bluetooth en Mac): centro 0.04, recorrido máx. ~0.3
+    window.__pad.axes[0] = 0.04; window.__pad.axes[1] = -0.03; step(10);
+    const x1 = p.x;
+    window.__pad.axes[0] = 0.3; step(30);
+    res.weakStickMovesRight = p.x > x1 + 15;
+    window.__pad.axes[0] = 0.04; step(20);
+    const x2 = p.x;
+    window.__pad.axes[0] = -0.24; step(30);
+    res.weakStickMovesLeft = p.x < x2 - 15;
+    window.__pad.axes[0] = 0.04; step(5);
+    // sin tocar el stick, no se mueve solo (sin deriva)
+    const x3 = p.x; step(40); res.noDrift = Math.abs(p.x - x3) < 2;
+    // stick derecho también sirve
+    window.__pad.axes[2] = 0.9; step(30); res.rightStickMoves = p.x > x3 + 15; window.__pad.axes[2] = 0; step(5);
+    // R3: refuerzo multiversal
+    Game.save.stage = 4;
+    const e = w.spawnEnemy('thug', p.x + 60, null); e.z = p.z; const hp0 = e.hp;
+    step(5);
+    window.__pad.buttons[11].pressed = true; step(2); window.__pad.buttons[11].pressed = false;
+    res.allyCalled = !!w.ally;
+    step(100);
+    res.allyHitEnemy = e.hp < hp0 || e.dead;
+    res.allyCooldown = Math.round(w.allyCd);
     res.labels = ['JUMP', 'ATTACK', 'SHOOT', 'DODGE', 'WEB', 'SPECIAL', 'PAUSE'].map((a) => a + '=' + Input.label(a)).join(' ');
     res.errors = Game.errors.length;
     return res;

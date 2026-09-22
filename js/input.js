@@ -2,23 +2,23 @@
 // ---------------------------------------------------------------------------
 // Entrada unificada: teclado, cualquier mando (Gamepad API) y pantalla táctil
 // ---------------------------------------------------------------------------
-const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'PAUSE'];
+const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'ALLY', 'PAUSE'];
 const ACTION_NAMES = {
   LEFT: 'Izquierda', RIGHT: 'Derecha', UP: 'Arriba', DOWN: 'Abajo', JUMP: 'Saltar',
   ATTACK: 'Golpear', WEB: 'Balancearse', SHOOT: 'Disparar red', DODGE: 'Esquivar',
-  SPECIAL: 'Especial / curar', PAUSE: 'Pausa',
+  SPECIAL: 'Especial / curar', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
 };
 const DEFAULT_KEYS = {
   LEFT: ['ArrowLeft', 'KeyA'], RIGHT: ['ArrowRight', 'KeyD'], UP: ['ArrowUp', 'KeyW'], DOWN: ['ArrowDown', 'KeyS'],
   JUMP: ['Space', 'KeyZ', 'KeyK'], ATTACK: ['KeyX', 'KeyJ'], WEB: ['KeyC', 'KeyL'], SHOOT: ['KeyV', 'KeyI'],
-  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], PAUSE: ['Escape', 'KeyP'],
+  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
 };
 // Mapeo "standard" del navegador (Xbox, PlayStation, Switch Pro, 8BitDo, etc.)
 const DEFAULT_PAD = {
   LEFT: [{ b: 14 }, { a: 0, d: -1 }], RIGHT: [{ b: 15 }, { a: 0, d: 1 }],
   UP: [{ b: 12 }, { a: 1, d: -1 }], DOWN: [{ b: 13 }, { a: 1, d: 1 }],
   JUMP: [{ b: 0 }], DODGE: [{ b: 1 }], ATTACK: [{ b: 2 }], SHOOT: [{ b: 3 }],
-  SPECIAL: [{ b: 4 }, { b: 6 }], WEB: [{ b: 5 }, { b: 7 }], PAUSE: [{ b: 9 }, { b: 8 }],
+  SPECIAL: [{ b: 4 }, { b: 6 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }, { b: 8 }],
 };
 const AXIS_T = 0.45;
 
@@ -29,6 +29,7 @@ const TOUCH_BTNS = [
   { id: 'SHOOT', x: 334, y: 136, r: 12, label: 'Y' },
   { id: 'WEB', x: 272, y: 192, r: 16, label: 'RED' },
   { id: 'SPECIAL', x: 270, y: 150, r: 11, label: 'ESP' },
+  { id: 'ALLY', x: 236, y: 178, r: 10, label: 'R3' },
   { id: 'PAUSE', x: 368, y: 16, r: 10, label: 'II' },
 ];
 
@@ -38,6 +39,7 @@ const Input = {
   keyBinds: null, padBinds: null,
   lastDevice: 'kb', padType: 'xbox', padConnected: false, padName: '',
   padBlocked: false, seenPads: new Set(), toast: null, // aviso en pantalla sobre mandos
+  cal: {}, stick: { x: 0, y: 0 }, // calibración automática de sticks por mando
   touch: { active: false, stick: null, buttons: {}, used: false },
   tap: null, // {x,y} último toque/clic en coordenadas del juego
   capture: null, // función de captura para reasignar controles
@@ -172,6 +174,56 @@ const Input = {
     return null;
   },
 
+  // ---- Calibración automática de ejes ----
+  // Algunos mandos (p. ej. el Nintendo Pro por Bluetooth en Mac) envían el stick
+  // descentrado o con un recorrido muy corto. Aprendemos el centro y el alcance real.
+  calFor(gp) {
+    const key = gp.index + ':' + gp.id;
+    let c = this.cal[key];
+    if (!c) {
+      c = this.cal[key] = { rest: [], range: [], trigger: [] };
+      gp.axes.forEach((v, i) => {
+        const trig = Math.abs(v) > 0.8;          // gatillos analógicos reposan en ±1
+        c.trigger[i] = trig;
+        c.rest[i] = trig || Math.abs(v) > 0.35 ? 0 : v; // si ya se estaba moviendo, asumimos 0
+        c.range[i] = 0.3;
+      });
+    }
+    return c;
+  },
+  axisDev(gp, i) {
+    const v = gp.axes[i];
+    if (v === undefined || Number.isNaN(v)) return 0;
+    const c = this.calFor(gp);
+    if (c.rest[i] === undefined) { c.rest[i] = 0; c.range[i] = 0.3; c.trigger[i] = Math.abs(v) > 0.8; }
+    if (c.trigger[i] || Math.abs(v) > 1.05) return 0;
+    const d = v - c.rest[i];
+    const a = Math.abs(d);
+    if (a > c.range[i]) c.range[i] = Math.min(1, a);
+    // el centro puede derivar un poco: se reajusta despacio cuando el stick está casi quieto
+    if (a < 0.06) c.rest[i] += d * 0.02;
+    return d / c.range[i];                     // normalizado: ±1 = tope real del stick
+  },
+  // Dirección de los sticks (los dos sirven para moverse)
+  stickDir(gp) {
+    const pairs = gp.mapping === 'standard' ? [[0, 1], [2, 3]] : [[0, 1], [2, 3], [3, 4]];
+    let bx = 0, by = 0, best = 0;
+    for (const [ix, iy] of pairs) {
+      if (iy >= gp.axes.length || (gp.mapping !== 'standard' && (ix === 9 || iy === 9))) continue;
+      let x = this.axisDev(gp, ix), y = this.axisDev(gp, iy);
+      // regla absoluta: una inclinación clara (>0.22 desde el centro) siempre cuenta
+      const c = this.calFor(gp);
+      const rx = (gp.axes[ix] || 0) - (c.rest[ix] || 0), ry = (gp.axes[iy] || 0) - (c.rest[iy] || 0);
+      if (!c.trigger[ix] && Math.abs(rx) > 0.22) x = sign(rx) * Math.max(Math.abs(x), 0.6);
+      if (!c.trigger[iy] && Math.abs(ry) > 0.22) y = sign(ry) * Math.max(Math.abs(y), 0.6);
+      const m = Math.hypot(x, y);
+      if (m > best) { best = m; bx = x; by = y; }
+    }
+    this.stick = { x: bx, y: by };
+    if (best < 0.5) return null;
+    return { x: bx, y: by };
+  },
+
   padActive(gp, bind) {
     if (bind.b !== undefined) {
       const btn = gp.buttons[bind.b];
@@ -179,7 +231,8 @@ const Input = {
     }
     if (bind.a !== undefined) {
       const v = gp.axes[bind.a];
-      return v !== undefined && v * bind.d > AXIS_T;
+      if (v === undefined) return false;
+      return v * bind.d > AXIS_T || this.axisDev(gp, bind.a) * bind.d > 0.55;
     }
     return false;
   },
@@ -195,6 +248,14 @@ const Input = {
         for (const bind of this.padBinds[a]) {
           if (this.padActive(gp, bind)) { padDown[a] = true; any = true; }
         }
+      }
+      const st = this.stickDir(gp);
+      if (st) {
+        if (st.x < -0.5) padDown.LEFT = true;
+        if (st.x > 0.5) padDown.RIGHT = true;
+        if (st.y < -0.5) padDown.UP = true;
+        if (st.y > 0.5) padDown.DOWN = true;
+        any = true;
       }
       const hat = this.hatDir(gp);
       if (hat) {
