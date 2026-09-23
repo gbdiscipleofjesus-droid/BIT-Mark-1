@@ -26,6 +26,7 @@ Una grieta se abre en el cielo de la Tierra-616 y un Spider-Man con el traje que
 - **Tres finales:** feliz, triste y neutro (pero triste). Dependen de cuántos cánones rompas y de lo que elijas al final.
 - **Mundo abierto:** cada universo es una ciudad libre con su propio estilo, crímenes aleatorios y 5 fragmentos con frases con significado (25 en total). Desde el menú de pausa se puede viajar entre los universos ya visitados.
 - **Más contenido:** taller con 5 mejoras y 11 trajes.
+- **Voces:** los diálogos se leen en voz alta con la voz en español del sistema, con un tono distinto para cada personaje. Se ajustan o apagan en Opciones → Voces.
 - **Música:** la de los créditos es original. En Opciones puedes cargar tu propia canción (MP3) para que suene en los créditos.
 
 ## Controles
@@ -41,7 +42,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 | Disparar red | V / I | Y |
 | Esquivar | Shift / O | B |
 | Especial (mantener = curar) | B / U / Q | LB / LT |
-| Refuerzo multiversal (otro Spider-Man te ayuda) | E / F | R3 (hundir stick derecho) |
+| Refuerzo multiversal (otro Spider-Man te ayuda, recarga 90 s) | E / F | R3 (hundir stick derecho) |
 | Pausa | Esc / P | Start / Select |
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.
@@ -75,6 +76,7 @@ node tools/build.mjs          # genera dist/spiderman.html
 node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y menús buscando errores
 node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
+node tests/voices.mjs         # diálogos hablados y recarga del refuerzo
 node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea
 node tests/rebind.mjs         # reasignación de teclado y mando
 node tests/streets.mjs        # las 5 ciudades se recorren sin bloquearse y se puede trepar

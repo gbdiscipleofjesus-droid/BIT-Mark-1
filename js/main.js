@@ -21,7 +21,7 @@ function defaultSave() {
   };
 }
 function defaultSettings() {
-  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
+  return { music: 6, sfx: 8, voices: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +78,7 @@ class OptionsScreen {
     const vol = (v) => '[' + '#'.repeat(v) + '-'.repeat(10 - v) + ']';
     this.menu = new Menu([
       { label: () => 'MÚSICA  ' + vol(s.music), left: () => { s.music = Math.max(0, s.music - 1); Game.applySettings(); }, right: () => { s.music = Math.min(10, s.music + 1); Game.applySettings(); } },
+      { label: () => 'VOCES  ' + (s.voices ? vol(s.voices) : '[APAGADAS]'), left: () => { s.voices = Math.max(0, s.voices - 1); Game.applySettings(); if (!s.voices) Voice.stop(); }, right: () => { s.voices = Math.min(10, s.voices + 1); Game.applySettings(); Voice.speak('spidey', 'Tu amigable vecino.'); } },
       { label: () => 'EFECTOS  ' + vol(s.sfx), left: () => { s.sfx = Math.max(0, s.sfx - 1); Game.applySettings(); }, right: () => { s.sfx = Math.min(10, s.sfx + 1); Game.applySettings(); } },
       { label: () => 'DIFICULTAD: < ' + DIFF_NAMES[s.difficulty] + ' >', left: () => { s.difficulty = Math.max(0, s.difficulty - 1); Game.applySettings(); }, right: () => { s.difficulty = Math.min(2, s.difficulty + 1); Game.applySettings(); } },
       { label: () => 'VIBRACIÓN DEL MANDO: ' + (s.rumble ? 'SÍ' : 'NO'), act: () => { s.rumble = !s.rumble; Game.applySettings(); if (s.rumble) Input.rumble(0.6, 0.6, 200); } },
@@ -96,7 +97,7 @@ class OptionsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'OPCIONES');
-    this.menu.draw(ctx, W / 2, 34, t, { lh: 16 });
+    this.menu.draw(ctx, W / 2, 30, t, { lh: 14 });
     Font.draw(ctx, this.msg || 'Usa izquierda/derecha para ajustar', W / 2, H - 12, this.msg ? UI.gold : UI.dim, { align: 'center' });
   }
 }
@@ -609,6 +610,7 @@ const Game = {
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
     CustomSong.load();
+    Voice.init();
     Input.init(this.canvas);
     this.applySettings();
     window.addEventListener('resize', () => this.resize());
@@ -640,6 +642,8 @@ const Game = {
     const st = Store.get('sm_settings', null);
     this.settings = Object.assign(defaultSettings(), st && typeof st === 'object' ? st : {});
     this.settings.difficulty = clamp(parseInt(this.settings.difficulty, 10) || 0, 0, 2);
+    this.settings.voices = clamp(parseInt(this.settings.voices, 10), 0, 10);
+    if (Number.isNaN(this.settings.voices)) this.settings.voices = 8;
   },
   saveGame() { Store.set('sm_save', this.save); },
   applySettings() {
@@ -691,7 +695,7 @@ const Game = {
     if (this.save.stage === 0) { this.change(() => new MenuScene()); return; }
     this.change(() => this.cityScene(opts.universe, opts.x));
   },
-  toMenu() { CustomSong.stop(); this.change(() => new MenuScene()); },
+  toMenu() { CustomSong.stop(); Voice.stop(); this.change(() => new MenuScene()); },
 
   unlockSuit(id) {
     this.suitJustUnlocked = null;

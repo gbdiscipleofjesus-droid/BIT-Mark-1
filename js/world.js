@@ -149,7 +149,10 @@ class World {
   hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); }
   addProj(p) { if (p.z === undefined) p.z = this.emitterZ || 0; this.projs.push(p); }
   onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + W + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + H + 10; }
-  bubble(who, text) { this.radio = { who, text, t: 0, dur: 3.5 }; }
+  bubble(who, text) {
+    this.radio = { who, text, t: 0, dur: Math.max(3.5, text.length * 0.07) };
+    if (!this.dialog) Voice.speak(who, text);
+  }
   showTip(key, dur = 7) {
     const text = fillTip(STORY.tips[key] || key);
     if (this.tip) { this.tipQueue.push({ text, dur }); return; }
@@ -442,7 +445,7 @@ class World {
     const who = list.includes(this.universe) ? this.universe : pick(list);
     const dir = Math.random() < 0.5 ? 1 : -1;
     this.ally = { who, t: 0, dur: 1.5, dir, hit: false, z: p.z };
-    this.allyCd = 40; Game.allyCd = 40;
+    this.allyCd = ALLY_CD; Game.allyCd = ALLY_CD;
     const lines = { tobey: '¡Aquí estoy, Peter!', andrew: 'Estoy bien, estoy bien... ¡Voy!', miles: '¡Salto de fe!', gwen: '¿Me echabas de menos?' };
     this.bubble(who === 'gwen' ? 'gwen' : who, lines[who]);
     Audio2.sfx('glitch'); Audio2.sfx('thwip');
@@ -838,6 +841,7 @@ class World {
 
   // ---------------- menús ----------------
   openPause() {
+    Voice.stop();
     Audio2.sfx('select');
     this.pause = new PauseMenu(this);
   }

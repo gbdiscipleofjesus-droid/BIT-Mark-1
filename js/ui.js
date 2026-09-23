@@ -118,13 +118,14 @@ class Menu {
 class Dialog {
   constructor(lines, onDone) {
     this.lines = lines.map(([who, text]) => ({ who, text }));
-    this.i = 0; this.chars = 0; this.onDone = onDone; this.done = false; this.t = 0;
+    this.i = 0; this.chars = 0; this.onDone = onDone; this.done = false; this.t = 0; this.spoken = -1;
   }
   get cur() { return this.lines[this.i]; }
   update(dt) {
     if (this.done) return;
     this.t += dt;
     const cur = this.cur;
+    if (this.spoken !== this.i) { this.spoken = this.i; Voice.speak(cur.who, cur.text); }
     const prev = Math.floor(this.chars);
     this.chars = Math.min(cur.text.length, this.chars + dt * 55);
     if (Math.floor(this.chars) !== prev && Math.floor(this.chars) % 3 === 0) Audio2.sfx('type');
@@ -142,6 +143,7 @@ class Dialog {
   finish() {
     if (this.done) return;
     this.done = true;
+    Voice.stop();
     if (this.onDone) this.onDone();
   }
   draw(ctx, t) {
@@ -205,7 +207,7 @@ function drawHUD(ctx, w, t) {
     const ix = 104, iy = 8;
     ctx.fillStyle = UI.ink; ctx.fillRect(ix - 1, iy - 1, 16, 16);
     ctx.fillStyle = ready ? (Math.floor(t * 3) % 2 ? '#60ffe0' : '#ff40c0') : '#2a2a3a'; ctx.fillRect(ix, iy, 14, 14);
-    if (!ready) { ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * (1 - w.allyCd / 40)), 14, Math.round(14 * (1 - w.allyCd / 40))); }
+    if (!ready) { const f = clamp(1 - w.allyCd / ALLY_CD, 0, 1); ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * f), 14, Math.round(14 * f)); }
     UI.spiderIcon(ctx, ix + 3, iy + 4, UI.ink);
     Font.draw(ctx, Input.label('ALLY'), ix + 7, iy + 17, ready ? UI.paper : UI.dim, { align: 'center', shadow: UI.ink });
   }

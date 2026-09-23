@@ -21,6 +21,7 @@
 const W = 384, H = 216;
 const TAU = Math.PI * 2;
 const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
+const ALLY_CD = 90;     // segundos de recarga del refuerzo multiversal (R3)
 const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
 function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
@@ -555,6 +556,68 @@ const Audio2 = {
       default: break;
     }
   },
+};
+
+// ---------------------------------------------------------------------------
+// Voces: los diálogos se leen en voz alta con la síntesis de voz del sistema
+// ---------------------------------------------------------------------------
+// Tono (pitch) y velocidad (rate) de cada personaje; g = género de la voz preferida
+const VOICE_STYLE = {
+  narr: { pitch: 0.9, rate: 0.95, g: 'f' }, peter: { pitch: 1.15, rate: 1.08, g: 'm' }, spidey: { pitch: 1.15, rate: 1.1, g: 'm' },
+  radio: { pitch: 0.9, rate: 1.15, g: 'm' }, static: { pitch: 0.6, rate: 0.9, g: 'm' }, jjj: { pitch: 0.7, rate: 1.25, g: 'm' },
+  desconocido: { pitch: 0.45, rate: 0.85, g: 'm' }, cero: { pitch: 0.8, rate: 0.95, g: 'm' }, tobey: { pitch: 0.95, rate: 0.98, g: 'm' },
+  andrew: { pitch: 1.2, rate: 1.12, g: 'm' }, miles: { pitch: 1.3, rate: 1.1, g: 'm' }, gwen: { pitch: 1.5, rate: 1.05, g: 'f' },
+  gwenS: { pitch: 1.4, rate: 1.0, g: 'f' }, miguel: { pitch: 0.6, rate: 0.95, g: 'm' }, harry: { pitch: 1.0, rate: 1.0, g: 'm' },
+  venom: { pitch: 0.1, rate: 0.8, g: 'm' }, sandman: { pitch: 0.5, rate: 0.85, g: 'm' }, rino: { pitch: 0.3, rate: 1.0, g: 'm' },
+  electro: { pitch: 0.8, rate: 1.1, g: 'm' }, mancha: { pitch: 0.9, rate: 1.15, g: 'm' }, richard: { pitch: 0.8, rate: 0.95, g: 'm' },
+  ben: { pitch: 0.7, rate: 0.9, g: 'm' }, davis: { pitch: 0.6, rate: 0.95, g: 'm' }, doom: { pitch: 0.2, rate: 0.8, g: 'm' },
+  voice: { pitch: 1.3, rate: 0.85, g: 'f' }, civil: { pitch: 1.2, rate: 1.1, g: 'f' },
+};
+const FEMALE_VOICES = /m[oó]nica|paulina|marisol|ang[eé]lica|isabela|soledad|sof[ií]a|helena|laura|sabina|elvira|dalia|luc[ií]a|conchita|pen[eé]lope|francisca|female|mujer|google español de estados unidos/i;
+const MALE_VOICES = /jorge|juan|diego|carlos|pablo|enrique|[aá]lvaro|ra[uú]l|andr[eé]s|eddy|reed|rocko|male|hombre|google español$/i;
+
+const Voice = {
+  ok: false, voices: [], male: null, female: null, any: null,
+  init() {
+    try {
+      if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+      this.ok = true;
+      const pickV = () => {
+        const all = window.speechSynthesis.getVoices() || [];
+        const es = all.filter((v) => /^es([-_]|$)/i.test(v.lang || ''));
+        this.voices = es;
+        this.any = es.find((v) => /es[-_](ES|MX|US|419)/i.test(v.lang)) || es[0] || null;
+        this.female = es.find((v) => FEMALE_VOICES.test(v.name)) || null;
+        this.male = es.find((v) => MALE_VOICES.test(v.name) && v !== this.female) || null;
+      };
+      pickV();
+      window.speechSynthesis.onvoiceschanged = pickV;
+    } catch (e) { this.ok = false; }
+  },
+  clean(text) {
+    return String(text)
+      .replace(/^\([^)]*\)\s*/, '')          // acotaciones al principio: "(Por los altavoces)"
+      .replace(/\.\.\./g, ', ')
+      .replace(/["«»]/g, '')
+      .trim();
+  },
+  speak(who, text) {
+    if (!this.ok || !Game.settings.voices) return;
+    const t = this.clean(text);
+    if (!t) return;
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      const st = VOICE_STYLE[who] || { pitch: 1, rate: 1, g: 'm' };
+      const v = (st.g === 'f' ? this.female : this.male) || this.any;
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
+      u.pitch = st.pitch; u.rate = st.rate;
+      u.volume = clamp(Game.settings.voices / 10, 0, 1);
+      synth.speak(u);
+    } catch (e) { /* sin voz */ }
+  },
+  stop() { try { if (this.ok) window.speechSynthesis.cancel(); } catch (e) { /* nada */ } },
 };
 
 </script>
@@ -5310,13 +5373,14 @@ class Menu {
 class Dialog {
   constructor(lines, onDone) {
     this.lines = lines.map(([who, text]) => ({ who, text }));
-    this.i = 0; this.chars = 0; this.onDone = onDone; this.done = false; this.t = 0;
+    this.i = 0; this.chars = 0; this.onDone = onDone; this.done = false; this.t = 0; this.spoken = -1;
   }
   get cur() { return this.lines[this.i]; }
   update(dt) {
     if (this.done) return;
     this.t += dt;
     const cur = this.cur;
+    if (this.spoken !== this.i) { this.spoken = this.i; Voice.speak(cur.who, cur.text); }
     const prev = Math.floor(this.chars);
     this.chars = Math.min(cur.text.length, this.chars + dt * 55);
     if (Math.floor(this.chars) !== prev && Math.floor(this.chars) % 3 === 0) Audio2.sfx('type');
@@ -5334,6 +5398,7 @@ class Dialog {
   finish() {
     if (this.done) return;
     this.done = true;
+    Voice.stop();
     if (this.onDone) this.onDone();
   }
   draw(ctx, t) {
@@ -5397,7 +5462,7 @@ function drawHUD(ctx, w, t) {
     const ix = 104, iy = 8;
     ctx.fillStyle = UI.ink; ctx.fillRect(ix - 1, iy - 1, 16, 16);
     ctx.fillStyle = ready ? (Math.floor(t * 3) % 2 ? '#60ffe0' : '#ff40c0') : '#2a2a3a'; ctx.fillRect(ix, iy, 14, 14);
-    if (!ready) { ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * (1 - w.allyCd / 40)), 14, Math.round(14 * (1 - w.allyCd / 40))); }
+    if (!ready) { const f = clamp(1 - w.allyCd / ALLY_CD, 0, 1); ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * f), 14, Math.round(14 * f)); }
     UI.spiderIcon(ctx, ix + 3, iy + 4, UI.ink);
     Font.draw(ctx, Input.label('ALLY'), ix + 7, iy + 17, ready ? UI.paper : UI.dim, { align: 'center', shadow: UI.ink });
   }
@@ -5752,7 +5817,10 @@ class World {
   hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); }
   addProj(p) { if (p.z === undefined) p.z = this.emitterZ || 0; this.projs.push(p); }
   onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + W + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + H + 10; }
-  bubble(who, text) { this.radio = { who, text, t: 0, dur: 3.5 }; }
+  bubble(who, text) {
+    this.radio = { who, text, t: 0, dur: Math.max(3.5, text.length * 0.07) };
+    if (!this.dialog) Voice.speak(who, text);
+  }
   showTip(key, dur = 7) {
     const text = fillTip(STORY.tips[key] || key);
     if (this.tip) { this.tipQueue.push({ text, dur }); return; }
@@ -6045,7 +6113,7 @@ class World {
     const who = list.includes(this.universe) ? this.universe : pick(list);
     const dir = Math.random() < 0.5 ? 1 : -1;
     this.ally = { who, t: 0, dur: 1.5, dir, hit: false, z: p.z };
-    this.allyCd = 40; Game.allyCd = 40;
+    this.allyCd = ALLY_CD; Game.allyCd = ALLY_CD;
     const lines = { tobey: '¡Aquí estoy, Peter!', andrew: 'Estoy bien, estoy bien... ¡Voy!', miles: '¡Salto de fe!', gwen: '¿Me echabas de menos?' };
     this.bubble(who === 'gwen' ? 'gwen' : who, lines[who]);
     Audio2.sfx('glitch'); Audio2.sfx('thwip');
@@ -6441,6 +6509,7 @@ class World {
 
   // ---------------- menús ----------------
   openPause() {
+    Voice.stop();
     Audio2.sfx('select');
     this.pause = new PauseMenu(this);
   }
@@ -6613,7 +6682,7 @@ function defaultSave() {
   };
 }
 function defaultSettings() {
-  return { music: 6, sfx: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
+  return { music: 6, sfx: 8, voices: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
 }
 
 // ---------------------------------------------------------------------------
@@ -6670,6 +6739,7 @@ class OptionsScreen {
     const vol = (v) => '[' + '#'.repeat(v) + '-'.repeat(10 - v) + ']';
     this.menu = new Menu([
       { label: () => 'MÚSICA  ' + vol(s.music), left: () => { s.music = Math.max(0, s.music - 1); Game.applySettings(); }, right: () => { s.music = Math.min(10, s.music + 1); Game.applySettings(); } },
+      { label: () => 'VOCES  ' + (s.voices ? vol(s.voices) : '[APAGADAS]'), left: () => { s.voices = Math.max(0, s.voices - 1); Game.applySettings(); if (!s.voices) Voice.stop(); }, right: () => { s.voices = Math.min(10, s.voices + 1); Game.applySettings(); Voice.speak('spidey', 'Tu amigable vecino.'); } },
       { label: () => 'EFECTOS  ' + vol(s.sfx), left: () => { s.sfx = Math.max(0, s.sfx - 1); Game.applySettings(); }, right: () => { s.sfx = Math.min(10, s.sfx + 1); Game.applySettings(); } },
       { label: () => 'DIFICULTAD: < ' + DIFF_NAMES[s.difficulty] + ' >', left: () => { s.difficulty = Math.max(0, s.difficulty - 1); Game.applySettings(); }, right: () => { s.difficulty = Math.min(2, s.difficulty + 1); Game.applySettings(); } },
       { label: () => 'VIBRACIÓN DEL MANDO: ' + (s.rumble ? 'SÍ' : 'NO'), act: () => { s.rumble = !s.rumble; Game.applySettings(); if (s.rumble) Input.rumble(0.6, 0.6, 200); } },
@@ -6688,7 +6758,7 @@ class OptionsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'OPCIONES');
-    this.menu.draw(ctx, W / 2, 34, t, { lh: 16 });
+    this.menu.draw(ctx, W / 2, 30, t, { lh: 14 });
     Font.draw(ctx, this.msg || 'Usa izquierda/derecha para ajustar', W / 2, H - 12, this.msg ? UI.gold : UI.dim, { align: 'center' });
   }
 }
@@ -7201,6 +7271,7 @@ const Game = {
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
     CustomSong.load();
+    Voice.init();
     Input.init(this.canvas);
     this.applySettings();
     window.addEventListener('resize', () => this.resize());
@@ -7232,6 +7303,8 @@ const Game = {
     const st = Store.get('sm_settings', null);
     this.settings = Object.assign(defaultSettings(), st && typeof st === 'object' ? st : {});
     this.settings.difficulty = clamp(parseInt(this.settings.difficulty, 10) || 0, 0, 2);
+    this.settings.voices = clamp(parseInt(this.settings.voices, 10), 0, 10);
+    if (Number.isNaN(this.settings.voices)) this.settings.voices = 8;
   },
   saveGame() { Store.set('sm_save', this.save); },
   applySettings() {
@@ -7283,7 +7356,7 @@ const Game = {
     if (this.save.stage === 0) { this.change(() => new MenuScene()); return; }
     this.change(() => this.cityScene(opts.universe, opts.x));
   },
-  toMenu() { CustomSong.stop(); this.change(() => new MenuScene()); },
+  toMenu() { CustomSong.stop(); Voice.stop(); this.change(() => new MenuScene()); },
 
   unlockSuit(id) {
     this.suitJustUnlocked = null;

@@ -324,3 +324,65 @@ const Audio2 = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// Voces: los diálogos se leen en voz alta con la síntesis de voz del sistema
+// ---------------------------------------------------------------------------
+// Tono (pitch) y velocidad (rate) de cada personaje; g = género de la voz preferida
+const VOICE_STYLE = {
+  narr: { pitch: 0.9, rate: 0.95, g: 'f' }, peter: { pitch: 1.15, rate: 1.08, g: 'm' }, spidey: { pitch: 1.15, rate: 1.1, g: 'm' },
+  radio: { pitch: 0.9, rate: 1.15, g: 'm' }, static: { pitch: 0.6, rate: 0.9, g: 'm' }, jjj: { pitch: 0.7, rate: 1.25, g: 'm' },
+  desconocido: { pitch: 0.45, rate: 0.85, g: 'm' }, cero: { pitch: 0.8, rate: 0.95, g: 'm' }, tobey: { pitch: 0.95, rate: 0.98, g: 'm' },
+  andrew: { pitch: 1.2, rate: 1.12, g: 'm' }, miles: { pitch: 1.3, rate: 1.1, g: 'm' }, gwen: { pitch: 1.5, rate: 1.05, g: 'f' },
+  gwenS: { pitch: 1.4, rate: 1.0, g: 'f' }, miguel: { pitch: 0.6, rate: 0.95, g: 'm' }, harry: { pitch: 1.0, rate: 1.0, g: 'm' },
+  venom: { pitch: 0.1, rate: 0.8, g: 'm' }, sandman: { pitch: 0.5, rate: 0.85, g: 'm' }, rino: { pitch: 0.3, rate: 1.0, g: 'm' },
+  electro: { pitch: 0.8, rate: 1.1, g: 'm' }, mancha: { pitch: 0.9, rate: 1.15, g: 'm' }, richard: { pitch: 0.8, rate: 0.95, g: 'm' },
+  ben: { pitch: 0.7, rate: 0.9, g: 'm' }, davis: { pitch: 0.6, rate: 0.95, g: 'm' }, doom: { pitch: 0.2, rate: 0.8, g: 'm' },
+  voice: { pitch: 1.3, rate: 0.85, g: 'f' }, civil: { pitch: 1.2, rate: 1.1, g: 'f' },
+};
+const FEMALE_VOICES = /m[oó]nica|paulina|marisol|ang[eé]lica|isabela|soledad|sof[ií]a|helena|laura|sabina|elvira|dalia|luc[ií]a|conchita|pen[eé]lope|francisca|female|mujer|google español de estados unidos/i;
+const MALE_VOICES = /jorge|juan|diego|carlos|pablo|enrique|[aá]lvaro|ra[uú]l|andr[eé]s|eddy|reed|rocko|male|hombre|google español$/i;
+
+const Voice = {
+  ok: false, voices: [], male: null, female: null, any: null,
+  init() {
+    try {
+      if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+      this.ok = true;
+      const pickV = () => {
+        const all = window.speechSynthesis.getVoices() || [];
+        const es = all.filter((v) => /^es([-_]|$)/i.test(v.lang || ''));
+        this.voices = es;
+        this.any = es.find((v) => /es[-_](ES|MX|US|419)/i.test(v.lang)) || es[0] || null;
+        this.female = es.find((v) => FEMALE_VOICES.test(v.name)) || null;
+        this.male = es.find((v) => MALE_VOICES.test(v.name) && v !== this.female) || null;
+      };
+      pickV();
+      window.speechSynthesis.onvoiceschanged = pickV;
+    } catch (e) { this.ok = false; }
+  },
+  clean(text) {
+    return String(text)
+      .replace(/^\([^)]*\)\s*/, '')          // acotaciones al principio: "(Por los altavoces)"
+      .replace(/\.\.\./g, ', ')
+      .replace(/["«»]/g, '')
+      .trim();
+  },
+  speak(who, text) {
+    if (!this.ok || !Game.settings.voices) return;
+    const t = this.clean(text);
+    if (!t) return;
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      const st = VOICE_STYLE[who] || { pitch: 1, rate: 1, g: 'm' };
+      const v = (st.g === 'f' ? this.female : this.male) || this.any;
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
+      u.pitch = st.pitch; u.rate = st.rate;
+      u.volume = clamp(Game.settings.voices / 10, 0, 1);
+      synth.speak(u);
+    } catch (e) { /* sin voz */ }
+  },
+  stop() { try { if (this.ok) window.speechSynthesis.cancel(); } catch (e) { /* nada */ } },
+};

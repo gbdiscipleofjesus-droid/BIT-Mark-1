@@ -5,6 +5,7 @@
 const W = 384, H = 216;
 const TAU = Math.PI * 2;
 const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
+const ALLY_CD = 90;     // segundos de recarga del refuerzo multiversal (R3)
 const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
 function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
