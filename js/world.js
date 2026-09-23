@@ -238,6 +238,7 @@ class World {
     }
     for (const pr of this.projs) {
       if (pr.owner !== 'e') continue;
+      if (pr.hazard) { if (pr.t > -0.3 && pr.t < (pr.kind === 'tornado' ? pr.life : pr.warn) && Math.abs(p.cx - pr.x) < 40) return true; continue; }
       const dx = p.cx - pr.x, dy = p.cy - pr.y;
       if (Math.hypot(dx, dy) < 80 && (dx * pr.vx + dy * pr.vy) > 0) return true;
     }
@@ -317,7 +318,7 @@ class World {
 
   respawn() {
     const p = this.player;
-    this.projs = []; this.gameOver = null;
+    this.projs = []; this.gameOver = null; p.stuckT = 0;
     // reiniciar arena en curso
     if (this.arena && !this.arena.done) {
       const a = this.arena;

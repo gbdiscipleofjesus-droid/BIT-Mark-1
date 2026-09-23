@@ -64,6 +64,21 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 - **Jefes:** tienen más del doble de vida y **tres fases**; en la tercera se enfurecen y piden refuerzos. Necesitas 4 redes para aturdirlos, y si solo machacas botones, **contraatacan** con una onda de choque.
 - Si se hace muy difícil, baja la dificultad en **Opciones**.
 
+## Poderes de los villanos
+
+| Villano | Ataques |
+|---|---|
+| Hombre de Arena | puños de arena, tornados que te persiguen, esquirlas, olas de arena; a veces se deshace en arena al recibir un golpe |
+| Venom | látigo de tentáculos, agarre que te arrastra hacia él, púas de simbionte desde el suelo |
+| Rino | embestida, cornada que te lanza por los aires, pisotón con escombros que caen del cielo, lanza trozos de autos |
+| Electro | rayos del cielo (con aviso en el suelo), orbes que te persiguen, teletransporte eléctrico, campo eléctrico |
+| La Mancha | portales y ataques desde otra dimensión |
+| Miguel O'Hara | combo de garras, **red roja que te inmoviliza** (pulsa botones rápido para soltarte), parpadeo a velocidad 2099 |
+| El Desconocido | roba los poderes de los otros villanos: cuantos más cánones rompiste, más poderes usa |
+
+El sentido arácnido también avisa de rayos, púas y tornados.
+
+
 ## Estructura
 
 ```
@@ -83,6 +98,7 @@ node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y me
 node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
 node tests/dodge.mjs          # las 4 esquivas (tipo, dirección, invulnerabilidad y daño)
+node tests/powers.mjs         # cada villano usa sus poderes
 node tests/voices.mjs         # diálogos hablados y recarga del refuerzo
 node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea
 node tests/rebind.mjs         # reasignación de teclado y mando

@@ -737,8 +737,12 @@ class ExoBrute extends Boss {
       case 'roar': pose = Poses.cheer(t); break;
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 6) : Poses.idle(t);
     }
-    if (this.state === 'whipWU') pose = Poses.windup();
-    else if (this.state === 'whip') pose = Poses.punch1();
+    if (!this.dead) switch (this.state) {
+      case 'whipWU': case 'grabWU': case 'hornWU': case 'throwWU': case 'shardsWU': pose = Poses.windup(); break;
+      case 'whip': case 'grab': case 'horn': pose = Poses.punch1(); break;
+      case 'stormWU': case 'sandwaveWU': case 'spikeWU': pose = Poses.cheer(t); break;
+      case 'stompWU': pose = Poses.crouch(); break;
+    }
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, bulk: 6 });
     this.drawExtra(ctx, wp, t);
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
@@ -1121,15 +1125,22 @@ class Scorpion extends Boss {
 class Proj {
   constructor(kind, x, y, vx, vy, owner, dmg) {
     this.kind = kind; this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner; this.dmg = dmg || 0;
-    this.life = { darkweb: 2, spot: 3, redweb: 2.5, web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
-    this.g = { bomb: 600, acid: 700, redweb: 700, spot: 500, riftorb: 0 }[kind] || 0;
-    this.r = { darkweb: 4, spot: 5, redweb: 4, web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
+    this.life = { sand: 3, debris: 4, net: 2.5, eorb: 3.5, darkweb: 2, spot: 3, redweb: 2.5, web: 0.7, bullet: 2, orb: 3, laser: 2, shock: 3, wave: 2.4, bomb: 4, feather: 2.5, acid: 3, riftorb: 6 }[kind] || 2;
+    this.g = { sand: 700, debris: 650, bomb: 600, acid: 700, redweb: 700, spot: 500, riftorb: 0 }[kind] || 0;
+    this.r = { sand: 4, debris: 6, net: 6, eorb: 5, darkweb: 4, spot: 5, redweb: 4, web: 4, bullet: 2, orb: 4, laser: 2, shock: 6, wave: 6, bomb: 4, feather: 3, acid: 4, riftorb: 6 }[kind] || 3;
     this.dead = false; this.t = 0; this.z = undefined;
   }
   box() { return { x: this.x - this.r, y: this.y - this.r, w: this.r * 2, h: this.r * 2 }; }
   update(dt, world) {
     this.t += dt; this.life -= dt;
     if (this.life <= 0) { this.dead = true; return; }
+    // esferas eléctricas que persiguen al jugador
+    if (this.kind === 'eorb' && this.owner === 'e') {
+      const p = world.player, dx = p.cx - this.x, dy = p.cy - this.y, l = Math.hypot(dx, dy) || 1;
+      this.vx += (dx / l * 125 - this.vx) * 1.6 * dt; this.vy += (dy / l * 125 - this.vy) * 1.6 * dt;
+      if (this.z !== undefined) this.z = approach(this.z, p.z, 20 * dt);
+      if (Math.floor(this.t * 30) % 3 === 0) world.particles.spark(this.x, this.y, '#a0e0ff', 1);
+    }
     this.vy += this.g * dt;
     this.x += this.vx * dt; this.y += this.vy * dt;
     const lv = world.level;
@@ -1139,7 +1150,8 @@ class Proj {
       this.y = s - 6;
       if (Math.floor(this.t * 30) % 2) world.particles.spark(this.x, this.y + 4, this.dmg > 0 ? '#80d0ff' : '#90ff90', 1);
     } else if (lv.pointSolid(this.x, this.y, false, false) || this.y > lv.killY) {
-      if (this.kind === 'bomb' || this.kind === 'riftorb') this.explode(world);
+      if (this.kind === 'bomb' || this.kind === 'riftorb' || this.kind === 'debris') this.explode(world);
+      else if (this.kind === 'sand') { world.particles.burst(this.x, this.y, 8, '#d8b070', 60); this.dead = true; }
       else if (this.kind === 'acid' || this.kind === 'redweb' || this.kind === 'spot') { world.particles.burst(this.x, this.y, 8, '#90ff60', 60); this.dead = true; }
       else { world.particles.burst(this.x, this.y, 4, this.owner === 'p' ? '#ffffff' : '#ffe060', 50); this.dead = true; }
       return;
@@ -1161,8 +1173,11 @@ class Proj {
     } else {
       const p = world.player;
       if (overlap(this.box(), p.hurtbox()) && Math.abs((this.z || 0) - p.z) <= LANE + 2) {
-        if (this.kind === 'bomb' || this.kind === 'riftorb') { this.explode(world); return; }
-        if (world.damagePlayer(this.dmg, this.x, this.z)) { this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60); }
+        if (this.kind === 'bomb' || this.kind === 'riftorb' || this.kind === 'debris') { this.explode(world); return; }
+        if (world.damagePlayer(this.dmg, this.x, this.z)) {
+          this.dead = true; world.particles.burst(this.x, this.y, 5, '#ff8040', 60);
+          if (this.kind === 'net') { p.stuckT = 1.0; world.float('¡ATRAPADO! PULSA BOTONES', p.cx, p.y - 14, '#ff6070'); }
+        }
       }
     }
   }
@@ -1197,8 +1212,8 @@ class Proj {
         ctx.fillStyle = Math.floor(t * 30) % 2 ? '#ffffff' : '#80d0ff'; ctx.fillRect(x - 4, y - 4, 8, 8);
         break;
       case 'wave':
-        ctx.fillStyle = this.dmg > 0 ? 'rgba(128,208,255,0.8)' : 'rgba(144,255,144,0.8)';
-        for (let i = 0; i < 4; i++) ctx.fillRect(x - 6 + i * 3, y + 6 - (4 + (i % 2) * 5), 2, 4 + (i % 2) * 5);
+        ctx.fillStyle = this.tint || (this.dmg > 0 ? 'rgba(128,208,255,0.8)' : 'rgba(144,255,144,0.8)');
+        for (let i = 0; i < (this.tint ? 6 : 4); i++) ctx.fillRect(x - 6 + i * 3, y + 6 - (4 + (i % 2) * 5), 2, 4 + (i % 2) * 5);
         break;
       case 'bomb':
         ctx.fillStyle = '#202020'; ctx.fillRect(x - 3, y - 3, 6, 6);
@@ -1209,6 +1224,22 @@ class Proj {
         break;
       case 'acid':
         ctx.fillStyle = '#90ff60'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#e0ffb0'; ctx.fillRect(x - 1, y - 2, 2, 2);
+        break;
+      case 'sand':
+        ctx.fillStyle = '#b89050'; ctx.fillRect(x - 3, y - 3, 7, 7); ctx.fillStyle = '#e8c890'; ctx.fillRect(x - 1, y - 2, 3, 2);
+        break;
+      case 'debris':
+        ctx.save(); ctx.translate(x, y); ctx.rotate(this.t * 8);
+        ctx.fillStyle = '#6a6a74'; ctx.fillRect(-6, -4, 12, 8); ctx.fillStyle = '#a02828'; ctx.fillRect(-6, -4, 12, 3); ctx.fillStyle = '#9ad0f0'; ctx.fillRect(-2, -3, 4, 2);
+        ctx.restore();
+        break;
+      case 'net':
+        ctx.strokeStyle = '#ff3040'; ctx.lineWidth = 1;
+        for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(x - 6, y + i * 4); ctx.lineTo(x + 6, y + i * 4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + i * 4, y - 6); ctx.lineTo(x + i * 4, y + 6); ctx.stroke(); }
+        break;
+      case 'eorb':
+        ctx.fillStyle = 'rgba(120,200,255,0.35)'; ctx.fillRect(x - 6, y - 6, 12, 12);
+        ctx.fillStyle = Math.floor(t * 30) % 2 ? '#ffffff' : '#80d0ff'; ctx.fillRect(x - 3, y - 3, 6, 6);
         break;
       case 'darkweb':
         ctx.fillStyle = '#16141a'; ctx.fillRect(x - 3, y - 3, 7, 7);
@@ -1338,7 +1369,51 @@ class Sandman extends ExoBrute {
     this.pal = makePal({ head: '#c8a878', hair: '#8a6a3a', torso: '#4a7a3a', torsoLow: '#6a5a3a', arm: '#c8a060', arm2: '#b89050', hand: '#d8b070', leg: '#6a5a3a', boot: '#3a2a1a', face: 'human', outline: '#2a1a0a' });
     this.summoned = true;
   }
+  chooseAttack(adx) {
+    const r = Math.random();
+    if (adx < 50 && r < 0.35) { this.state = 'punchWU'; this.t = 0.6 / this.speedMul(); }
+    else if (r < 0.55) { this.state = 'stormWU'; this.t = 0.7; }
+    else if (r < 0.75) { this.state = 'shardsWU'; this.t = 0.5; }
+    else if (r < 0.9) { this.state = 'sandwaveWU'; this.t = 0.6; }
+    else { this.state = 'leapWU'; this.t = 0.5; }
+  }
+  aiExtra(dt, world) {
+    const st = this.state;
+    if (!['stormWU', 'shardsWU', 'sandwaveWU'].includes(st)) return false;
+    this.faceP(world); this.vx = 0; this.t -= dt;
+    if (Math.floor(this.anim * 20) % 2) world.particles.add(this.cx + rand(-14, 14), this.y + this.h, rand(-20, 20), -rand(30, 80), 0.4, '#d8b070', 1, 0);
+    if (this.t <= 0) {
+      if (st === 'stormWU') { Powers.tornado(world, this, this.phase >= 2 ? 2 : 1); world.float('¡TORMENTA DE ARENA!', this.cx, this.y - 10, '#e8c890'); }
+      else if (st === 'shardsWU') { Powers.arcs(world, this, 'sand', this.phase >= 3 ? 5 : 3); Audio2.sfx('shoot'); }
+      else {
+        for (const d of [-1, 1]) { const wv = new Proj('wave', this.cx + d * 14, this.y + this.h - 6, d * 185, 0, 'e', this.bdmg(0.9)); wv.tint = 'rgba(216,176,112,0.9)'; world.addProj(wv); }
+        world.shake(5); Audio2.sfx('heavy');
+      }
+      this.state = 'recover'; this.t = 0.6;
+    }
+    this.ground(dt, world);
+    return true;
+  }
+  takeHit(dmg, kx, ky, heavy, world) {
+    // a veces se deshace en arena y el golpe lo atraviesa
+    if (this.hittable() && this.stun <= 0 && !heavy && Math.random() < 0.2) {
+      this.inv = 0.45;
+      world.particles.burst(this.cx, this.cy, 16, '#d8b070', 90);
+      world.float('¡ARENA!', this.cx, this.y - 10, '#e8c890');
+      return false;
+    }
+    return super.takeHit(dmg, kx, ky, heavy, world);
+  }
   drawExtra(ctx, wp, t) {
+    // puños de arena gigantes al golpear o preparar un poder
+    if (['punch', 'punchWU', 'stormWU', 'shardsWU', 'sandwaveWU'].includes(this.state)) {
+      for (const h of [wp.h1, wp.h2]) {
+        const r = this.state === 'punch' ? 7 : 5;
+        ctx.fillStyle = '#a07840'; ctx.fillRect(h[0] - r, h[1] - r, r * 2, r * 2);
+        ctx.fillStyle = '#d8b070'; ctx.fillRect(h[0] - r + 1, h[1] - r + 1, r * 2 - 3, r * 2 - 3);
+      }
+    }
+    if (this.inv > 0 && !this.dead) { ctx.fillStyle = 'rgba(216,176,112,0.5)'; ctx.fillRect(wp.hip[0] - 10, wp.head[1] - 6, 20, wp.f2[1] - wp.head[1] + 8); }
     ctx.fillStyle = '#2a4a1a';
     for (let i = 0; i < 3; i++) ctx.fillRect(wp.mid[0] - 4, wp.mid[1] - 6 + i * 4, 9, 1);
     ctx.fillStyle = 'rgba(210,180,120,0.7)';
@@ -1357,13 +1432,35 @@ class Venom extends ExoBrute {
   }
   chooseAttack(adx) {
     const r = Math.random();
-    if (adx < 42 && r < 0.4) { this.state = 'punchWU'; this.t = 0.6 / this.speedMul(); }
-    else if (adx < 90 && r < 0.75) { this.state = 'whipWU'; this.t = 0.55 / this.speedMul(); }
-    else if (r < 0.88) { this.state = 'leapWU'; this.t = 0.45; }
+    if (adx < 42 && r < 0.3) { this.state = 'punchWU'; this.t = 0.6 / this.speedMul(); }
+    else if (adx < 90 && r < 0.5) { this.state = 'whipWU'; this.t = 0.55 / this.speedMul(); }
+    else if (adx < 130 && r < 0.68) { this.state = 'grabWU'; this.t = 0.5 / this.speedMul(); }
+    else if (r < 0.85) { this.state = 'spikeWU'; this.t = 0.5; }
+    else if (r < 0.93) { this.state = 'leapWU'; this.t = 0.45; }
     else { this.state = 'chargeWU'; this.t = 0.55; }
   }
   aiExtra(dt, world) {
-    if (this.state === 'whipWU') {
+    const p = world.player;
+    if (this.state === 'spikeWU') {
+      this.faceP(world); this.vx = 0; this.t -= dt;
+      if (this.t <= 0) { Powers.spikes(world, this, this.phase >= 2 ? 7 : 5); world.float('¡PÚAS!', this.cx, this.y - 10, '#a0a0c0'); this.state = 'recover'; this.t = 0.5; }
+    } else if (this.state === 'grabWU') {
+      this.faceP(world); this.vx = 0; this.t -= dt;
+      if (this.t <= 0) { this.state = 'grab'; this.t = 0.3; this.hitDone = false; Audio2.sfx('whoosh'); }
+    } else if (this.state === 'grab') {
+      this.t -= dt;
+      const box = { x: this.facing > 0 ? this.cx : this.cx - 120, y: this.y + 6, w: 120, h: 16 };
+      if (!this.hitDone && overlap(box, p.hurtbox()) && Math.abs(this.z - p.z) <= LANE) {
+        this.hitDone = true;
+        if (world.damagePlayer(this.bdmg(0.5), this.cx, this.z)) {
+          // lo arrastra hacia él y remata
+          p.x = this.cx + this.facing * 16 - p.w / 2; p.vx = 0; p.vy = -60;
+          world.float('¡TE ATRAPÓ!', this.cx, this.y - 12, '#e05080');
+          this.state = 'punchWU'; this.t = 0.25;
+        }
+      }
+      if (this.state === 'grab' && this.t <= 0) { this.state = 'recover'; this.t = 0.5; }
+    } else if (this.state === 'whipWU') {
       this.faceP(world); this.vx = 0; this.t -= dt;
       if (this.t <= 0) { this.state = 'whip'; this.t = 0.3; this.hitDone = false; Audio2.sfx('whoosh'); }
     } else if (this.state === 'whip') {
@@ -1389,9 +1486,9 @@ class Venom extends ExoBrute {
     ctx.fillStyle = '#e8e8f0';
     const [x, y] = wp.mid;
     ctx.fillRect(x - 1, y - 8, 3, 12); ctx.fillRect(x - 6, y - 7, 5, 2); ctx.fillRect(x + 2, y - 7, 5, 2); ctx.fillRect(x - 6, y - 1, 5, 2); ctx.fillRect(x + 2, y - 1, 5, 2);
-    if (this.state === 'whip' || this.state === 'whipWU') {
+    if (this.state === 'whip' || this.state === 'whipWU' || this.state === 'grab' || this.state === 'grabWU') {
       const [hx, hy] = wp.h2, f = this.facing;
-      const len = this.state === 'whip' ? 76 : 12;
+      const len = this.state === 'whip' ? 76 : this.state === 'grab' ? 118 * (1 - this.t / 0.3) : 12;
       ctx.fillStyle = '#000000'; thickLine(ctx, hx, hy, hx + f * len, hy + Math.sin(t * 30) * 3, 4);
       ctx.fillStyle = '#3a3a4a'; thickLine(ctx, hx, hy - 1, hx + f * len, hy - 1 + Math.sin(t * 30) * 3, 1);
     }
@@ -1407,9 +1504,41 @@ class Rino extends ExoBrute {
     this.summoned = true;
   }
   chooseAttack(adx) {
-    if (adx < 40 && Math.random() < 0.4) { this.state = 'punchWU'; this.t = 0.65 / this.speedMul(); }
-    else if (Math.random() < 0.7) { this.state = 'chargeWU'; this.t = 0.55; }
+    const r = Math.random();
+    if (adx < 40 && r < 0.3) { this.state = 'hornWU'; this.t = 0.5 / this.speedMul(); }
+    else if (r < 0.55) { this.state = 'chargeWU'; this.t = 0.55; }
+    else if (r < 0.75) { this.state = 'stompWU'; this.t = 0.6; }
+    else if (r < 0.9) { this.state = 'throwWU'; this.t = 0.55; }
     else { this.state = 'leapWU'; this.t = 0.5; }
+  }
+  aiExtra(dt, world) {
+    const p = world.player, st = this.state;
+    if (st === 'hornWU') {
+      this.faceP(world); this.vx = 0; this.t -= dt;
+      if (this.t <= 0) { this.state = 'horn'; this.t = 0.3; this.hitDone = false; this.vx = this.facing * 200; Audio2.sfx('roar'); }
+    } else if (st === 'horn') {
+      this.t -= dt;
+      const box = { x: this.facing > 0 ? this.cx : this.cx - 36, y: this.y - 8, w: 36, h: this.h };
+      if (!this.hitDone && overlap(box, p.hurtbox()) && Math.abs(this.z - p.z) <= LANE) {
+        this.hitDone = true;
+        if (world.damagePlayer(this.bdmg(1.1), this.cx, this.z)) { p.vy = -360; p.vx = this.facing * 160; world.float('¡CORNADA!', p.cx, p.y - 10, '#ffe060'); }
+      }
+      if (this.t <= 0) { this.state = 'recover'; this.t = 0.6; this.vx = 0; }
+    } else if (st === 'stompWU') {
+      this.vx = 0; this.t -= dt;
+      if (this.t <= 0) {
+        for (const d of [-1, 1]) world.addProj(new Proj('wave', this.cx + d * 12, this.y + this.h - 6, d * 200, 0, 'e', this.bdmg(0.8)));
+        const n = this.phase >= 2 ? 4 : 2;
+        for (let i = 0; i < n; i++) world.addProj(new Proj('debris', clamp(p.cx + rand(-70, 70), this.arena.x1 + 10, this.arena.x2 - 10), world.cam.y - 10, rand(-20, 20), 40, 'e', this.bdmg(0.8)));
+        world.shake(8); Audio2.sfx('explode');
+        this.state = 'recover'; this.t = 0.7;
+      }
+    } else if (st === 'throwWU') {
+      this.faceP(world); this.vx = 0; this.t -= dt;
+      if (this.t <= 0) { Powers.arcs(world, this, 'debris', this.phase >= 3 ? 3 : 2, 40); Audio2.sfx('whoosh'); this.state = 'recover'; this.t = 0.6; }
+    } else return false;
+    this.ground(dt, world);
+    return true;
   }
   drawExtra(ctx, wp) {
     const [hx, hy] = wp.head, f = this.facing;
@@ -1425,11 +1554,66 @@ class Electro extends Shocker {
     this.type = 'electro'; this.name = 'ELECTRO';
     this.hp = this.maxHp = Math.ceil(55 * DIFF_HP[Game.settings.difficulty]);
     this.pal = makePal({ head: '#3a8aff', hair: '#3a8aff', torso: '#1a2030', torsoLow: '#12161e', arm: '#1a2030', arm2: '#3a8aff', hand: '#a0e0ff', leg: '#12161e', boot: '#0a0c12', face: 'visor', eye: '#ffffff', outline: '#040810' });
+    this.fieldT = 0;
+  }
+  ai(dt, world) {
+    const p = world.player, adx = Math.abs(p.cx - this.cx);
+    this.contactDmg = false;
+    // campo eléctrico (fase 2+): quema si estás muy cerca
+    if (this.fieldT > 0) {
+      this.fieldT -= dt;
+      if (dist(p.cx, p.cy, this.cx, this.cy) < 42 && Math.abs(this.z - p.z) <= LANE + 4) world.damagePlayer(this.bdmg(0.5), this.cx, this.z);
+    }
+    const map = { boltsWU: 1, orbWU: 1, zapWU: 1, fieldWU: 1, zapIn: 1 };
+    if (this.state === 'move') {
+      this.faceP(world); this.t -= dt;
+      let want = 0;
+      if (adx < 90) want = -this.facing; else if (adx > 160) want = this.facing;
+      this.vx = approach(this.vx, want * 70 * this.speedMul(), 400 * dt);
+      if (this.t <= 0) {
+        const r = Math.random();
+        if (r < 0.3) { this.state = 'boltsWU'; this.t = 0.5; }
+        else if (r < 0.5) { this.state = 'orbWU'; this.t = 0.55; }
+        else if (r < 0.68) { this.state = 'zapWU'; this.t = 0.35; }
+        else if (r < 0.8 && this.phase >= 2) { this.state = 'fieldWU'; this.t = 0.45; }
+        else { this.state = 'blastWU'; this.t = 0.5; }
+        Audio2.sfx('zap');
+      }
+      this.ground(dt, world); return;
+    }
+    if (!map[this.state]) { super.ai(dt, world); return; }
+    this.vx = approach(this.vx, 0, 600 * dt); this.t -= dt;
+    if (this.t <= 0) {
+      switch (this.state) {
+        case 'boltsWU': Powers.bolts(world, this, this.phase >= 3 ? 7 : this.phase >= 2 ? 5 : 3); world.float('¡RAYOS!', this.cx, this.y - 10, '#80e0ff'); this.state = 'recover'; this.t = 0.6; break;
+        case 'orbWU': Powers.orbs(world, this, this.phase >= 2 ? 3 : 2); this.state = 'recover'; this.t = 0.6; break;
+        case 'fieldWU': this.fieldT = 1.6; world.float('¡CAMPO ELÉCTRICO!', this.cx, this.y - 10, '#80e0ff'); this.state = 'recover'; this.t = 0.4; break;
+        case 'zapWU':
+          // se convierte en electricidad y reaparece detrás del jugador
+          world.particles.burst(this.cx, this.cy, 14, '#a0e0ff', 120);
+          this.x = clamp(p.cx - p.facing * 34, this.arena.x1 + 10, this.arena.x2 - 20) - this.w / 2;
+          this.faceP(world);
+          world.particles.burst(this.cx, this.cy, 14, '#a0e0ff', 120);
+          this.state = 'zapIn'; this.t = 0.3;
+          break;
+        case 'zapIn':
+          if (dist(p.cx, p.cy, this.cx, this.cy) < 40) world.damagePlayer(this.bdmg(0.9), this.cx, this.z);
+          world.particles.burst(this.cx, this.cy, 20, '#ffffff', 150); world.shake(3); Audio2.sfx('zap');
+          this.state = 'recover'; this.t = 0.5;
+          break;
+        default: this.state = 'recover'; this.t = 0.4;
+      }
+    }
+    this.ground(dt, world);
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
     ctx.fillStyle = 'rgba(80,170,255,' + (0.12 + Math.sin(t * 20) * 0.06) + ')';
     ctx.fillRect(x - 14, y - 34, 28, 36);
+    if (this.fieldT > 0) {
+      ctx.strokeStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#80e0ff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y - 14, 40 + Math.sin(t * 30) * 2, 0, TAU); ctx.stroke();
+    }
     super.draw(ctx, cam, t);
     if (Math.floor(t * 15) % 3 === 0) {
       ctx.fillStyle = '#c0f0ff';
@@ -1535,6 +1719,49 @@ class Mancha extends Boss {
 }
 
 class Miguel extends Scorpion {
+  ai(dt, world) {
+    const p = world.player;
+    const extra = ['netWU', 'slashWU', 'slash', 'blinkWU'];
+    if (this.state === 'move' && this.t - dt <= 0 && Math.random() < 0.5) {
+      const r = Math.random();
+      if (r < 0.35) { this.state = 'netWU'; this.t = 0.45; }
+      else if (r < 0.7) { this.state = 'slashWU'; this.t = 0.35 / this.speedMul(); this.slashes = 3; }
+      else { this.state = 'blinkWU'; this.t = 0.3; }
+    }
+    if (!extra.includes(this.state)) { super.ai(dt, world); return; }
+    this.t -= dt;
+    switch (this.state) {
+      case 'netWU':
+        this.faceP(world); this.vx = 0;
+        if (this.t <= 0) { Powers.net(world, this); Audio2.sfx('thwip'); this.state = 'recover'; this.t = 0.5; }
+        break;
+      case 'blinkWU':
+        this.vx = 0;
+        if (this.t <= 0) {
+          // velocidad 2099: aparece detrás del jugador dejando una estela
+          for (let i = 0; i < 6; i++) world.particles.add(lerp(this.cx, p.cx, i / 6), this.cy, 0, 0, 0.3, '#d01a2a', 2, 0);
+          this.x = clamp(p.cx - p.facing * 30, this.arena.x1 + 10, this.arena.x2 - 20) - this.w / 2;
+          this.faceP(world); Audio2.sfx('whoosh');
+          this.state = 'slashWU'; this.t = 0.18; this.slashes = 2;
+        }
+        break;
+      case 'slashWU':
+        this.faceP(world); this.vx = 0;
+        if (this.t <= 0) { this.state = 'slash'; this.t = 0.17; this.hitDone = false; this.vx = this.facing * 220; Audio2.sfx('dodge'); }
+        break;
+      case 'slash': {
+        const box = { x: this.facing > 0 ? this.cx : this.cx - 28, y: this.y + 2, w: 28, h: this.h - 4 };
+        if (!this.hitDone && overlap(box, p.hurtbox())) { this.hitDone = true; world.damagePlayer(this.bdmg(0.7), this.cx, this.z); }
+        if (this.t <= 0) {
+          this.vx = 0; this.slashes--;
+          if (this.slashes > 0) { this.state = 'slashWU'; this.t = 0.12; }
+          else { this.state = 'recover'; this.t = 0.55; }
+        }
+        break;
+      }
+    }
+    this.ground(dt, world);
+  }
   constructor(x, y) {
     super(x, y);
     this.type = 'miguel'; this.name = 'MIGUEL O\'HARA (2099)';
@@ -1549,7 +1776,9 @@ class Miguel extends Scorpion {
     if (this.dead) pose = Poses.ko();
     else switch (this.state) {
       case 'stabWU': case 'acidWU': pose = Poses.windup(); break;
-      case 'stab': pose = Poses.punch2(); break;
+      case 'stab': case 'slash': pose = (this.slashes || 0) % 2 ? Poses.punch1() : Poses.punch2(); break;
+      case 'netWU': pose = Poses.shoot(); break;
+      case 'slashWU': case 'blinkWU': pose = Poses.windup(); break;
       case 'sweepWU': case 'sweep': pose = Poses.kick(); break;
       case 'leapWU': pose = Poses.crouch(); break;
       case 'leap': pose = this.vy < 0 ? Poses.jump() : Poses.dive(); break;
@@ -1562,7 +1791,7 @@ class Miguel extends Scorpion {
       c.beginPath(); c.moveTo(wp.sh[0], wp.sh[1]); c.lineTo(wp.sh[0] - f * 10, wp.hip[1] + 6 + Math.sin(t * 6) * 2); c.lineTo(wp.sh[0] - f * 3, wp.hip[1] + 4); c.fill();
     };
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
-    if (this.state === 'stab') {
+    if (this.state === 'stab' || this.state === 'slash') {
       ctx.fillStyle = '#ffe0e0';
       for (let i = 0; i < 3; i++) thickLine(ctx, wp.h2[0], wp.h2[1] - 3 + i * 3, wp.h2[0] + this.facing * 26, wp.h2[1] - 6 + i * 4, 1);
     }
@@ -1604,13 +1833,29 @@ class Desconocido extends Boss {
         this.vx = approach(this.vx, want * 95 * this.speedMul(), 500 * dt);
         if (this.t <= 0) {
           const r = Math.random();
-          if (r < 0.3) { this.state = 'webWU'; this.t = 0.45; }
+          if (this.final && r < 0.28) { this.state = 'stolenWU'; this.t = 0.55; }
+          else if (r < 0.3) { this.state = 'webWU'; this.t = 0.45; }
           else if (r < 0.55) { this.state = 'diveWU'; this.t = 0.4; }
           else if (r < 0.8) { this.state = 'dashWU'; this.t = 0.4; }
           else { this.state = 'zipWU'; this.t = 0.5; }
         }
         break;
       }
+      case 'stolenWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (Math.floor(this.anim * 20) % 2) world.particles.spark(this.cx, this.cy, pick(['#60ffe0', '#ff40c0', '#ffe040']), 1);
+        if (this.t <= 0) {
+          // usa poderes de otros villanos; cuantos más cánones rotos, más poderes
+          const all = [['ELECTRO', () => Powers.bolts(world, this, 4)], ['VENOM', () => Powers.spikes(world, this, 6)],
+            ['HOMBRE DE ARENA', () => Powers.tornado(world, this, 1)], ['MIGUEL', () => Powers.net(world, this)], ['RINO', () => Powers.arcs(world, this, 'debris', 2, 40)]];
+          const avail = all.slice(0, Math.max(2, 1 + this.power));
+          const [who, fn] = pick(avail);
+          fn();
+          world.float('PODER ROBADO: ' + who, this.cx, this.y - 12, '#ff60c0');
+          Audio2.sfx('glitch');
+          this.state = 'recover'; this.t = 0.55;
+        }
+        break;
       case 'webWU':
         this.faceP(world); this.vx = 0; this.t -= dt;
         if (this.t <= 0) {
@@ -1684,6 +1929,7 @@ class Desconocido extends Boss {
     if (this.dead && !this.escaped) pose = Poses.ko();
     else switch (this.state) {
       case 'webWU': case 'punchWU': pose = Poses.shoot(); break;
+      case 'stolenWU': pose = Poses.cheer(t); break;
       case 'diveWU': pose = Poses.crouch(); break;
       case 'dive': pose = this.vy < 0 ? Poses.flip(this.anim) : Poses.dive(); break;
       case 'dash': case 'punch': pose = Poses.punch1(); break;
@@ -1716,4 +1962,114 @@ const BOSS_CLASSES = {
   sandman: Sandman, venom: Venom, rino: Rino, electro: Electro, mancha: Mancha, miguel: Miguel,
   desconocido0: class extends Desconocido { constructor(x, y) { super(x, y, false); } },
   desconocido4: class extends Desconocido { constructor(x, y) { super(x, y, true); } },
+};
+
+// ---------------------------------------------------------------------------
+// Peligros de zona: rayos, púas del simbionte y tornados de arena
+// ---------------------------------------------------------------------------
+class Hazard {
+  constructor(kind, x, groundY, dmg, o = {}) {
+    this.kind = kind; this.x = x; this.y = groundY; this.dmg = dmg; this.owner = 'e'; this.hazard = true;
+    this.warn = o.warn !== undefined ? o.warn : 0.7; this.t = -(o.delay || 0); this.dead = false;
+    this.life = o.life || (kind === 'tornado' ? 4 : this.warn + 0.35);
+    this.vx = 0; this.vy = 0; this.z = o.z; this.hitCd = 0; this.struck = false;
+  }
+  update(dt, world) {
+    this.t += dt;
+    if (this.t < 0) return;
+    const p = world.player;
+    const lane = Math.abs((this.z || 0) - p.z) <= LANE + 4;
+    if (this.t > this.life) { this.dead = true; return; }
+    if (this.kind === 'tornado') {
+      this.vx = approach(this.vx, sign(p.cx - this.x) * 58, 90 * dt);
+      this.x += this.vx * dt;
+      this.y = world.level.surfaceY(this.x, this.y - 20);
+      if (this.z !== undefined) this.z = approach(this.z, p.z, 18 * dt);
+      if (this.hitCd > 0) this.hitCd -= dt;
+      if (Math.floor(this.t * 20) % 2) world.particles.add(this.x + rand(-10, 10), this.y - rand(0, 40), rand(-40, 40), -20, 0.3, '#d8b070', 1, 0);
+      if (this.hitCd <= 0 && lane && Math.abs(p.cx - this.x) < 13 && p.feet > this.y - 44) {
+        if (world.damagePlayer(this.dmg, this.x)) { this.hitCd = 0.8; p.vy = -260; }
+      }
+      return;
+    }
+    if (this.t >= this.warn && !this.struck) {
+      this.struck = true;
+      if (this.kind === 'bolt') { Audio2.sfx('zap'); world.shake(3); world.particles.burst(this.x, this.y - 4, 12, '#c0f0ff', 110); }
+      else { Audio2.sfx('heavy'); world.particles.burst(this.x, this.y - 6, 6, '#20202a', 70); }
+      const w = this.kind === 'bolt' ? 12 : 9;
+      if (lane && Math.abs(p.cx - this.x) < w && p.feet > this.y - (this.kind === 'bolt' ? 400 : 26)) {
+        if (world.damagePlayer(this.dmg, this.x) && this.kind === 'spike') p.vy = -230;
+      }
+    }
+  }
+  draw(ctx, cam, t) {
+    if (this.t < 0) return;
+    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y);
+    if (this.kind === 'tornado') {
+      for (let i = 0; i < 12; i++) {
+        const yy = y - i * 4, w = 4 + i * 1.6, off = Math.sin(t * 14 + i * 0.9) * (2 + i * 0.4);
+        ctx.fillStyle = i % 2 ? 'rgba(200,160,100,0.8)' : 'rgba(230,200,140,0.8)';
+        ctx.fillRect(Math.round(x + off - w / 2), yy - 4, Math.round(w), 3);
+      }
+      return;
+    }
+    if (!this.struck) {
+      // aviso en el suelo
+      const blink = Math.floor(t * 12) % 2;
+      ctx.fillStyle = this.kind === 'bolt' ? (blink ? '#80e0ff' : '#2060a0') : (blink ? '#8a2040' : '#30101a');
+      ctx.fillRect(x - 9, y - 2, 18, 2);
+      if (this.kind === 'bolt') { ctx.fillStyle = 'rgba(128,224,255,0.15)'; ctx.fillRect(x - 6, 0, 12, y); }
+      return;
+    }
+    const u = (this.t - this.warn) / 0.35;
+    if (this.kind === 'bolt') {
+      ctx.fillStyle = u < 0.5 ? '#ffffff' : '#80e0ff';
+      let px = x, py = 0;
+      while (py < y) { const nx = x + rand(-5, 5), ny = Math.min(y, py + rand(8, 18)); thickLine(ctx, px, py, nx, ny, u < 0.4 ? 3 : 2); px = nx; py = ny; }
+      ctx.fillStyle = 'rgba(200,240,255,0.25)'; ctx.fillRect(x - 12, y - 16, 24, 16);
+    } else {
+      const hgt = Math.round(26 * Math.min(1, u * 3) * (u > 0.7 ? (1 - u) / 0.3 : 1));
+      ctx.fillStyle = '#101018';
+      ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x, y - hgt); ctx.lineTo(x + 6, y); ctx.fill();
+      ctx.fillStyle = '#3a3a4a'; ctx.fillRect(x - 1, y - hgt + 3, 1, Math.max(0, hgt - 6));
+    }
+  }
+}
+
+// Poderes reutilizables por varios jefes
+const Powers = {
+  bolts(world, b, n) {
+    const p = world.player, gy = world.level.groundY;
+    for (let i = 0; i < n; i++) {
+      const x = clamp(p.cx + (i === 0 ? 0 : (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 38), b.arena.x1 + 10, b.arena.x2 - 10);
+      world.addProj(new Hazard('bolt', x, world.level.surfaceY(x, gy - 40), b.bdmg(0.9), { warn: 0.75, delay: i * 0.12, z: p.z }));
+    }
+  },
+  spikes(world, b, n) {
+    const dir = world.player.cx >= b.cx ? 1 : -1, gy = world.level.groundY;
+    for (let i = 0; i < n; i++) {
+      const x = b.cx + dir * (26 + i * 22);
+      if (x < b.arena.x1 + 4 || x > b.arena.x2 - 4) break;
+      world.addProj(new Hazard('spike', x, world.level.surfaceY(x, gy - 40), b.bdmg(0.8), { warn: 0.35, delay: i * 0.09, z: world.player.z }));
+    }
+  },
+  tornado(world, b, n = 1) {
+    const gy = world.level.groundY;
+    for (let i = 0; i < n; i++) world.addProj(new Hazard('tornado', b.cx + (i ? -30 : 30) * b.facing, world.level.surfaceY(b.cx, gy - 40), b.bdmg(0.7), { warn: 0, life: 4.2, z: b.z }));
+  },
+  arcs(world, b, kind, n, spread = 34) {
+    const p = world.player;
+    for (let i = 0; i < n; i++) {
+      const tx = p.cx + (i - (n - 1) / 2) * spread;
+      world.addProj(new Proj(kind, b.cx, b.y + 6, clamp((tx - b.cx) / 0.8, -330, 330), -280, 'e', b.bdmg(0.8)));
+    }
+  },
+  net(world, b) {
+    const p = world.player, ox = b.cx + b.facing * 8, oy = b.y + 8;
+    const dx = p.cx - ox, dy = p.cy - oy, l = Math.hypot(dx, dy) || 1;
+    world.addProj(new Proj('net', ox, oy, dx / l * 210, dy / l * 210, 'e', b.bdmg(0.5)));
+  },
+  orbs(world, b, n) {
+    for (let i = 0; i < n; i++) world.addProj(new Proj('eorb', b.cx, b.y + 4, (i - (n - 1) / 2) * 90, -120, 'e', b.bdmg(0.8)));
+  },
 };

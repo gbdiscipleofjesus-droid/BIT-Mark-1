@@ -82,6 +82,19 @@ class Player {
       if (this.anchor) this.anchor = null;
       return;
     }
+    // ---- atrapado en la red de Miguel: machaca botones para soltarte ----
+    if (this.stuckT > 0) {
+      const mash = ['JUMP', 'ATTACK', 'DODGE', 'SHOOT', 'WEB', 'SPECIAL'].some(pr);
+      this.stuckT = Math.max(0, this.stuckT - dt - (mash ? 0.14 : 0));
+      if (mash) { world.particles.burst(this.cx, this.cy, 2, '#ff5050', 50); }
+      this.attack = null; this.anchor = null;
+      if (['swing', 'wall', 'facade', 'dodge'].includes(this.state)) this.state = 'normal';
+      this.vx = approach(this.vx, 0, 800 * dt);
+      this.vy = Math.min(this.vy + GRAV * dt, PHYS.maxFall);
+      lv.move(this, dt);
+      if (this.stuckT <= 0) { world.float('¡LIBRE!', this.cx, this.y - 8, '#ffffff'); this.inv = Math.max(this.inv, 0.4); }
+      return;
+    }
 
     // ---- esquiva (disponible en casi todos los estados) ----
     if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing', 'facade'].includes(this.state)) {
@@ -612,6 +625,16 @@ class Player {
         ctx.arc(cx0 - f * 4, cy0, r, Math.min(a0, a1), Math.max(a0, a1));
         ctx.stroke();
       }
+    }
+    // envuelto en la red roja de 2099
+    if (this.stuckT > 0) {
+      ctx.strokeStyle = 'rgba(255,60,60,0.9)'; ctx.lineWidth = 1;
+      const top = y - 34, jit = Math.floor(t * 30) % 2;
+      for (let i = 0; i < 5; i++) {
+        const yy = top + 4 + i * 6 + jit;
+        ctx.beginPath(); ctx.moveTo(x - 8, yy); ctx.lineTo(x + 8, yy + 3); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(x - 6, top); ctx.lineTo(x + 5, y); ctx.moveTo(x + 6, top); ctx.lineTo(x - 5, y); ctx.stroke();
     }
     // línea de telaraña
     if (this.state === 'swing' && this.anchor) {
