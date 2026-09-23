@@ -21,6 +21,7 @@ const r = await page.evaluate(() => {
   // enemigo en otro carril: el golpe no conecta
   p.z = 0;
   const e = w.spawnEnemy('thug', p.x + 14, null); e.z = 25; e.state = 'idle'; e.aggro = false;
+  e.spec = Object.assign({}, e.spec, { block: 0 }); // sin bloqueo aleatorio en esta prueba
   const hp0 = e.hp;
   Input.keyLatch.KeyX = true; step(20);
   out.otherLaneHit = e.hp < hp0;
