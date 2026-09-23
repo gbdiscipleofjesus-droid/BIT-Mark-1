@@ -547,7 +547,7 @@ class Player {
   draw(ctx, cam, t) {
     // parpadea solo tras recibir daño (no durante esquivas)
     if (this.hurtT > 0 && this.state !== 'dead' && Math.floor(this.hurtT * 16) % 2 === 0) return;
-    const suit = SUITS.find((s) => s.id === Game.save.suit) || SUITS[0];
+    const suit = SUITS.find((s) => s.id === (this.suitId || Game.save.suit)) || SUITS[0];
     const pal = suit.palObj;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.feet - cam.y);
     let pose, f = this.facing;

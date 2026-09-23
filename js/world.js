@@ -109,24 +109,29 @@ class World {
 
   get inputEnabled() { return !this.dialog && !this.flash && !this.choice && this.state === 'play' && !this.pause && this.lockInput <= 0; }
 
-  missionMusic() { return this.universe === 'miles' ? 'verse' : this.universe === 'ruina' ? 'ruin' : 'action'; }
+  missionMusic() { return this.universe === 'miles' || this.universe === 'n2099' ? 'verse' : this.universe === 'ruina' ? 'ruin' : 'action'; }
 
   setupMission() {
     const m = MISSIONS[this.missionIdx];
-    this.card = { small: this.missionIdx === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + this.missionIdx, big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
+    this.card = { small: chapterLabel(this.missionIdx), big: m.name.toUpperCase(), sub: m.place, t: 0, dur: 3.2 };
     this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
     Audio2.music(this.missionMusic());
+    if (m.extra) {
+      // capítulo extra: eres el Peter de Tierra-0, con su traje de antes del fuego
+      this.player.suitId = 'tierra0';
+      this.startDialog(prepLines(STORY.extraIntro));
+    }
   }
 
   setupCity(opts) {
     const stage = Game.save.stage, uid = this.universe, U = UNIVERSES[uid];
     Game.save.universe = uid;
     const mi = MISSIONS.findIndex((m) => m.universe === uid && m.markerX);
-    if (mi > 0 && (stage === mi || stage >= 5)) {
+    if (mi > 0 && (stage === mi || stage >= STORY_DONE)) {
       this.markerX = MISSIONS[mi].markerX; this.markerMission = mi;
       this.objective = stage === mi ? 'OBJETIVO: VE AL FARO AZUL' : 'REPETIR CAPÍTULO: FARO AZUL';
       if (Math.abs(this.player.cx - this.markerX) < 80) this.markerArmed = false;
-    } else if (stage >= 5) this.objective = 'MODO LIBRE: ' + U.name.toUpperCase();
+    } else if (stage >= STORY_DONE) this.objective = 'MODO LIBRE: ' + U.name.toUpperCase();
     else this.objective = 'UNIVERSO VISITADO · VIAJA DESDE EL MENÚ DE PAUSA';
     Audio2.music(U.music);
     if (!Array.isArray(Game.save.visited)) Game.save.visited = [];
@@ -417,6 +422,7 @@ class World {
     const finish = () => {
       if (a.final) {
         if (a.boss === 'desconocido4') this.finalChoice();
+        else if (a.boss === 'doombot') { this.startDialog(prepLines(STORY.extraEnd), () => { this.state = 'complete'; Game.extraComplete(this.stats); }); }
         else this.complete();
         return;
       }
@@ -435,6 +441,7 @@ class World {
   // ---------------- refuerzo multiversal ----------------
   allyList() {
     const s = Game.save.stage, l = [];
+    if (this.missionIdx === EXTRA_MISSION) return l;
     if (s >= 2) l.push('tobey');
     if (s >= 3) l.push('andrew');
     if (s >= 4) l.push('miles', 'gwen');
@@ -505,6 +512,12 @@ class World {
     if (!Game.save.seenCanonTip) { Game.save.seenCanonTip = true; }
     this.flash = new FlashSeq(C.flashes, () => {
       this.flash = null;
+      if (C.forced) {
+        // Peter Cero ya eligió: no hay decisión, solo el recuerdo
+        this.shake(6); Audio2.sfx('explode'); Audio2.music('sad');
+        this.startDialog(prepLines(C.saved), () => { Audio2.music(this.missionMusic()); if (cb) cb(); });
+        return;
+      }
       this.choice = new ChoiceBox('EVENTO CANÓNICO: ' + C.title, C.text, [{ id: 'save', label: C.save }, { id: 'keep', label: C.keep }], (opt) => {
         this.choice = null;
         if (!Game.save.canon) Game.save.canon = {};
@@ -514,7 +527,7 @@ class World {
         else Audio2.sfx('fail');
         Audio2.music('sad');
         this.startDialog(prepLines(opt === 'save' ? C.saved : C.kept), () => {
-          if (opt === 'save') this.float('CANON ROTO (' + canonCount() + '/5)', this.player.cx, this.player.y - 20, '#ff60c0');
+          if (opt === 'save') this.float('CANON ROTO (' + canonCount() + '/' + CANON_ORDER.length + ')', this.player.cx, this.player.y - 20, '#ff60c0');
           Audio2.music(this.missionMusic());
           if (cb) cb();
         });
@@ -524,7 +537,7 @@ class World {
 
   finalChoice() {
     const n = canonCount();
-    const text = 'Cánones rotos: ' + n + '/5. ' + (n <= 3 ? 'Las grietas todavía pueden cerrarse.' : 'Las grietas son enormes. Quizás demasiado.');
+    const text = 'Cánones rotos: ' + n + '/' + CANON_ORDER.length + '. ' + (n <= 3 ? 'Las grietas todavía pueden cerrarse.' : 'Las grietas son enormes. Quizás demasiado.');
     Audio2.music('sad');
     this.choice = new ChoiceBox(STORY.finalChoice.title, text, STORY.finalChoice.options, (id) => {
       this.choice = null;
@@ -558,7 +571,7 @@ class World {
       if (Math.abs(p.cx - tk.x) < 9 && Math.abs(p.cy - tk.y) < 14) {
         Game.save.tokens.push(tk.id);
         this.addTech(3, false);
-        this.float('FRAGMENTO ' + Game.save.tokens.length + '/25', tk.x, tk.y - 10, UI.gold);
+        this.float('FRAGMENTO ' + Game.save.tokens.length + '/' + STORY.fragments.length, tk.x, tk.y - 10, UI.gold);
         this.showTip('"' + STORY.fragments[tk.idx] + '"', 6);
         Audio2.sfx('coin');
         this.particles.burst(tk.x, tk.y, 12, '#60ffe0', 80);
@@ -856,7 +869,7 @@ class World {
       { label: 'Reintentar desde el punto de control', act: () => { this.respawn(); } },
       { label: 'Volver a la ciudad', act: () => Game.goCity({ universe: this.universe, x: MISSIONS[this.missionIdx].markerX ? MISSIONS[this.missionIdx].markerX - 100 : 400 }) },
     ];
-    if (Game.save.stage === 0) items[1] = { label: 'Menú principal', act: () => Game.toMenu() };
+    if (Game.save.stage === 0 || this.missionIdx === EXTRA_MISSION) items[1] = { label: 'Menú principal', act: () => Game.toMenu() };
     this.gameOver = new Menu(items);
   }
 

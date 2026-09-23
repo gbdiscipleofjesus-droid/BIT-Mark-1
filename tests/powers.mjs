@@ -10,7 +10,7 @@ page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
 await page.goto('file://' + file);
 await page.waitForTimeout(500);
 
-const list = [[1, 'sandman'], [1, 'venom'], [2, 'rino'], [2, 'electro'], [3, 'miguel'], [4, 'desconocido4']];
+const list = [[1, 'sandman'], [1, 'venom'], [2, 'rino'], [2, 'electro'], [3, 'prowler'], [4, 'vulture2099'], [4, 'miguel'], [5, 'desconocido4'], [6, 'doombot']];
 const report = [];
 for (const [m, bossId] of list) {
   const r = await page.evaluate(([m, bossId]) => {

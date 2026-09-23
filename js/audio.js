@@ -339,6 +339,9 @@ const VOICE_STYLE = {
   electro: { pitch: 0.8, rate: 1.1, g: 'm' }, mancha: { pitch: 0.9, rate: 1.15, g: 'm' }, richard: { pitch: 0.8, rate: 0.95, g: 'm' },
   ben: { pitch: 0.7, rate: 0.9, g: 'm' }, davis: { pitch: 0.6, rate: 0.95, g: 'm' }, doom: { pitch: 0.2, rate: 0.8, g: 'm' },
   voice: { pitch: 1.3, rate: 0.85, g: 'f' }, civil: { pitch: 1.2, rate: 1.1, g: 'f' },
+  lyla: { pitch: 1.6, rate: 1.2, g: 'f' }, gabriella: { pitch: 1.9, rate: 1.0, g: 'f' }, prowler: { pitch: 0.55, rate: 0.95, g: 'm' },
+  vulture: { pitch: 0.5, rate: 1.0, g: 'm' }, doombot: { pitch: 0.15, rate: 0.8, g: 'm' }, cerokid: { pitch: 1.2, rate: 1.1, g: 'm' },
+  may: { pitch: 1.2, rate: 1.0, g: 'f' }, tony: { pitch: 0.9, rate: 1.2, g: 'm' },
 };
 const FEMALE_VOICES = /m[oó]nica|paulina|marisol|ang[eé]lica|isabela|soledad|sof[ií]a|helena|laura|sabina|elvira|dalia|luc[ií]a|conchita|pen[eé]lope|francisca|female|mujer|google español de estados unidos/i;
 const MALE_VOICES = /jorge|juan|diego|carlos|pablo|enrique|[aá]lvaro|ra[uú]l|andr[eé]s|eddy|reed|rocko|male|hombre|google español$/i;

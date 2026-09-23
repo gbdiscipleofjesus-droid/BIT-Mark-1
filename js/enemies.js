@@ -20,6 +20,11 @@ const THEME_PALS = {
     { torso: '#1a1a22', torsoLow: '#101014', leg: '#101014', head: '#8a5a3a', hair: '#141414', face: 'beanie' },
     { torso: '#e0205a', torsoLow: '#1a1a22', leg: '#1a1a22', head: '#e0b088', hair: '#e0e040', face: 'human' },
   ].map((p) => makePal(Object.assign({ boot: '#0a0a0a', outline: '#000000' }, p))),
+  future: [
+    { torso: '#1a1a34', torsoLow: '#0c0c1c', leg: '#0c0c1c', head: '#20203a', hair: '#20203a', face: 'visor', eye: '#ff4aa0' },
+    { torso: '#2a1a3e', torsoLow: '#140e24', leg: '#140e24', head: '#c89070', hair: '#40f0ff', face: 'human' },
+    { torso: '#0e2a3a', torsoLow: '#08141c', leg: '#08141c', head: '#16202a', hair: '#16202a', face: 'visor', eye: '#40f0ff' },
+  ].map((p) => makePal(Object.assign({ boot: '#0a0a12', outline: '#04040a' }, p))),
   zombie: [
     { torso: '#3a4a2a', leg: '#2a2a3a', head: '#7a9a6a', hair: '#2a3a1a', face: 'human', eye: '#ff3030' },
     { torso: '#5a2a2a', leg: '#2a2a2a', head: '#8aaa7a', hair: '#1a1a1a', face: 'human', eye: '#ff3030' },
@@ -1585,7 +1590,7 @@ class Electro extends Shocker {
     this.vx = approach(this.vx, 0, 600 * dt); this.t -= dt;
     if (this.t <= 0) {
       switch (this.state) {
-        case 'boltsWU': Powers.bolts(world, this, this.phase >= 3 ? 7 : this.phase >= 2 ? 5 : 3); world.float('¡RAYOS!', this.cx, this.y - 10, '#80e0ff'); this.state = 'recover'; this.t = 0.6; break;
+        case 'boltsWU': Powers.bolts(world, this, this.phase >= 3 ? 7 : this.phase >= 2 ? 5 : 3); world.float(this.type === 'doombot' ? '¡MAGIA DE DOOM!' : '¡RAYOS!', this.cx, this.y - 10, this.type === 'doombot' ? '#40ff60' : '#80e0ff'); this.state = 'recover'; this.t = 0.6; break;
         case 'orbWU': Powers.orbs(world, this, this.phase >= 2 ? 3 : 2); this.state = 'recover'; this.t = 0.6; break;
         case 'fieldWU': this.fieldT = 1.6; world.float('¡CAMPO ELÉCTRICO!', this.cx, this.y - 10, '#80e0ff'); this.state = 'recover'; this.t = 0.4; break;
         case 'zapWU':
@@ -1786,8 +1791,9 @@ class Miguel extends Scorpion {
       case 'roar': pose = Poses.cheer(t); break;
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 9) : Poses.idle(t);
     }
+    if (this.cloakT > 0) ctx.globalAlpha = 0.18;
     const cape = (c, wp, f) => {
-      c.fillStyle = '#d01a2a';
+      c.fillStyle = this.capeCol || '#d01a2a';
       c.beginPath(); c.moveTo(wp.sh[0], wp.sh[1]); c.lineTo(wp.sh[0] - f * 10, wp.hip[1] + 6 + Math.sin(t * 6) * 2); c.lineTo(wp.sh[0] - f * 3, wp.hip[1] + 4); c.fill();
     };
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
@@ -1796,8 +1802,9 @@ class Miguel extends Scorpion {
       for (let i = 0; i < 3; i++) thickLine(ctx, wp.h2[0], wp.h2[1] - 3 + i * 3, wp.h2[0] + this.facing * 26, wp.h2[1] - 6 + i * 4, 1);
     }
     if (this.phase >= 2 && !this.dead) {
-      ctx.fillStyle = 'rgba(255,40,60,0.15)'; ctx.fillRect(x - 12, y - 36, 24, 38);
+      ctx.fillStyle = this.glowCol || 'rgba(255,40,60,0.15)'; ctx.fillRect(x - 12, y - 36, 24, 38);
     }
+    ctx.globalAlpha = 1;
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
   }
 }
@@ -1957,9 +1964,111 @@ class Desconocido extends Boss {
   }
 }
 
+// ---- Merodeador (Tierra-1610): garras, dardos y camuflaje ----
+class Prowler extends Miguel {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'prowler'; this.name = 'MERODEADOR';
+    this.hp = this.maxHp = Math.ceil(70 * DIFF_HP[Game.settings.difficulty]);
+    this.scale = 1.2; this.projKind = 'feather'; this.cloakT = 0;
+    this.capeCol = '#2a1a44'; this.glowCol = 'rgba(96,255,128,0.14)';
+    this.pal = makePal({ head: '#3a2a5a', hair: '#3a2a5a', torso: '#3a2a5a', torsoLow: '#241a3a', side: '#1a1426', arm: '#241a3a', arm2: '#3a2a5a', hand: '#60ff80', leg: '#241a3a', boot: '#1a1426', face: 'visor', eye: '#60ff80', trim: '#60ff80', outline: '#08060e' });
+  }
+  ai(dt, world) {
+    const p = world.player;
+    if (this.state === 'move' && this.t - dt <= 0 && Math.random() < 0.4) {
+      this.state = Math.random() < 0.5 ? 'cloakWU' : 'dartsWU'; this.t = 0.4;
+    }
+    switch (this.state) {
+      case 'cloakWU':
+        this.vx = 0; this.t -= dt;
+        if (this.t <= 0) { this.state = 'cloak'; this.t = 1.1; this.cloakT = 1.2; world.float('¡SE ESFUMA!', this.cx, this.y - 10, '#60ff80'); Audio2.sfx('whoosh'); }
+        this.ground(dt, world); return;
+      case 'cloak': {
+        // camuflado: se desliza hasta la espalda del jugador
+        this.t -= dt; this.cloakT -= dt;
+        const tx = clamp(p.cx - p.facing * 28, this.arena.x1 + 10, this.arena.x2 - 20);
+        this.vx = approach(this.vx, clamp((tx - this.cx) * 4, -240, 240), 900 * dt);
+        if (this.t <= 0) { this.cloakT = 0; this.faceP(world); this.state = 'slashWU'; this.t = 0.14; this.slashes = 2; }
+        this.ground(dt, world); return;
+      }
+      case 'dartsWU':
+        this.faceP(world); this.vx = 0; this.t -= dt;
+        if (this.t <= 0) {
+          const n = this.phase >= 2 ? 4 : 3, base = Math.atan2(p.cy - this.cy, p.cx - this.cx);
+          for (let i = 0; i < n; i++) { const a = base + (i - (n - 1) / 2) * 0.16; world.addProj(new Proj('feather', this.cx, this.cy - 2, Math.cos(a) * 230, Math.sin(a) * 230, 'e', this.bdmg(0.7))); }
+          Audio2.sfx('shoot'); this.state = 'recover'; this.t = 0.5;
+        }
+        this.ground(dt, world); return;
+    }
+    super.ai(dt, world);
+  }
+  draw(ctx, cam, t) {
+    const s0 = this.state;
+    if (s0 === 'cloakWU' || s0 === 'dartsWU') this.state = 'netWU';
+    super.draw(ctx, cam, t);
+    this.state = s0;
+  }
+}
+
+// ---- Buitre 2099: alas de neón, plumas y orbes que persiguen ----
+class Vulture2099 extends Vulture {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'vulture2099'; this.name = 'BUITRE 2099';
+    this.hp = this.maxHp = Math.ceil(56 * DIFF_HP[Game.settings.difficulty]);
+    this.pal = makePal({ head: '#2a2a34', hair: '#2a2a34', torso: '#2a2a34', torsoLow: '#16161c', side: '#c81a3a', arm: '#2a2a34', arm2: '#c81a3a', leg: '#16161c', boot: '#c81a3a', face: 'visor', eye: '#ff4060', outline: '#08060a' });
+    this.orbT = 4;
+  }
+  ai(dt, world) {
+    super.ai(dt, world);
+    if (this.phase >= 2 && this.state === 'move') {
+      this.orbT -= dt;
+      if (this.orbT <= 0) { this.orbT = 4.5 / this.speedMul(); Powers.orbs(world, this, this.phase >= 3 ? 3 : 2); world.float('¡ORBES!', this.cx, this.y - 10, '#ff4060'); }
+    }
+  }
+}
+
+// ---- Emisario de Doom (capítulo extra): magia, rayos y teletransporte ----
+class DoomBot extends Electro {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'doombot'; this.name = 'EMISARIO DE DOOM';
+    this.hp = this.maxHp = Math.ceil(80 * DIFF_HP[Game.settings.difficulty]);
+    this.scale = 1.25; this.w = 13; this.h = 28;
+    this.pal = makePal({ head: '#7a8088', hair: '#7a8088', torso: '#7a8088', torsoLow: '#1e4a1e', side: '#1e4a1e', arm: '#7a8088', arm2: '#5a6068', hand: '#9aa0a8', leg: '#5a6068', boot: '#3a4048', face: 'visor', eye: '#40ff60', emblem: '#40ff60', emblemStyle: 'small', outline: '#040806' });
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
+    ctx.fillStyle = 'rgba(64,255,96,' + (0.1 + Math.sin(t * 8) * 0.04) + ')';
+    ctx.fillRect(x - 14, y - 38, 28, 40);
+    if (this.fieldT > 0) {
+      ctx.strokeStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#40ff60'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y - 14, 40 + Math.sin(t * 30) * 2, 0, TAU); ctx.stroke();
+    }
+    let pose;
+    if (this.dead) pose = Poses.ko();
+    else switch (this.state) {
+      case 'blastWU': case 'orbWU': pose = Poses.aim(); break;
+      case 'boltsWU': case 'fieldWU': case 'waveWU': case 'roar': pose = Poses.cheer(t); break;
+      case 'dash': case 'dashWU': case 'zapIn': pose = Poses.punch1(); break;
+      case 'stunned': pose = Poses.hurt(); break;
+      default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 7) : Poses.idle(t);
+    }
+    const cape = (c, wp, f) => {
+      c.fillStyle = '#1e4a1e';
+      c.beginPath(); c.moveTo(wp.sh[0] - f * 2, wp.sh[1] - 2); c.lineTo(wp.sh[0] - f * 12, wp.hip[1] + 10 + Math.sin(t * 5) * 2); c.lineTo(wp.sh[0] + f * 2, wp.hip[1] + 8); c.fill();
+    };
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
+    if (this.state.endsWith('WU') && Math.floor(t * 20) % 2) for (const h of [wp.h1, wp.h2]) { ctx.fillStyle = '#40ff60'; ctx.fillRect(h[0] - 1, h[1] - 1, 3, 3); }
+    this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
+  }
+}
+
 const BOSS_CLASSES = {
   shocker: Shocker, exo: ExoBrute, vulture: Vulture, mysterio: MysterioSwarm, scorpion: Scorpion,
   sandman: Sandman, venom: Venom, rino: Rino, electro: Electro, mancha: Mancha, miguel: Miguel,
+  prowler: Prowler, vulture2099: Vulture2099, doombot: DoomBot,
   desconocido0: class extends Desconocido { constructor(x, y) { super(x, y, false); } },
   desconocido4: class extends Desconocido { constructor(x, y) { super(x, y, true); } },
 };

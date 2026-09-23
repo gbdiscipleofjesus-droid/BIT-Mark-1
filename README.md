@@ -13,19 +13,22 @@ La partida se guarda sola en el navegador.
 
 ## Historia
 
-Una grieta se abre en el cielo de la Tierra-616 y un Spider-Man con el traje quemado, **El Desconocido**, roba un dispositivo y huye entre universos. Peter lo persigue por cuatro mundos. En cada uno puede **romper un evento canónico** para salvar a alguien que siempre muere, pero cada canon roto agrieta el multiverso y acerca a Doom.
+Una grieta se abre en el cielo de la Tierra-616 y un Spider-Man con el traje quemado, **El Desconocido**, roba un dispositivo y huye entre universos. Peter lo persigue por cinco mundos. En cada uno puede **romper un evento canónico** para salvar a alguien que siempre muere, pero cada canon roto agrieta el multiverso y acerca a Doom.
 
 | Capítulo | Universo | Jefes | Evento canónico |
 |---|---|---|---|
-| Prólogo: La grieta | Tierra-616 | El Desconocido | — |
-| 1. Un gran poder | Tierra-96283 (Tobey) | Hombre de Arena, Venom | Harry Osborn |
-| 2. Tiempo roto | Tierra-120703 (Andrew) | Rino, Electro | Sus padres, el tío Ben y Gwen |
-| 3. Salto de fe | Tierra-1610 (Miles y Gwen) | La Mancha, Miguel O'Hara | El capitán Davis |
-| 4. Nada es canon | Universo ¿Y si...? | ??? | La última decisión |
+| 1. La grieta | Tierra-616 | El Desconocido | — |
+| 2. Un gran poder | Tierra-96283 (Tobey) | Hombre de Arena, Venom | Harry Osborn |
+| 3. Tiempo roto | Tierra-120703 (Andrew) | Rino, Electro | Sus padres, el tío Ben y Gwen |
+| 4. Salto de fe | Tierra-1610 (Miles y Gwen) | La Mancha, el Merodeador | El capitán Davis |
+| 5. Anomalía | Tierra-928 (Nueva York 2099) | Buitre 2099, Miguel O'Hara | Gabriella, la hija de Miguel |
+| 6. Nada es canon | Universo ¿Y si...? | ??? | La última decisión |
+| Extra: Antes del fuego | Tierra-0 | Emisario de Doom | Se desbloquea al terminar la historia |
 
-- **Tres finales:** feliz, triste y neutro (pero triste). Dependen de cuántos cánones rompas y de lo que elijas al final.
-- **Mundo abierto:** cada universo es una ciudad libre con su propio estilo, crímenes aleatorios y 5 fragmentos con frases con significado (25 en total). Desde el menú de pausa se puede viajar entre los universos ya visitados.
-- **Más contenido:** taller con 5 mejoras y 11 trajes.
+- **Capítulo extra:** al terminar el juego aparece en el menú principal. Juegas como el Peter de Tierra-0 antes de que todo se rompiera, y descubres por qué hizo lo que hizo. El final cambia según el final que hayas conseguido.
+- **Tres finales:** feliz, triste y neutro (pero triste). Dependen de cuántos cánones rompas (de 6) y de lo que elijas al final.
+- **Mundo abierto:** cada universo es una ciudad libre con su propio estilo, crímenes aleatorios y 5 fragmentos con frases con significado (30 en total). Desde el menú de pausa se puede viajar entre los universos ya visitados.
+- **Más contenido:** taller con 5 mejoras y 14 trajes detallados (telarañas en relieve, ojos de lente, emblemas), entre ellos el de *Brand New Day*.
 - **Voces:** los diálogos se leen en voz alta con la voz en español del sistema, con un tono distinto para cada personaje. Se ajustan o apagan en Opciones → Voces.
 - **Música:** la de los créditos es original. En Opciones puedes cargar tu propia canción (MP3) para que suene en los créditos.
 

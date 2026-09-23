@@ -618,6 +618,7 @@ const STYLE_SETS = {
   andrew: ['glass', 'steel', 'glass', 'stone'],
   verse: ['verse', 'verse2', 'brown', 'verse'],
   ruin: ['ruin'],
+  futuro: ['futuro', 'futuro2', 'futuro', 'glass'],
 };
 const NEON = ['#e03080', '#30c0e0', '#e0c030', '#40e070', '#a050e0', '#e06030'];
 const BILLBOARD_TEXT = ['BUGLE.NET', 'DELMAR', 'ROXXON', 'OSCORP', 'FERIA', 'PIZZA', 'MIDTOWN', 'SNACKS', 'TACOS', 'ALCHEMAX', 'STARK', 'HORIZON'];
@@ -710,8 +711,8 @@ const Levels = {
       for (let i = 0; i < 14; i++) lv.addOneway(r.int(200, 7000), r.int(200, 330), r.int(30, 60), 'scaffold');
     } else {
       lv.addGround(0, 7200, 'street');
-      const st = { tobey: STYLE_SETS.queens, andrew: STYLE_SETS.andrew, miles: STYLE_SETS.verse }[uid];
-      const bt = { tobey: ['DAILY BUGLE', 'PIZZA DE JOE', 'OSCORP', 'MIDTOWN'], andrew: ['OSCORP', 'ROXXON', 'MIDTOWN', 'STACY'], miles: ['ALCHEMAX', 'VISIONS', 'BROOKLYN', '¡THWIP!'] }[uid];
+      const st = { tobey: STYLE_SETS.queens, andrew: STYLE_SETS.andrew, miles: STYLE_SETS.verse, n2099: STYLE_SETS.futuro }[uid];
+      const bt = { tobey: ['DAILY BUGLE', 'PIZZA DE JOE', 'OSCORP', 'MIDTOWN'], andrew: ['OSCORP', 'ROXXON', 'MIDTOWN', 'STACY'], miles: ['ALCHEMAX', 'VISIONS', 'BROOKLYN', '¡THWIP!'], n2099: ['ALCHEMAX', 'LYLA', '2099', 'NEOTOKIO'] }[uid];
       all.push(...roofRun(lv, 120, 4700, r, { wmin: 70, wmax: 150, hmin: 80, hmax: 260, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
       if (uid === 'andrew') clockTower(lv, 4800);
       all.push(...roofRun(lv, 4960, 7000, r, { wmin: 70, wmax: 150, hmin: 90, hmax: 280, gmin: 25, gmax: 80, styles: st, ledges: true, billboards: true, boardText: bt }));
@@ -726,14 +727,14 @@ const Levels = {
       const b = all[rr.int(0, all.length - 1)];
       if (used.has(b)) continue;
       used.add(b);
-      lv.tokens.push({ id: uid + ':' + id, idx: UNIVERSE_ORDER.indexOf(uid) * 5 + id, x: b.x + b.w / 2, y: b.y - (rr.chance(0.4) ? rr.int(60, 110) : 14) });
+      lv.tokens.push({ id: uid + ':' + id, idx: { '616': 0, tobey: 5, andrew: 10, miles: 15, ruina: 20, n2099: 25 }[uid] + id, x: b.x + b.w / 2, y: b.y - (rr.chance(0.4) ? rr.int(60, 110) : 14) });
       id++;
     }
     return lv.build();
   },
 
   mission(n) {
-    const fn = [this.m0, this.m1, this.m2, this.m3, this.m4][n];
+    const fn = [this.m0, this.m1, this.m2, this.m3, this.m4, this.m5, this.m6][n];
     return fn.call(this).build();
   },
 
@@ -814,12 +815,31 @@ const Levels = {
     roofRun(lv, 1960, 2900, r, { wmin: 80, wmax: 140, hmin: 110, hmax: 230, gmin: 50, gmax: 100, styles: STYLE_SETS.verse, ledges: true, billboards: true, boardText: ['ALCHEMAX', 'BROOKLYN'] });
     lv.spawns.push({ type: 'gunner', x: 2300 }, { type: 'drone', x: 2600, y: 320 });
     addArena(lv, 2960, 3320, [['drone', 'drone', 'thug'], ['brute', 'gunner', 'bat']]);
-    addArena(lv, 3400, 3900, [], { boss: 'miguel', final: true, canonAfter: 'davis' });
+    addArena(lv, 3400, 3900, [], { boss: 'prowler', final: true, canonAfter: 'davis' });
+    return lv;
+  },
+
+  // ---------------- Tierra-928 (Nueva York 2099) ----------------
+  m4() {
+    const lv = styledLevel('n2099', { name: 'Anomalía', width: 3900 });
+    const r = makeRng(606);
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_2099' });
+    roofRun(lv, 150, 1000, r, { wmin: 80, wmax: 140, hmin: 130, hmax: 260, gmin: 50, gmax: 100, styles: STYLE_SETS.futuro, ledges: true, billboards: true, boardText: ['ALCHEMAX', 'LYLA', '2099'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'drone', x: 600, y: 320 }, { type: 'gunner', x: 850 });
+    addArena(lv, 1060, 1420, [['thug', 'drone', 'gunner'], ['brute', 'drone', 'bat']]);
+    addArena(lv, 1500, 1900, [], { boss: 'vulture2099', canonAfter: 'gabriella' });
+    roofRun(lv, 1960, 2900, r, { wmin: 80, wmax: 140, hmin: 130, hmax: 260, gmin: 50, gmax: 100, styles: STYLE_SETS.futuro, ledges: true, billboards: true, boardText: ['ALCHEMAX', 'SOCIEDAD'] });
+    lv.spawns.push({ type: 'drone', x: 2200, y: 310 }, { type: 'gunner', x: 2500 }, { type: 'drone', x: 2700, y: 330 });
+    addArena(lv, 2960, 3320, [['drone', 'drone', 'gunner', 'thug'], ['brute', 'brute', 'drone']]);
+    addArena(lv, 3400, 3900, [], { boss: 'miguel', final: true });
     return lv;
   },
 
   // ---------------- Universo ¿Y si...? ----------------
-  m4() {
+  m5() {
     const lv = styledLevel('ruina', { name: 'Nada es canon', width: 3700, water: 470 });
     const r = makeRng(505);
     bounds(lv);
@@ -836,6 +856,30 @@ const Levels = {
     lv.addGround(2900, 3700, 'stone');
     lv.decor.push({ type: 'rift', x: 3620, y: 300 });
     addArena(lv, 3000, 3700, [], { boss: 'desconocido4', final: true });
+    return lv;
+  },
+
+  // ---------------- Capítulo extra: Tierra-0 ----------------
+  m6() {
+    const lv = styledLevel('tierra0', { name: 'Antes del fuego', width: 3900 });
+    const r = makeRng(707);
+    lv.addGround(0, 3900, 'street');
+    bounds(lv);
+    lv.tips.push({ x: 60, text: 'tip_extra' });
+    lv.decor.push({ type: 'sign', x: 60, y: 380, w: Font.width('CASA DE MAY') + 10, text: 'CASA DE MAY' });
+    roofRun(lv, 250, 1100, r, { wmin: 80, wmax: 130, hmin: 100, hmax: 200, gmin: 50, gmax: 100, styles: STYLE_SETS.queens, ledges: true, billboards: true, boardText: ['DAILY BUGLE', 'STARK'] });
+    streetDecor(lv, 0, 3900, r);
+    lv.spawns.push({ type: 'thug', x: 450 }, { type: 'thug', x: 520 });
+    lv.canons.push({ x: 640, id: 'cero_ben' });
+    addArena(lv, 1160, 1520, [['thug', 'bat', 'thug'], ['gunner', 'brute', 'thug']]);
+    clockTower(lv, 1700);
+    lv.canons.push({ x: 1880, id: 'cero_gwen' });
+    roofRun(lv, 2000, 2800, r, { wmin: 80, wmax: 140, hmin: 120, hmax: 240, gmin: 50, gmax: 100, styles: STYLE_SETS.manhattan, ledges: true, billboards: true, boardText: ['STARK', 'VENGADORES'] });
+    lv.spawns.push({ type: 'chitauri', x: 2200 }, { type: 'chitauri', x: 2400 });
+    addArena(lv, 2840, 3200, [['chitauri', 'chitauri', 'thug'], ['chitauri', 'brute', 'chitauri']]);
+    lv.canons.push({ x: 3240, id: 'cero_tony' });
+    lv.decor.push({ type: 'rift', x: 3820, y: 300 });
+    addArena(lv, 3400, 3900, [], { boss: 'doombot', final: true });
     return lv;
   },
 };

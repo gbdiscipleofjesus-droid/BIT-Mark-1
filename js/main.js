@@ -15,7 +15,7 @@ const SAVE_VERSION = 2;
 function defaultSave() {
   return {
     v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
-    suits: START_SUITS.slice(), suit: 'bnd', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
+    suits: START_SUITS.slice(), suit: 'bnd', ch7: true, tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
     universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
     completed: false, started: false,
   };
@@ -252,7 +252,7 @@ class SuitsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'TRAJES');
-    this.menu.draw(ctx, 24, 44, t, { lh: 13, align: 'left' });
+    this.menu.draw(ctx, 24, 44, t, { lh: 12, align: 'left' });
     const s = SUITS[this.menu.sel];
     if (s) {
       ctx.fillStyle = '#1a1830'; ctx.fillRect(250, 36, 110, 130);
@@ -282,7 +282,7 @@ class PauseRoot {
       city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.toMenu(); } }
         : { label: 'ABANDONAR CAPÍTULO', act: () => this.stack.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[world.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) },
     ]);
-    if (Game.save.stage === 0 && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
+    if ((Game.save.stage === 0 || world.missionIdx === EXTRA_MISSION) && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
   }
   update(dt) {
     const r = this.menu.update(dt);
@@ -294,10 +294,10 @@ class PauseRoot {
     Font.draw(ctx, 'PAUSA', W / 2, 16, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
     this.menu.draw(ctx, W / 2, 52, t, { lh: 15 });
     const s = Game.save;
-    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/25   CÁNONES ROTOS ' + canonCount() + '/5';
+    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + '   CÁNONES ROTOS ' + canonCount() + '/' + CANON_ORDER.length;
     Font.draw(ctx, info, W / 2, 176, UI.dim, { align: 'center' });
     const U = UNIVERSES[this.world.universe];
-    if (this.world.mode === 'mission') Font.draw(ctx, (this.world.missionIdx ? 'CAPÍTULO ' + this.world.missionIdx : 'PRÓLOGO') + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
+    if (this.world.mode === 'mission') Font.draw(ctx, chapterLabel(this.world.missionIdx) + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
     else Font.draw(ctx, U.name + ' · ' + U.city, W / 2, 190, UI.gold, { align: 'center' });
   }
 }
@@ -305,7 +305,7 @@ class PauseRoot {
 class TravelScreen {
   constructor(world) {
     this.world = world;
-    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= 5));
+    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= STORY_DONE) || (u === 'n2099' && Game.save.stage >= 4));
     const items = list.map((u) => ({
       label: () => UNIVERSES[u].name + ' · ' + UNIVERSES[u].city + (u === world.universe ? '  (AQUÍ)' : ''),
       disabled: () => u === world.universe,
@@ -417,16 +417,17 @@ class MenuScene {
         { label: 'NUEVA PARTIDA', act: () => { if (Game.save.started) this.stack.push(new ConfirmScreen('¿Empezar una partida nueva? Se borrará el progreso guardado.', () => Game.newGame())); else Game.newGame(); } },
         { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
         { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
+        { label: () => 'CAPÍTULO EXTRA: ' + (Game.save.completed ? MISSIONS[EXTRA_MISSION].name.toUpperCase() : '???'), disabled: () => !Game.save.completed, act: () => Game.startMission(EXTRA_MISSION) },
         { label: 'CRÉDITOS', act: () => Game.change(() => new CreditsScene(() => new MenuScene())) },
       ]),
       update(dt) { const r = this.menu.update(dt); return r === 'back' ? null : r; },
       draw: (ctx, t) => {
         drawLogo(ctx, t, 30);
-        root.menu.draw(ctx, W / 2, 100, t, { lh: 15 });
+        root.menu.draw(ctx, W / 2, 96, t, { lh: 14 });
         if (Game.save.started) {
           const s = Game.save;
-          const prog = s.stage >= 5 ? 'FINALES ' + (s.endings || []).length + '/3' : s.stage === 0 ? 'PRÓLOGO' : 'CAPÍTULO ' + s.stage + ' DE 4';
-          Font.draw(ctx, prog + ' · FRAGMENTOS ' + s.tokens.length + '/25 · CÁNONES ' + canonCount() + '/5', W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
+          const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
+          Font.draw(ctx, prog + ' · FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + ' · CÁNONES ' + canonCount() + '/' + CANON_ORDER.length, W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
         }
         Font.draw(ctx, Audio2.ready() ? '' : 'Haz clic o pulsa una tecla para activar el sonido', W / 2, 200, '#9aa0c0', { align: 'center', shadow: UI.ink });
       },
@@ -478,8 +479,8 @@ class ResultsScene {
   draw(ctx) {
     Scenery.drawBackground(ctx, 'dusk', this.t * 20, 264, 480);
     ctx.fillStyle = 'rgba(8,6,16,0.7)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, this.idx === 4 ? 'FIN DEL VIAJE' : '¡CAPÍTULO COMPLETADO!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
-    Font.draw(ctx, (this.idx ? 'CAPÍTULO ' + this.idx : 'PRÓLOGO') + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
+    Font.draw(ctx, this.idx === FINAL_MISSION ? 'FIN DEL VIAJE' : this.idx === EXTRA_MISSION ? 'ANTES DEL FUEGO' : '¡CAPÍTULO COMPLETADO!', W / 2, 18, UI.gold, { align: 'center', scale: 2, shadow: UI.ink });
+    Font.draw(ctx, chapterLabel(this.idx) + ': ' + MISSIONS[this.idx].name, W / 2, 42, UI.paper, { align: 'center' });
     const s = this.stats;
     const mm = Math.floor(s.time / 60), ss = Math.floor(s.time % 60);
     const rows = [
@@ -637,7 +638,13 @@ const Game = {
       if (!Array.isArray(this.save.endings)) this.save.endings = [];
       if (!UNIVERSES[this.save.universe]) this.save.universe = '616';
       if (!SUITS.find((x) => x.id === this.save.suit)) this.save.suit = 'bnd';
-      this.save.stage = clamp(parseInt(this.save.stage, 10) || 0, 0, 5);
+      this.save.stage = clamp(parseInt(this.save.stage, 10) || 0, 0, STORY_DONE);
+      if (!this.save.ch7) {
+        // partidas de la versión de 5 capítulos: el nuevo capítulo 5 (2099) va antes del final
+        this.save.ch7 = true;
+        if (this.save.stage >= 5) this.save.stage = STORY_DONE;
+        else if (this.save.stage === 4 && this.save.universe === 'ruina') this.save.universe = 'n2099';
+      }
       this.save.tech = Math.max(0, parseInt(this.save.tech, 10) || 0);
     } else this.save = base;
     const st = Store.get('sm_settings', null);
@@ -709,7 +716,7 @@ const Game = {
     this.save.stage = Math.max(this.save.stage, i + 1);
     this.unlockSuit(MISSION_SUIT[i]);
     let uid, x;
-    if (first && i < 4) { uid = MISSIONS[i + 1].universe; x = 400; }
+    if (first && i < FINAL_MISSION) { uid = MISSIONS[i + 1].universe; x = 400; }
     else { uid = MISSIONS[i].universe; x = MISSIONS[i].markerX ? MISSIONS[i].markerX - 100 : 400; }
     this.save.universe = uid; this.save.cityPos[uid] = x;
     this.saveGame();
@@ -718,19 +725,27 @@ const Game = {
 
   finishGame(ending, stats) {
     this.save.tech += 25;
-    this.save.stage = 5; this.save.completed = true;
+    this.save.stage = STORY_DONE; this.save.completed = true;
     if (!Array.isArray(this.save.endings)) this.save.endings = [];
     if (!this.save.endings.includes(ending)) this.save.endings.push(ending);
     if (ending === 'triste' && this.save.lastChoice === 'deshacer') {
       for (const k of CANON_ORDER) if (this.save.canon[k] === true) this.save.canon[k] = false;
     }
-    this.unlockSuit(MISSION_SUIT[4]);
+    this.unlockSuit(MISSION_SUIT[FINAL_MISSION]);
     this.save.universe = '616'; this.save.cityPos['616'] = 400;
     if (!this.save.visited.includes('616')) this.save.visited.push('616');
     this.saveGame();
     const post = () => new PostCreditsScene(ending, () => this.cityScene('616', 400));
     const credits = () => new CreditsScene(post);
-    this.change(() => new ResultsScene(4, stats, () => new EndingScene(ending, credits)));
+    this.change(() => new ResultsScene(FINAL_MISSION, stats, () => new EndingScene(ending, credits)));
+  },
+
+  // Capítulo extra terminado: traje de Tierra-0, créditos y vuelta al menú
+  extraComplete(stats) {
+    this.save.tech += 20; this.save.extraDone = true;
+    this.unlockSuit(MISSION_SUIT[EXTRA_MISSION]);
+    this.saveGame();
+    this.change(() => new ResultsScene(EXTRA_MISSION, stats, () => new CreditsScene(() => new MenuScene())));
   },
 
   loop(ts) {

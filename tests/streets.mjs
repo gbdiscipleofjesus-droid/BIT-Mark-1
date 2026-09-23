@@ -10,8 +10,8 @@ await page.waitForTimeout(300);
 const r = await page.evaluate(() => {
   const step = (n, f) => { for (let i = 0; i < n; i++) { if (f) f(i); Input.poll(); Game.step(1 / 60); } };
   const out = [];
-  Game.save.started = true; Game.save.stage = 5; Game.save.visited = ['616', 'tobey', 'andrew', 'miles', 'ruina'];
-  for (const u of ['616', 'tobey', 'andrew', 'miles', 'ruina']) {
+  Game.save.started = true; Game.save.stage = 5; Game.save.visited = ['616', 'tobey', 'andrew', 'miles', 'n2099', 'ruina'];
+  for (const u of ['616', 'tobey', 'andrew', 'miles', 'n2099', 'ruina']) {
     Game.fade = null; Game.scene = Game.cityScene(u, 300);
     const w = Game.scene.world; w.crimeT = 1e9; w.markerX = null;
     const p = w.player; p.x = 60; p.y = w.level.surfaceY(65) - 22; p.state = 'normal';
@@ -44,7 +44,8 @@ const r = await page.evaluate(() => {
   return { out, errors: Game.errors };
 });
 console.log(JSON.stringify(r), errs);
-const ok = r.out.slice(0, 5).every((x) => x.reachedEnd && x.maxStuckFrames < 120) && r.out[5].facadeClimb && r.out[5].onRoof && !r.errors.length && !errs.length;
+const n = r.out.length - 1;
+const ok = r.out.slice(0, n).every((x) => x.reachedEnd && x.maxStuckFrames < 120) && r.out[n].facadeClimb && r.out[n].onRoof && !r.errors.length && !errs.length;
 console.log(ok ? 'OK: calles transitables' : 'FALLO');
 await browser.close();
 process.exit(ok ? 0 : 1);

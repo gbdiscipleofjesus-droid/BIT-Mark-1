@@ -16,7 +16,7 @@ const result = await page.evaluate(() => {
   const step = () => { Input.poll(); Game.step(1 / 60); };
   const clear = () => { for (const k in Input.keys) Input.keys[k] = false; };
   Game.save.started = true;
-  const list = [[0, 'desconocido0'], [1, 'sandman'], [1, 'venom'], [2, 'rino'], [2, 'electro'], [3, 'mancha'], [3, 'miguel'], [4, 'desconocido4']];
+  const list = [[0, 'desconocido0'], [1, 'sandman'], [1, 'venom'], [2, 'rino'], [2, 'electro'], [3, 'mancha'], [3, 'prowler'], [4, 'vulture2099'], [4, 'miguel'], [5, 'desconocido4'], [6, 'doombot']];
   for (const [m, bossId] of list) {
     Game.fade = null;
     Game.scene = Game.missionScene(m);

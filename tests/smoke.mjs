@@ -89,7 +89,7 @@ await sim(30);
 await log('after retry');
 
 // Recorre cada misión y derrota al jefe
-for (let m = 0; m < 5; m++) {
+async function runMission(m) {
   await page.evaluate((m) => { Game.fade = null; Game.startMission(m); }, m);
   await sim(40);
   await shot(`10_m${m}_start`);
@@ -135,9 +135,14 @@ for (let m = 0; m < 5; m++) {
   await sim(200, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
   await log(`after m${m} continue`);
 }
+for (let m = 0; m < 6; m++) await runMission(m);
 await sim(3000, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
 await log('post credits');
 console.log('save', await page.evaluate(() => JSON.stringify({ stage: Game.save.stage, canon: Game.save.canon, endings: Game.save.endings, suits: Game.save.suits.length, uni: Game.save.universe })));
+// Capítulo extra (se desbloquea al terminar la historia)
+await runMission(6);
+await sim(2500, `if (i % 30 === 0) Input.keyLatch.Enter = true;`);
+console.log('extra', await page.evaluate(() => JSON.stringify({ extraDone: Game.save.extraDone, scene: Game.scene.constructor.name, suits: Game.save.suits.includes('tierra0') })));
 await shot('20_city');
 
 // Ciudad: bot + crímenes
@@ -163,7 +168,7 @@ const cx = await page.evaluate(() => Math.round(Game.scene.world.player.x));
 console.log('city x after run', cx);
 await shot('22_city_far');
 
-for (const u of ['616', 'tobey', 'andrew', 'miles', 'ruina']) {
+for (const u of ['616', 'tobey', 'andrew', 'miles', 'n2099', 'ruina']) {
   await page.evaluate((u) => { Game.fade = null; Game.goCity({ universe: u, x: 600 }); }, u);
   await sim(60, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
   await sim(900, bot.replace('k.ArrowLeft = (i % 400) >= 360;', 'k.ArrowLeft = false;'));

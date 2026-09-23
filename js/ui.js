@@ -218,7 +218,7 @@ function drawHUD(ctx, w, t) {
   drawTechIcon(ctx, W - tw - 2, 6, t);
   Font.draw(ctx, tech, W - 6, 6, UI.gold, { align: 'right' });
   // Cánones rotos
-  { const n = canonCount(); if (n > 0) { Font.draw(ctx, 'CANON ' + n + '/5', W - 6, 20, '#ff60c0', { align: 'right', shadow: UI.ink }); } }
+  { const n = canonCount(); if (n > 0 && w.missionIdx !== EXTRA_MISSION) { Font.draw(ctx, 'CANON ' + n + '/' + CANON_ORDER.length, W - 6, 20, '#ff60c0', { align: 'right', shadow: UI.ink }); } }
   // Combo
   if (w.combo.n >= 3) {
     const s = 'x' + w.combo.n;
@@ -401,8 +401,8 @@ class ChoiceBox {
     Font.draw(ctx, this.title, W / 2, 26, '#ff60c0', { align: 'center', shadow: '#000000' });
     Font.wrap(this.text, 300).forEach((ln, i) => Font.draw(ctx, ln, W / 2, 48 + i * 11, UI.paper, { align: 'center' }));
     const n = canonCount();
-    Font.draw(ctx, 'CÁNONES ROTOS: ' + n + '/5', W / 2, 100, '#60ffe0', { align: 'center' });
-    for (let i = 0; i < 5; i++) { ctx.fillStyle = i < n ? '#ff60c0' : '#2a2a3a'; ctx.fillRect(W / 2 - 24 + i * 10, 112, 7, 4); }
+    Font.draw(ctx, 'CÁNONES ROTOS: ' + n + '/' + CANON_ORDER.length, W / 2, 100, '#60ffe0', { align: 'center' });
+    for (let i = 0; i < CANON_ORDER.length; i++) { ctx.fillStyle = i < n ? '#ff60c0' : '#2a2a3a'; ctx.fillRect(W / 2 - CANON_ORDER.length * 5 + i * 10, 112, 7, 4); }
     this.menu.draw(ctx, W / 2, 132, t, { lh: 18 });
     ctx.globalAlpha = 1;
   }

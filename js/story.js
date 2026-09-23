@@ -28,6 +28,14 @@ const WHO = {
   ben: { name: 'Ben Parker', portrait: 'ben' },
   davis: { name: 'Capitán Davis', portrait: 'davis' },
   doom: { name: '???', portrait: 'doom' },
+  lyla: { name: 'LYLA', portrait: 'lyla' },
+  gabriella: { name: 'Gabriella', portrait: 'gabriella' },
+  prowler: { name: 'Merodeador', portrait: 'prowler' },
+  vulture: { name: 'Buitre 2099', portrait: 'vulture' },
+  doombot: { name: 'Emisario de Doom', portrait: 'doombot' },
+  cerokid: { name: 'Peter (Tierra-0)', portrait: 'peter' },
+  may: { name: 'Tía May', portrait: 'may' },
+  tony: { name: 'Tony Stark', portrait: 'tony' },
   civil: { name: 'Ciudadano', portrait: 'civil' },
 };
 
@@ -43,19 +51,29 @@ const UNIVERSES = {
     crimes: ['robo', 'persecucion', 'caida', 'drones'], signs: ['BROOKLYN', 'VISIONS', 'ALCHEMAX'], music: 'verse' },
   ruina: { id: 'ruina', name: 'Universo ¿Y si...?', city: 'Nueva York en ruinas', sky: 'ruin', styles: 'ruin', pals: 'zombie', tint: 'rgba(160,30,20,0.08)', landmark: 'ruins',
     crimes: ['zombies', 'ultron', 'caida'], signs: ['SIN CANON', 'VENGADORES', '¿Y SI...?'], music: 'ruin' },
+  n2099: { id: 'n2099', name: 'Tierra-928', city: 'Nueva York 2099', sky: 'neon', styles: 'futuro', pals: 'future', tint: 'rgba(255,60,140,0.05)', landmark: 'spire', futuro: true,
+    crimes: ['robo', 'persecucion', 'drones', 'caida'], signs: ['NUEVA YORK 2099', 'ALCHEMAX', 'SOCIEDAD ARAÑA'], music: 'verse' },
+  // Solo para el capítulo extra (no se puede visitar como ciudad)
+  tierra0: { id: 'tierra0', name: 'Tierra-0', city: 'Nueva York antes del fuego', sky: 'day', styles: 'queens', pals: 'thugs', tint: 'rgba(255,230,160,0.06)', landmark: 'avengers',
+    crimes: [], signs: ['QUEENS', 'CASA DE MAY', 'TORRE STARK'], music: 'city' },
 };
-const UNIVERSE_ORDER = ['616', 'tobey', 'andrew', 'miles', 'ruina'];
+const UNIVERSE_ORDER = ['616', 'tobey', 'andrew', 'miles', 'n2099', 'ruina'];
 
 // ---------------- Capítulos ----------------
-// stage = capítulo actual. El 0 es el prólogo; 1-4 tienen ciudad libre y misión.
+// stage = siguiente capítulo por jugar (índice). 6 capítulos de historia (0-5) y
+// un capítulo extra (6) que se desbloquea al terminar el juego.
 const MISSIONS = [
   { name: 'La grieta', place: 'Tierra-616', universe: '616', markerX: null },
   { name: 'Un gran poder', place: 'Tierra-96283', universe: 'tobey', markerX: 3100 },
   { name: 'Tiempo roto', place: 'Tierra-120703', universe: 'andrew', markerX: 5200 },
   { name: 'Salto de fe', place: 'Tierra-1610', universe: 'miles', markerX: 3100 },
+  { name: 'Anomalía', place: 'Tierra-928 · Nueva York 2099', universe: 'n2099', markerX: 3100 },
   { name: 'Nada es canon', place: 'Universo ¿Y si...?', universe: 'ruina', markerX: 6900 },
+  { name: 'Antes del fuego', place: 'Tierra-0', universe: 'tierra0', markerX: null, extra: true },
 ];
-const MISSION_SUIT = ['sigilo', 'raimi', 'tasm', 'verse', 'cero'];
+const FINAL_MISSION = 5, EXTRA_MISSION = 6, STORY_DONE = 6;
+const MISSION_SUIT = ['sigilo', 'raimi', 'tasm', 'verse', 'sociedad', 'cero', 'tierra0'];
+function chapterLabel(i) { return i === EXTRA_MISSION ? 'CAPÍTULO EXTRA' : 'CAPÍTULO ' + (i + 1); }
 
 // ---------------- Eventos canónicos ----------------
 const CANONS = {
@@ -144,8 +162,57 @@ const CANONS = {
       ['peter', 'Yo... también lo siento. No sabes cuánto.'],
     ],
   },
+  gabriella: {
+    title: 'GABRIELLA O\'HARA',
+    text: 'En un universo vecino, Miguel encontró una vida con su hija. Ese universo se deshace. Ella va a desaparecer.',
+    save: 'SALVAR A GABRIELLA (ROMPER EL CANON)', keep: 'DEJAR QUE OCURRA',
+    flashes: ['2099', 'crack', 'spiders', '2099', 'doom', 'alone', 'ruin', '2099'],
+    saved: [
+      ['narr', 'Peter atraviesa la grieta y la sostiene con las dos manos. La niña deja de parpadear.'],
+      ['gabriella', '¿Papá? ¿Por qué lloras?'],
+      ['miguel', 'Porque llevo años soñando con esto. Y tenía miedo de despertar.'],
+      ['miguel', 'Parker. Hiciste lo que yo nunca me atreví a hacer. Espero que el multiverso te perdone. Yo ya lo hice.'],
+    ],
+    kept: [
+      ['gabriella', 'Papá... ¿por qué te ves borroso?'],
+      ['narr', 'La niña se deshace como arena al viento. Miguel no aparta la mirada.'],
+      ['miguel', 'Por esto lo hago, Parker. Por esto protejo los cánones.'],
+      ['peter', 'Lo sé. Ahora lo sé.'],
+    ],
+  },
+  // Capítulo extra: Tierra-0. Peter Cero ya eligió; no hay decisión.
+  cero_ben: {
+    title: 'BEN PARKER (TIERRA-0)', forced: true,
+    flashes: ['bentomb', 'crack', 'bentomb', 'spiders'],
+    saved: [
+      ['narr', 'Una noche. Un ladrón. Una pistola. El tío Ben.'],
+      ['cerokid', 'No. Esta vez no.'],
+      ['narr', 'Una red atrapa la pistola. El disparo nunca suena. En el cielo, algo cruje muy bajito.'],
+      ['ben', 'Ese chico... va a ser alguien grande.'],
+    ],
+  },
+  cero_gwen: {
+    title: 'GWEN STACY (TIERRA-0)', forced: true,
+    flashes: ['clock', 'gwenfall', 'crack', 'clock'],
+    saved: [
+      ['narr', 'La torre del reloj. Gwen cae.'],
+      ['cerokid', '¡Te tengo!'],
+      ['gwenS', 'Siempre llegas a tiempo, ¿eh?'],
+      ['narr', 'El cielo se agrieta un poco más. Nadie lo ve.'],
+    ],
+  },
+  cero_tony: {
+    title: 'TONY STARK (TIERRA-0)', forced: true,
+    flashes: ['doom', 'crack', 'spiders', 'crack'],
+    saved: [
+      ['narr', 'La última batalla. Un guantelete. Un chasquido que no era para un chico de Queens.'],
+      ['cerokid', '¡Señor Stark, déjeme ayudar! ¡Yo puedo aguantarlo!'],
+      ['tony', 'Chico... No. ...Está bien. Lo hacemos juntos.'],
+      ['narr', 'Tony Stark sobrevive. Y el universo entero empieza a romperse.'],
+    ],
+  },
 };
-const CANON_ORDER = ['harry', 'padres', 'ben', 'gwen', 'davis'];
+const CANON_ORDER = ['harry', 'padres', 'ben', 'gwen', 'davis', 'gabriella'];
 
 const STORY = {
   intro: [
@@ -181,6 +248,13 @@ const STORY = {
       ['peter', '¿Miguel?'],
       ['gwen', 'Spider-Man 2099. Cree que los cánones son sagrados. Y no se equivoca del todo.'],
     ],
+    n2099: [
+      ['narr', 'Tierra-928. Nueva York 2099. Neones, coches voladores y una red que conecta todos los universos.'],
+      ['lyla', '¡Hola! Soy LYLA. Bienvenido a la Sociedad Araña. Por favor, no toques nada.'],
+      ['peter', '¿Nada? ¿Ni ese botón rojo gigante?'],
+      ['lyla', 'Sobre todo ese.'],
+      ['miguel', 'Parker. Has ido rompiendo cánones por medio multiverso. Tenemos que hablar.'],
+    ],
     ruina: [
       ['narr', 'Universo ¿Y si...? Una Nueva York en ruinas flota sobre la nada.'],
       ['narr', 'Aquí no quedan cánones. Solo restos.'],
@@ -209,6 +283,11 @@ const STORY = {
       ['miles', 'La Mancha está abriendo agujeros por todo Brooklyn. Y tu Desconocido le da órdenes.'],
       ['peter', 'Pues vamos. ¿Tú y yo?'],
       ['miles', 'Sí. Pero voy a hacerlo a mi manera.'],
+    ],
+    [
+      ['lyla', 'El Buitre de este año robó tecnología de Alchemax. Y en lo alto de la aguja... Miguel te espera.'],
+      ['peter', '¿Para darme las gracias?'],
+      ['lyla', 'Para darte un sermón. Con garras.'],
     ],
     [
       ['peter', 'La señal del Desconocido viene de la vieja Torre de los Vengadores.'],
@@ -244,11 +323,28 @@ const STORY = {
       ['mancha', '¿Me recuerdas? ...No, claro. Nadie me recuerda. ¡Hasta hoy!'],
       ['spidey', 'Oye, te entiendo mejor de lo que crees.'],
     ],
+    prowler: [
+      ['prowler', 'Miles no tiene que saber que estoy aquí. Y tú tampoco deberías.'],
+      ['spidey', 'Garras, capucha, ojos verdes... ¿El Merodeador?'],
+      ['prowler', 'El Desconocido paga bien. Y en esta ciudad, eso es lo único que cuenta.'],
+      ['miles', '¿Tío Aaron...?'],
+    ],
+    vulture: [
+      ['vulture', 'En 2099 el cielo es mío, insecto.'],
+      ['spidey', '¿En 2099 todavía decís "insecto"? Las arañas son arácnidos. Actualizaos.'],
+    ],
     miguel: [
       ['miguel', 'Anomalía detectada. Parker, llevas {N} cánones rotos.'],
       ['spidey', 'Solo intentaba salvar a gente.'],
       ['miguel', 'Todos lo intentamos. Y así es como caen los universos.'],
-      ['miles', '¡Miguel, déjalo en paz!'],
+      ['lyla', 'Jefe, se te está notando el drama.'],
+    ],
+    doombot: [
+      ['doombot', 'Peter Parker de Tierra-0. Lo salvaste todo. Qué ingenuo.'],
+      ['cerokid', '¿Quién eres?'],
+      ['doombot', 'Un mensajero. Mi señor puede reconstruir tu mundo. Solo necesita... grietas.'],
+      ['cerokid', 'No voy a romper otros mundos para arreglar el mío.'],
+      ['doombot', 'Lo harás. Todos lo hacen.'],
     ],
     desconocido4: [
       ['desconocido', 'Bienvenido a mi casa, Peter.'],
@@ -288,11 +384,30 @@ const STORY = {
     ],
     mancha: [
       ['mancha', 'Los agujeros... se cierran... ¡Esto no ha terminado!'],
-      ['gwen', 'Peter, sal de ahí. Miguel viene a por ti.'],
+      ['gwen', 'Miguel te está rastreando, Peter. Y algo más se mueve por los tejados.'],
+    ],
+    prowler: [
+      ['prowler', 'Miles... no quería que me vieras así.'],
+      ['miles', 'Ya te vi. Y sigues siendo mi tío.'],
+      ['gwen', '¡Peter! El edificio de la comisaría se derrumba... ¡El padre de Miles está dentro!'],
+    ],
+    vulture: [
+      ['vulture', 'Mis alas...'],
+      ['lyla', 'Peter, detecto una anomalía en el universo vecino. Una niña está... parpadeando.'],
+      ['miguel', '...Gabriella.'],
     ],
     miguel: [
       ['miguel', 'Eres terco... como todos nosotros.'],
-      ['gwen', '¡Peter! El edificio... ¡El padre de Miles está dentro!'],
+      ['miguel', 'LYLA, abre un portal al universo ¿Y si...?'],
+      ['lyla', '¿Estás seguro, jefe?'],
+      ['miguel', 'Ahí empezó todo esto, Parker. Y ahí tiene que terminar.'],
+    ],
+    doombot: [
+      ['narr', 'El emisario cae. Pero el cielo ya no aguanta.'],
+      ['narr', 'Los edificios se deshacen. Ben, Gwen, Tony, May... se apagan como luces.'],
+      ['cerokid', '¡No! ¡Los salvé! ¡Los salvé a todos!'],
+      ['narr', 'El fuego de la grieta le quema el traje. Los ojos de la máscara se vuelven naranjas.'],
+      ['cero', '...Doom. Acepto.'],
     ],
     desconocido4: [
       ['narr', 'La máscara quemada cae al suelo.'],
@@ -355,6 +470,25 @@ const STORY = {
       ],
     },
   },
+  // Capítulo extra
+  extraIntro: [
+    ['narr', 'Tierra-0. Mucho antes de las grietas.'],
+    ['narr', 'Aquí también hubo un Peter Parker. Un chico que no sabía decir que no.'],
+    ['may', '¡Peter! ¡La cena es a las ocho! ¡Y trae pan!'],
+    ['cerokid', '¡Sí, tía May! ...Si nadie roba un banco antes.'],
+  ],
+  extraEnd: [
+    ['narr', 'Así nació Peter Cero. No por maldad. Por amor. Por no saber decir que no.'],
+    ['narr', 'Y en Tierra-616, otro Peter se despertó sin saber que alguien lo había elegido.'],
+    '{CERO}',
+    ['cero', 'Si alguna vez te sientes solo, Peter: no tienes que salvarlos a todos. Solo no dejes de intentarlo.'],
+    ['narr', 'Nadie puede salvar a todos. Pero todos pueden intentarlo.'],
+  ],
+  ceroEnding: {
+    feliz: ['cero', 'Gracias por tenderme la mano. Fuiste el primero en hacerlo.'],
+    triste: ['cero', 'Deshiciste lo que salvaste. Yo nunca pude. Eres más fuerte que yo.'],
+    neutral: ['cero', 'Te quedaste entre los mundos para que yo volviera. Te debo una vida entera.'],
+  },
   postCredits: {
     feliz: [['doom', 'Qué conmovedor, Parker. Disfruta de tu nuevo día.'], ['doom', 'Nos veremos muy pronto.']],
     triste: [['doom', 'Ya has perdido, Parker. Solo que todavía no lo sabes.']],
@@ -366,6 +500,7 @@ const STORY = {
     ben: ['Un tío Ben enseña a su sobrino a cambiar una rueda.', 'Una acera guarda para siempre el recuerdo del tío Ben.'],
     gwen: ['Gwen Stacy da un discurso de graduación. Esta vez, termina.', 'Una torre del reloj sigue marcando la misma hora.'],
     davis: ['El capitán Davis llega tarde a cenar. Miles lo abraza igual.', 'Miles lleva la placa de su padre en el bolsillo.'],
+    gabriella: ['En un universo vecino, Gabriella le enseña a Miguel a sonreír otra vez.', 'Miguel guarda un dibujo infantil en el bolsillo del traje.'],
   },
   undoLines: {
     harry: 'Harry vuelve a caer.',
@@ -373,6 +508,7 @@ const STORY = {
     ben: 'El tío Ben vuelve a quedarse en la acera.',
     gwen: 'Gwen vuelve a caer.',
     davis: 'El capitán Davis vuelve a quedarse atrás.',
+    gabriella: 'Gabriella vuelve a deshacerse como arena.',
   },
   // Fragmentos coleccionables: frases con significado (easter eggs)
   fragments: [
@@ -401,6 +537,11 @@ const STORY = {
     'MJ, Ned: algún día os lo contaré todo.',
     'La esperanza es lo que nos hace fuertes.',
     'Todos somos Spider-Man. Incluso tú.',
+    'Miguel: en 2099 el futuro también duele.',
+    'LYLA: probabilidad de que Parker toque el botón rojo: 97%.',
+    'Nadie te dice que el multiverso tiene memoria.',
+    'Cada Spider-Man pierde a alguien. Ninguno deja de balancearse.',
+    'Tierra-0: el lugar donde alguien dijo que sí a todo.',
   ],
   radio: {
     '616': [
@@ -422,6 +563,11 @@ const STORY = {
       ['radio', 'Agujeros negros en las paredes de Brooklyn. Si ve uno, no lo toque. Ni lo mire.'],
       ['radio', 'Nuevo mural de Spider-Man en Brooklyn. El artista dice que "lo vio en un sueño".'],
       ['radio', 'Aviso de Alchemax: los experimentos de esta semana son "totalmente seguros".'],
+    ],
+    n2099: [
+      ['lyla', 'Recordatorio de la Sociedad Araña: no se permiten visitas a universos con evento canónico activo.'],
+      ['radio', 'Alchemax informa: el tráfico aéreo de hoy es "casi" seguro.'],
+      ['lyla', 'Miguel dice que no te acerques a la cafetería. Nadie sabe por qué. Yo sí.'],
     ],
     ruina: [
       ['static', '...¿hay alguien...? ...los zombis han cruzado el puente...'],
@@ -446,6 +592,8 @@ const STORY = {
     tip_canon: 'Eventos canónicos: puedes salvar a quien el canon condena. Pero cada canon roto agrieta el multiverso.',
     tip_ruin: 'Aquí nada sigue las reglas. Cuidado con los zombis: son lentos, pero no se rinden.',
     tip_verse: 'En este universo todo es un cómic. ¡Hasta tus golpes suenan!',
+    tip_2099: 'Nueva York 2099: los enemigos llevan armaduras con escudo. Rómpelas con golpes fuertes o con red.',
+    tip_extra: 'Capítulo extra: juegas como el Peter de Tierra-0. No hay refuerzos: él todavía no conoce a nadie.',
   },
   credits: [
     ['SPIDER-MAN', 'ROMPECÁNONES'],
@@ -453,7 +601,7 @@ const STORY = {
     ['IDEA E HISTORIA', 'Un fan de Spider-Man, con Claude Code'],
     ['DISEÑO, PROGRAMACIÓN,', 'GRÁFICOS Y MÚSICA ORIGINAL'],
     ['INSPIRADO EN', 'Las películas de Spider-Man de Tobey Maguire, Andrew Garfield y Tom Holland, y el Spider-Verse'],
-    ['PERSONAJES', 'Spider-Man, Miles Morales, Gwen Stacy, Miguel O\'Hara, Venom, Electro, Rino, La Mancha, el Hombre de Arena y Doctor Doom son propiedad de Marvel.'],
+    ['PERSONAJES', 'Spider-Man, Miles Morales, Gwen Stacy, Miguel O\'Hara, el Merodeador, el Buitre, Venom, Electro, Rino, La Mancha, el Hombre de Arena y Doctor Doom son propiedad de Marvel.'],
     ['SIN FINES DE LUCRO', 'Hecho con cariño por fans, para fans.'],
     ['GRACIAS POR JUGAR', 'Un gran poder conlleva una gran responsabilidad.'],
   ],
@@ -488,6 +636,9 @@ function prepLines(lines) {
         const saved = CANON_ORDER.filter((k) => c[k] === true);
         if (saved.length) saved.forEach((k) => out.push(['narr', STORY.undoLines[k]]));
         else out.push(['narr', 'No había nada que deshacer. Solo quedaba cerrar las grietas por la fuerza.']);
+      } else if (ln === '{CERO}') {
+        const last = (Game.save.endings || []).slice(-1)[0];
+        if (last && STORY.ceroEnding[last]) out.push(STORY.ceroEnding[last]);
       } else if (ln === '{WHY}') {
         if (Game.save.lastChoice === 'mano') {
           out.push(['cero', 'Rompiste demasiados cánones, Peter. Las grietas ya no se cierran con buenas intenciones.']);

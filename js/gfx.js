@@ -45,6 +45,8 @@ const SUITS = [
   { id: 'tasm', name: 'Traje de Tierra-120703', desc: 'Ojos grandes, azul eléctrico.', pal: { webs: true, webLine: '#1a1a24', head: '#d81a2a', torso: '#d81a2a', torsoLow: '#d81a2a', side: '#1a5ac8', shoulder: '#d81a2a', arm: '#1a5ac8', arm2: '#d81a2a', leg: '#1a5ac8', boot: '#d81a2a', face: 'spider', emblem: '#140a12', emblemStyle: 'long', eye: '#ffffff', eyeSize: 1.25 } },
   { id: 'verse', name: 'Traje del Spider-Verse', desc: 'Negro y rojo, con estilo de cómic.', pal: { webs: true, webLine: '#d8202c', head: '#1a1a22', torso: '#1a1a22', torsoLow: '#1a1a22', arm: '#1a1a22', arm2: '#1a1a22', hand: '#d8202c', leg: '#1a1a22', boot: '#d8202c', face: 'spider', emblem: '#d8202c', emblemStyle: 'long', eye: '#ffffff' } },
   { id: 'avanzado', name: 'Traje avanzado (1048)', desc: 'De una Tierra de consola. Araña blanca enorme.', pal: { webs: true, webLine: '#8a0c10', head: '#e02a24', torso: '#e02a24', torsoLow: '#e02a24', side: '#1a5ad0', shoulder: '#e02a24', arm: '#1a5ad0', arm2: '#e02a24', leg: '#1a5ad0', boot: '#e02a24', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'big', eye: '#ffffff' } },
+  { id: 'sociedad', name: 'Traje de la Sociedad Araña', desc: 'Diseñado en 2099. Rastrea anomalías.', pal: { webs: true, webLine: '#0a0e1a', head: '#1a2040', torso: '#1a2040', torsoLow: '#1a2040', side: '#c81a3a', trim: '#40e0ff', arm: '#1a2040', arm2: '#c81a3a', leg: '#1a2040', boot: '#c81a3a', face: 'spider', emblem: '#40e0ff', emblemStyle: 'long', eye: '#ff5070' } },
+  { id: 'tierra0', name: 'Traje de Tierra-0', desc: 'El traje de antes del fuego. Todavía no está quemado.', pal: { webs: true, webLine: '#5a0c14', head: '#e8242e', torso: '#e8242e', torsoLow: '#e8242e', side: '#2a4ad8', arm: '#e8242e', arm2: '#e8242e', leg: '#2a4ad8', boot: '#e8242e', face: 'spider', emblem: '#140a12', emblemStyle: 'small', eye: '#ffe8a0' } },
   { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { deco: 'burn', head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', emblemStyle: 'long', eye: '#ffb060' } },
 ];
 const START_SUITS = ['bnd', 'nwh', 'casero', 'stark', 'ffh', 'iron', 'avanzado'];
@@ -287,6 +289,34 @@ const Portraits = {
         R('#140a12', 7, 8, 4, 5); R('#140a12', 13, 8, 4, 5); R('#ffb060', 8, 9, 2, 3); R('#e8c8a0', 14, 9, 2, 3);
         R('#2a1a14', 4, 21, 16, 3);
         break;
+      case 'lyla':
+        R('#0a1830', 0, 0, 24, 24); R('#40f0ff', 7, 3, 10, 12); R('#a0ffff', 8, 4, 8, 2); R('#ff70c0', 6, 3, 12, 3); R('#ff70c0', 6, 3, 2, 12);
+        R('#0a1830', 9, 8, 2, 2); R('#0a1830', 13, 8, 2, 2); R('#0a1830', 10, 12, 4, 1); R('#40f0ff', 5, 16, 14, 6); R('#a0ffff', 8, 17, 8, 1);
+        break;
+      case 'gabriella':
+        face('#c89878'); R('#2a1a10', 5, 3, 14, 5); R('#2a1a10', 5, 3, 3, 14); R('#2a1a10', 16, 3, 3, 14);
+        R('#140a12', 9, 11, 2, 2); R('#140a12', 14, 11, 2, 2); R('#c06070', 11, 17, 3, 1); R('#f0a0c0', 4, 21, 16, 3);
+        break;
+      case 'prowler':
+        R('#140a12', 4, 2, 16, 21); R('#3a2a5a', 5, 3, 14, 19); R('#241a3a', 5, 3, 14, 5);
+        R('#60ff80', 7, 10, 10, 3); R('#b0ffc0', 8, 11, 3, 1); R('#b0ffc0', 13, 11, 3, 1); R('#1a1426', 7, 15, 10, 5); R('#3a2a5a', 3, 21, 18, 3);
+        break;
+      case 'vulture':
+        R('#1a0a14', 0, 0, 24, 24); R('#140a12', 5, 3, 14, 19); R('#2a2a34', 6, 4, 12, 17); R('#c81a3a', 6, 4, 12, 4);
+        R('#ff4060', 7, 10, 10, 2); R('#e8b890', 9, 14, 6, 5); R('#140a12', 10, 16, 4, 1); R('#c81a3a', 2, 20, 20, 4);
+        break;
+      case 'doombot':
+        R('#0a140a', 0, 0, 24, 24); R('#1e4a1e', 3, 1, 18, 23); R('#6a7078', 6, 5, 12, 16); R('#8a929a', 7, 6, 10, 3);
+        R('#101010', 8, 9, 3, 2); R('#101010', 13, 9, 3, 2); R('#40ff60', 9, 9, 1, 1); R('#40ff60', 14, 9, 1, 1); R('#40ff60', 11, 17, 2, 2);
+        break;
+      case 'may':
+        face('#f0c8a8'); R('#6a4a3a', 5, 3, 14, 5); R('#6a4a3a', 5, 3, 3, 12); R('#6a4a3a', 16, 3, 3, 12);
+        R('#303030', 8, 10, 4, 3); R('#303030', 13, 10, 4, 3); R('#c06070', 11, 17, 3, 1); R('#8a4a6a', 4, 21, 16, 3);
+        break;
+      case 'tony':
+        face('#e0b088'); R('#2a1a10', 6, 3, 12, 4); R('#2a1a10', 9, 16, 7, 4); R('#e0b088', 11, 17, 3, 1);
+        R('#140a12', 9, 11, 2, 1); R('#140a12', 14, 11, 2, 1); R('#8a1a20', 3, 21, 18, 3); R('#a0e8ff', 11, 21, 2, 2);
+        break;
       case 'cero':
         R('#140806', 0, 0, 24, 24);
         face('#d8a888'); R('#2a1a10', 5, 2, 14, 5); R('#2a1a10', 5, 2, 2, 11); R('#2a1a10', 17, 2, 2, 8);
@@ -312,6 +342,7 @@ const SKIES = {
   teal: { bands: ['#020a14', '#051626', '#082236', '#0c3046', '#124058', '#1a526a'], far: '#0e2a3a', mid: '#081a26', win: '#9af0ff', sun: null, moon: true, stars: true },
   verse: { bands: ['#1a0830', '#3a0c50', '#6a1060', '#a01868', '#e02870', '#ff6a60'], far: '#4a1060', mid: '#260838', win: '#40f0ff', sun: null, stars: true, halftone: true },
   ruin: { bands: ['#0a0204', '#1a0406', '#300808', '#4a0e08', '#6a1a0a', '#8a2a0c'], far: '#200808', mid: '#120406', win: '#ff7020', sun: null, stars: false, debris: true },
+  neon: { bands: ['#0a0418', '#1a0630', '#340a48', '#5a0e5a', '#8a1a60', '#c02a5a'], far: '#2a0e44', mid: '#16082a', win: '#40f0ff', sun: null, stars: true, neon: true },
   rift: { bands: ['#04070a', '#07100f', '#0a1a16', '#0f2820', '#15382a', '#1c4a36'], far: '#10241e', mid: '#0a1612', win: '#b0ffb0', sun: null, moon: false, stars: true, rift: true },
 };
 
@@ -366,6 +397,12 @@ const Scenery = {
       }
       x.fillStyle = 'rgba(255,90,30,0.35)';
       for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(r.int(40, 340), r.int(20, 80), r.int(14, 30), 0, TAU); x.fill(); }
+    }
+    if (def.neon) {
+      // coches voladores y anuncios holográficos
+      const r = makeRng(2099);
+      for (let i = 0; i < 18; i++) { x.fillStyle = r.chance(0.5) ? '#ff4aa0' : '#40f0ff'; x.fillRect(r.int(0, W), r.int(20, 120), r.int(3, 6), 1); }
+      x.fillStyle = 'rgba(64,240,255,0.25)'; x.fillRect(40, 30, 50, 14); x.fillStyle = 'rgba(255,74,160,0.25)'; x.fillRect(290, 50, 40, 18);
     }
     if (def.rift) {
       x.fillStyle = '#50ff90';
@@ -430,6 +467,16 @@ const Scenery = {
       x.beginPath(); x.moveTo(tx, sh); x.lineTo(tx + 10, sh - 170); x.lineTo(tx + 40, sh - 170); x.lineTo(tx + 50, sh); x.fill();
       x.fillStyle = def.win;
       for (let yy = sh - 160; yy < sh - 10; yy += 12) x.fillRect(tx + 14, yy, 22, 2);
+    } else if (layer === 'far' && landmark === 'spire') {
+      // aguja de Alchemax 2099 y torre de la Sociedad Araña
+      x.fillStyle = col;
+      const tx = 500;
+      x.beginPath(); x.moveTo(tx, sh); x.lineTo(tx + 18, sh - 158); x.lineTo(tx + 22, sh - 158); x.lineTo(tx + 40, sh); x.fill();
+      x.fillRect(tx + 19, sh - 176, 2, 18);
+      x.fillStyle = '#ff4aa0'; x.fillRect(tx + 19, sh - 178, 2, 2);
+      x.fillStyle = def.win; for (let yy = sh - 140; yy < sh - 8; yy += 10) x.fillRect(tx + 14 + (sh - yy) * 0.03, yy, 12 - (sh - yy) * 0.06, 1);
+      x.fillStyle = col; x.fillRect(180, sh - 120, 40, 120); x.fillRect(172, sh - 96, 56, 6);
+      x.fillStyle = '#c81a3a'; x.fillRect(196, sh - 116, 8, 8);
     } else if (layer === 'far') {
       x.fillStyle = col;
       const ex = 200;
@@ -471,6 +518,8 @@ const BSTYLES = {
   verse: { base: '#3a1a6a', dark: '#1a0a3a', ledge: '#ff4a8a', win: '#1a1040', lit: '#40f0ff', frame: '#140828' },
   verse2: { base: '#1a4a7a', dark: '#0a2240', ledge: '#ffd040', win: '#0a1a30', lit: '#ff5aa0', frame: '#08142a' },
   ruin: { base: '#2a1a18', dark: '#140a08', ledge: '#4a2a20', win: '#0a0404', lit: '#ff6a20', frame: '#1a0c0a' },
+  futuro: { base: '#1a1a34', dark: '#0c0c1c', ledge: '#ff4aa0', win: '#141432', lit: '#40f0ff', frame: '#0c0c1c' },
+  futuro2: { base: '#28203e', dark: '#140e24', ledge: '#40f0ff', win: '#18142c', lit: '#ff80c0', frame: '#140e24' },
   stone: { base: '#8a8470', dark: '#5e5a4a', ledge: '#b0aa94', win: '#3a3a30', lit: '#fff0b0', frame: '#6e6a58' },
 };
 
@@ -494,6 +543,11 @@ function renderBuilding(w, h, styleName, seed, night) {
       x.fillStyle = r.chance(litP) ? st.lit : st.win;
       x.fillRect(xx, yy, ww, wh);
     }
+  }
+  if (styleName === 'futuro' || styleName === 'futuro2') {
+    // franjas de neón verticales
+    x.fillStyle = st.ledge; x.fillRect(2, 0, 1, h); x.fillRect(w - 3, 0, 1, h);
+    x.fillStyle = 'rgba(64,240,255,0.18)'; for (let yy = 12; yy < h; yy += 24) x.fillRect(0, yy, w, 1);
   }
   if (styleName === 'verse' || styleName === 'verse2') {
     x.fillStyle = 'rgba(255,255,255,0.10)';
