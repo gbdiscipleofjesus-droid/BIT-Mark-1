@@ -357,7 +357,7 @@ class FlashSeq {
     for (let k = 0; k < 6; k++) {
       const y = Math.floor(hash2(i, k) * H), h = 2 + Math.floor(hash2(k, i) * 8);
       const off = Math.round((hash2(k + i, 7) - 0.5) * 30);
-      ctx.drawImage(ctx.canvas, 0, y, W, h, off, y, W, h);
+      ctx.drawImage(ctx.canvas, 0, y * RES, W * RES, h * RES, off, y, W, h);
     }
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);

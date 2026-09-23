@@ -1427,7 +1427,7 @@ class Venom extends ExoBrute {
     this.type = 'venom'; this.name = 'VENOM';
     this.hp = this.maxHp = Math.ceil(70 * DIFF_HP[Game.settings.difficulty]);
     this.scale = 1.6; this.w = 16; this.h = 36;
-    this.pal = makePal({ head: '#101018', hair: '#101018', torso: '#101018', arm: '#101018', leg: '#101018', boot: '#101018', face: 'venom', eye: '#ffffff', outline: '#000000' });
+    this.pal = makePal({ head: '#101018', hair: '#101018', torso: '#101018', arm: '#101018', leg: '#101018', boot: '#101018', face: 'venom', eye: '#ffffff', emblem: '#f0f0f0', emblemStyle: 'long', outline: '#000000' });
     this.summoned = true;
   }
   chooseAttack(adx) {
@@ -1768,7 +1768,7 @@ class Miguel extends Scorpion {
     this.hp = this.maxHp = Math.ceil(78 * DIFF_HP[Game.settings.difficulty]);
     this.scale = 1.2; this.w = 12; this.h = 27;
     this.projKind = 'redweb'; this.noRift = true;
-    this.pal = makePal({ head: '#1a2a6a', hair: '#1a2a6a', torso: '#1a2a6a', torsoLow: '#10183a', arm: '#1a2a6a', arm2: '#1a2a6a', hand: '#d01a2a', leg: '#1a2a6a', boot: '#d01a2a', face: 'spider', eye: '#ff3040', emblem: '#d01a2a', outline: '#050818' });
+    this.pal = makePal({ head: '#1a2a6a', hair: '#1a2a6a', torso: '#1a2a6a', torsoLow: '#10183a', arm: '#1a2a6a', arm2: '#1a2a6a', hand: '#d01a2a', leg: '#1a2a6a', boot: '#d01a2a', face: 'spider', eye: '#ff3040', emblem: '#d01a2a', emblemStyle: 'long', outline: '#050818' });
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);

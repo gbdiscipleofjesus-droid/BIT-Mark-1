@@ -590,19 +590,6 @@ class Player {
     // aterrizaje con peso: se hunde un poco
     if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
     const SC = 1.2;
-    // estela de movimiento cuando va rápido (balanceo, esquiva, picado, patada balanceada)
-    const speed = Math.hypot(this.vx, this.vy);
-    const fast = speed > 230 || this.state === 'dodge' || (this.attack && (this.attack.type === 'dive' || this.attack.type === 'swingkick'));
-    if (!this.trail) this.trail = [];
-    this.trailT = (this.trailT || 0) + 1;
-    if (fast && this.trailT % 2 === 0) this.trail.push({ x: this.cx, y: this.feet, f, pose: Object.assign({}, pose), life: 1 });
-    for (const tr of this.trail) tr.life -= 0.12;
-    this.trail = this.trail.filter((tr) => tr.life > 0);
-    for (const tr of this.trail) {
-      ctx.globalAlpha = tr.life * 0.35;
-      Rig.draw(ctx, Math.round(tr.x - cam.x), Math.round(tr.y - cam.y), tr.f, tr.pose, TRAIL_PAL, { scale: SC });
-    }
-    ctx.globalAlpha = 1;
     const cork = this.state === 'dodge' && this.dodgeKind === 'corkscrew';
     if (cork) {
       const k = this.spinX || 1;

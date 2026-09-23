@@ -947,7 +947,7 @@ class World {
       ctx.fillRect(0, 0, W, H);
       for (let y = 0; y < H; y += 6) {
         const off = Math.round(Math.sin(t * 5 + y * 0.1) * 2);
-        if (off) ctx.drawImage(ctx.canvas, 0, y, W, 2, off, y, W, 2);
+        if (off) ctx.drawImage(ctx.canvas, 0, y * RES, W * RES, 2 * RES, off, y, W, 2);
       }
     }
     // indicador de crimen fuera de pantalla

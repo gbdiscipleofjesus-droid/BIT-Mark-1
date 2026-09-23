@@ -15,7 +15,7 @@ const SAVE_VERSION = 2;
 function defaultSave() {
   return {
     v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
-    suits: START_SUITS.slice(), suit: 'nwh', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
+    suits: START_SUITS.slice(), suit: 'bnd', tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
     universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
     completed: false, started: false,
   };
@@ -252,7 +252,7 @@ class SuitsScreen {
   }
   draw(ctx, t) {
     drawScreenTitle(ctx, 'TRAJES');
-    this.menu.draw(ctx, 24, 44, t, { lh: 16, align: 'left' });
+    this.menu.draw(ctx, 24, 44, t, { lh: 13, align: 'left' });
     const s = SUITS[this.menu.sel];
     if (s) {
       ctx.fillStyle = '#1a1830'; ctx.fillRect(250, 36, 110, 130);
@@ -606,6 +606,7 @@ const Game = {
 
   init() {
     this.canvas = document.getElementById('game');
+    this.canvas.width = W * RES; this.canvas.height = H * RES;
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
@@ -635,7 +636,7 @@ const Game = {
       if (!Array.isArray(this.save.visited)) this.save.visited = [];
       if (!Array.isArray(this.save.endings)) this.save.endings = [];
       if (!UNIVERSES[this.save.universe]) this.save.universe = '616';
-      if (!SUITS.find((x) => x.id === this.save.suit)) this.save.suit = 'nwh';
+      if (!SUITS.find((x) => x.id === this.save.suit)) this.save.suit = 'bnd';
       this.save.stage = clamp(parseInt(this.save.stage, 10) || 0, 0, 5);
       this.save.tech = Math.max(0, parseInt(this.save.tech, 10) || 0);
     } else this.save = base;
@@ -774,6 +775,8 @@ const Game = {
 
   render() {
     const ctx = this.ctx;
+    ctx.setTransform(RES, 0, 0, RES, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     this.scene.draw(ctx);
     drawPadToast(ctx);
     if (this.fade) {
