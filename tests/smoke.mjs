@@ -109,6 +109,7 @@ for (let m = 0; m < 5; m++) {
       w.player.x = a.x1 + 40; w.player.y = w.level.surfaceY(a.x1 + 45) - 22; w.player.vx = 0; w.player.vy = 0; w.player.state = 'normal';
     }, bi);
     await sim(20);
+    if (process.env.DBG) console.log('dbg', m, bi, JSON.stringify(await page.evaluate(() => { const w = Game.scene.world; return { arena: w.arena && [w.arena.x1, w.arena.boss, w.arena.done, w.arena.active], px: Math.round(w.player.x), st: w.player.state, dialog: !!w.dialog, choice: !!w.choice, flash: !!w.flash, state: w.state, bossDoneT: w.bossDoneT }; })));
     await shot(`11_m${m}_b${bi}_intro`);
     await sim(200, `if (i % 8 === 0) Input.keyLatch.Enter = true;`);
     const fight = bot + `
@@ -120,7 +121,7 @@ for (let m = 0; m < 5; m++) {
     console.log('boss', m, bi, JSON.stringify(bossInfo));
     await page.evaluate(() => {
       const w = Game.scene.world; const b = w && w.boss;
-      if (b && !b.dead) { b.inv = 0; if (b.state === 'wait') b.state = 'move'; if (b.state === 'gone') b.state = 'move'; b.stun = 0; b.escapeAt = 0; b.takeHit(b.hp / (b.armorMul || 1) + 5, 100, -100, true, w); }
+      if (b && !b.dead) { b.inv = 0; if (b.state === 'wait') b.state = 'move'; if (b.state === 'gone') b.state = 'move'; b.stun = 0; b.escapeAt = 0; b.streak = 0; b.takeHit(b.hp * 5 + 100, 100, -100, true, w); }
     });
     await sim(160, `const w2 = G.scene.world; if (w2 && w2.player) w2.player.inv = 1;`);
     // diálogos, destellos y decisiones (Enter = primera opción)

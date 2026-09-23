@@ -311,7 +311,7 @@ class World {
     this.float('-15', p.cx, p.lastSafe.y - 10, '#ff6060');
     Audio2.sfx('hurt');
     if (p.hp <= 0) { p.hp = 0; p.state = 'dead'; this.onPlayerDeath(); p.y = p.lastSafe.y; p.x = p.lastSafe.x; p.vy = 0; return; }
-    p.x = p.lastSafe.x; p.y = p.lastSafe.y; p.vx = 0; p.vy = 0; p.anchor = null; p.state = 'normal'; p.inv = 1.2;
+    p.x = p.lastSafe.x; p.y = p.lastSafe.y; p.vx = 0; p.vy = 0; p.anchor = null; p.state = 'normal'; p.inv = 1.2; p.hurtT = 1.2;
     if (this.arena) { p.x = clamp(p.x, this.arena.x1 + 4, this.arena.x2 - p.w - 4); p.y = this.level.surfaceY(p.cx, 0) - p.h; }
   }
 
@@ -331,7 +331,7 @@ class World {
     const np = new Player(cp.x, 0);
     np.y = this.level.surfaceY(cp.x + 5, 0) - np.h;
     if (this.mode === 'city') np.y = p.lastSafe.y;
-    np.focus = p.focus; np.inv = 1.5;
+    np.focus = p.focus; np.inv = 1.5; np.hurtT = 1.5;
     this.player = np;
     this.state = 'play';
     Audio2.music(this.mode === 'city' ? UNIVERSES[this.universe].music : this.missionMusic());
@@ -347,6 +347,7 @@ class World {
         else { Audio2.sfx('alert'); this.float('¡EMBOSCADA!', p.cx, p.y - 20, '#ff6060'); this.nextWave(a); }
       }
     }
+    if (this.arena && this.arena.done) { this.arena.active = false; this.arena = null; }
     const a = this.arena;
     if (!a) return;
     // paredes invisibles
@@ -390,6 +391,9 @@ class World {
     const b = new cls(x, 0);
     b.y = b.fly ? this.level.groundY - 140 : this.level.surfaceY(x + b.w / 2, 0) - b.h;
     b.arena = a; b.facing = -1;
+    const d = Game.settings.difficulty;
+    b.hp = b.maxHp = Math.ceil(b.maxHp * BOSS_HP_MUL[d]);
+    b.baseDmg = b.baseDmg * BOSS_DMG_MUL[d];
     this.enemies.push(b);
     this.boss = b;
     const begin = () => {

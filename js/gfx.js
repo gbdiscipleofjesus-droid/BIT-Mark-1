@@ -23,26 +23,31 @@ function makePal(p) {
   pal.arm = pal.arm || pal.torso;
   pal.arm2 = pal.arm2 || pal.arm;
   pal.hand = pal.hand || pal.arm2;
-  pal.dark = {};
-  for (const k of ['head', 'torso', 'torsoLow', 'arm', 'arm2', 'hand', 'leg', 'boot']) pal.dark[k] = shade(pal[k], -0.3);
+  pal.dark = {}; pal.light = {};
+  for (const k of ['head', 'torso', 'torsoLow', 'arm', 'arm2', 'hand', 'leg', 'boot']) {
+    pal.dark[k] = shade(pal[k], -0.3);
+    pal.light[k] = shade(pal[k], 0.28);
+  }
+  pal.webLine = pal.webLine || shade(pal.torso, -0.45);
   return pal;
 }
+const TRAIL_PAL = makePal({ outline: '#60e0ff', head: '#a0f0ff', hair: '#a0f0ff', torso: '#80d8ff', leg: '#4a90ff', boot: '#4a90ff', eye: '#ffffff', face: 'flat' });
 const FLASH_PAL = makePal({ outline: '#ffffff', head: '#ffffff', hair: '#ffffff', torso: '#ffffff', leg: '#ffffff', boot: '#ffffff', eye: '#ffffff', face: 'flat' });
 
 const SUITS = [
-  { id: 'nwh', name: 'Traje hecho a mano', desc: 'Cosido por Peter tras No Way Home.', pal: { head: '#e0202c', torso: '#e0202c', torsoLow: '#2046c8', arm: '#e0202c', arm2: '#e0202c', leg: '#2046c8', boot: '#e0202c', face: 'spider', emblem: '#140a12' } },
-  { id: 'casero', name: 'Traje casero', desc: 'Sudadera roja y gafas. Donde todo empezó.', pal: { head: '#c8202a', torso: '#c8202a', torsoLow: '#c8202a', arm: '#c8202a', arm2: '#c8202a', leg: '#2a3a8a', boot: '#d8d8d8', face: 'goggles', emblem: '#140a12', eye: '#b8d8ff' } },
-  { id: 'sigilo', name: 'Traje de sigilo', desc: 'El traje del "Mono Nocturno".', pal: { head: '#20242c', torso: '#20242c', torsoLow: '#20242c', arm: '#20242c', leg: '#20242c', boot: '#2a2e38', face: 'spider', emblem: '#4a5060', eye: '#8ad8ff' } },
-  { id: 'stark', name: 'Traje Stark', desc: 'Regalo del señor Stark.', pal: { head: '#d82028', torso: '#d82028', torsoLow: '#1c38a8', arm: '#1c38a8', arm2: '#d82028', leg: '#1c38a8', boot: '#d82028', face: 'spider', emblem: '#140a12' } },
+  { id: 'nwh', name: 'Traje hecho a mano', desc: 'Cosido por Peter tras No Way Home.', pal: { webs: true,  head: '#e0202c', torso: '#e0202c', torsoLow: '#2046c8', arm: '#e0202c', arm2: '#e0202c', leg: '#2046c8', boot: '#e0202c', face: 'spider', emblem: '#140a12' } },
+  { id: 'casero', name: 'Traje casero', desc: 'Sudadera roja y gafas. Donde todo empezó.', pal: { deco: 'hood',  head: '#c8202a', torso: '#c8202a', torsoLow: '#c8202a', arm: '#c8202a', arm2: '#c8202a', leg: '#2a3a8a', boot: '#d8d8d8', face: 'goggles', emblem: '#140a12', eye: '#b8d8ff' } },
+  { id: 'sigilo', name: 'Traje de sigilo', desc: 'El traje del "Mono Nocturno".', pal: { deco: 'stealth',  head: '#20242c', torso: '#20242c', torsoLow: '#20242c', arm: '#20242c', leg: '#20242c', boot: '#2a2e38', face: 'spider', emblem: '#4a5060', eye: '#8ad8ff' } },
+  { id: 'stark', name: 'Traje Stark', desc: 'Regalo del señor Stark.', pal: { webs: true,  head: '#d82028', torso: '#d82028', torsoLow: '#1c38a8', arm: '#1c38a8', arm2: '#d82028', leg: '#1c38a8', boot: '#d82028', face: 'spider', emblem: '#140a12' } },
   { id: 'ffh', name: 'Traje mejorado', desc: 'Rojo y negro, hecho en el jet de Stark.', pal: { head: '#e01a24', torso: '#e01a24', torsoLow: '#16161c', arm: '#16161c', arm2: '#e01a24', leg: '#16161c', boot: '#e01a24', face: 'spider', emblem: '#16161c' } },
-  { id: 'iron', name: 'Iron Spider', desc: 'Nanotecnología roja y dorada.', pal: { head: '#c01822', torso: '#c01822', torsoLow: '#e0b030', arm: '#c01822', arm2: '#e0b030', leg: '#c01822', boot: '#e0b030', face: 'spider', emblem: '#e0b030' } },
-  { id: 'raimi', name: 'Traje clásico (96283)', desc: 'Regalo de Tierra-96283. Telarañas en relieve.', pal: { head: '#c8141e', torso: '#c8141e', torsoLow: '#1a2a8a', arm: '#c8141e', arm2: '#c8141e', leg: '#1a2a8a', boot: '#c8141e', face: 'spider', emblem: '#140a12', eye: '#d8e4f0' } },
-  { id: 'tasm', name: 'Traje de Tierra-120703', desc: 'Ojos grandes, azul eléctrico.', pal: { head: '#d81a2a', torso: '#d81a2a', torsoLow: '#1a5ac8', arm: '#1a5ac8', arm2: '#d81a2a', leg: '#1a5ac8', boot: '#d81a2a', face: 'spider', emblem: '#140a12', eye: '#ffffff' } },
-  { id: 'verse', name: 'Traje del Spider-Verse', desc: 'Negro y rojo, con estilo de cómic.', pal: { head: '#1a1a22', torso: '#1a1a22', torsoLow: '#1a1a22', arm: '#1a1a22', arm2: '#d8202c', leg: '#1a1a22', boot: '#d8202c', face: 'spider', emblem: '#d8202c', eye: '#ffffff' } },
-  { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', eye: '#ffb060' } },
+  { id: 'iron', name: 'Iron Spider', desc: 'Nanotecnología roja y dorada. Con patas de araña.', pal: { deco: 'ironlegs',  head: '#c01822', torso: '#c01822', torsoLow: '#e0b030', arm: '#c01822', arm2: '#e0b030', leg: '#c01822', boot: '#e0b030', face: 'spider', emblem: '#e0b030' } },
+  { id: 'raimi', name: 'Traje clásico (96283)', desc: 'Regalo de Tierra-96283. Telarañas en relieve.', pal: { webs: true,  head: '#c8141e', torso: '#c8141e', torsoLow: '#1a2a8a', arm: '#c8141e', arm2: '#c8141e', leg: '#1a2a8a', boot: '#c8141e', face: 'spider', emblem: '#140a12', eye: '#d8e4f0' } },
+  { id: 'tasm', name: 'Traje de Tierra-120703', desc: 'Ojos grandes, azul eléctrico.', pal: { webs: true,  head: '#d81a2a', torso: '#d81a2a', torsoLow: '#1a5ac8', arm: '#1a5ac8', arm2: '#d81a2a', leg: '#1a5ac8', boot: '#d81a2a', face: 'spider', emblem: '#140a12', eye: '#ffffff' } },
+  { id: 'verse', name: 'Traje del Spider-Verse', desc: 'Negro y rojo, con estilo de cómic.', pal: { webs: true, webLine: '#d8202c',  head: '#1a1a22', torso: '#1a1a22', torsoLow: '#1a1a22', arm: '#1a1a22', arm2: '#d8202c', leg: '#1a1a22', boot: '#d8202c', face: 'spider', emblem: '#d8202c', eye: '#ffffff' } },
+  { id: 'cero', name: 'Traje quemado', desc: 'El traje de Peter Cero. Pesa más de lo que parece.', pal: { deco: 'burn',  head: '#16141a', torso: '#16141a', torsoLow: '#2a1a14', arm: '#16141a', arm2: '#2a1a14', leg: '#16141a', boot: '#3a2014', face: 'spider', emblem: '#e06020', eye: '#ffb060' } },
 ];
 const START_SUITS = ['nwh', 'casero', 'stark', 'ffh', 'iron'];
-const GWEN_PAL = makePal({ outline: '#140a12', head: '#f4f4f8', torso: '#f4f4f8', torsoLow: '#f4f4f8', arm: '#e04a9a', arm2: '#f4f4f8', leg: '#f4f4f8', boot: '#40c0d0', face: 'spider', emblem: '#e04a9a', eye: '#ffffff' });
+const GWEN_PAL = makePal({ deco: 'hood', outline: '#140a12', head: '#f4f4f8', torso: '#f4f4f8', torsoLow: '#f4f4f8', arm: '#e04a9a', arm2: '#f4f4f8', leg: '#f4f4f8', boot: '#40c0d0', face: 'spider', emblem: '#e04a9a', eye: '#ffffff' });
 SUITS.forEach((s) => { s.palObj = makePal(Object.assign({ outline: '#140a12' }, s.pal)); });
 
 // ---------------- Poses ----------------
@@ -78,6 +83,13 @@ const Poses = {
   webbed() { return P({ t: 0, l1: -3, l2: 0, r1: 3, r2: 0, a1: -5, a2: 0, b1: 5, b2: 0 }); },
   aim() { return P({ t: 0, l1: -15, l2: 5, r1: 15, r2: -5, a1: 80, a2: 0, b1: 88, b2: 0 }); },
   cheer(t) { return P({ a1: 160 + Math.sin(t * 12) * 15, a2: 0, b1: 150 - Math.sin(t * 12) * 15, b2: 0 }); },
+  roll(u) { return P({ t: 45, h: 30, l1: 95, l2: -140, r1: 105, r2: -140, a1: 80, a2: -110, b1: 90, b2: -110, hy: 7, rot: u * 360 }); },
+  backflip(u) {
+    const tuck = Math.sin(u * Math.PI);
+    return P({ t: -10, l1: -10 + tuck * 70, l2: -20 - tuck * 100, r1: 10 + tuck * 80, r2: -30 - tuck * 100, a1: 170 - tuck * 60, a2: 0, b1: 165 - tuck * 60, b2: 0, rot: -u * 360 });
+  },
+  corkscrew(u) { return P({ t: -15, l1: -35, l2: -20, r1: 30, r2: -40, a1: 120, a2: 10, b1: 100, b2: 20, rot: -25 - u * 40 }); },
+  guard() { return P({ t: -6, l1: -25, l2: 15, r1: 25, r2: -15, a1: 55, a2: -125, b1: 70, b2: -135, hy: 1 }); },
   sit() { return P({ t: 0, l1: 80, l2: -80, r1: 90, r2: -90, a1: 20, a2: -40, b1: 30, b2: -50, hy: 5 }); },
 };
 
@@ -147,17 +159,79 @@ const Rig = {
       }
       return { hx, hy };
     };
+    if (pal.deco === 'ironlegs' && pal.face !== 'flat') this.ironLegs(ctx, wp, facing, s, pose);
     parts(true);
     const { hx, hy } = parts(false);
+    if (pal.face !== 'flat') this.detail(ctx, wp, facing, s, pal, lw, tw, hx, hy, hs);
     this.face(ctx, hx, hy, hs, facing, pal, s, pose);
     if (pal.emblem && pal.face !== 'flat') {
       ctx.fillStyle = pal.emblem;
       const ex = Math.round((wp.mid[0] + wp.neck[0]) / 2), ey = Math.round((wp.mid[1] + wp.neck[1]) / 2);
       ctx.fillRect(ex, ey - 1, 1, 3);
-      if (s > 1.2) ctx.fillRect(ex - 1, ey, 3, 1);
+      ctx.fillRect(ex - 1, ey, 3, 1);
+      if (s >= 1.15) { ctx.fillRect(ex - 2, ey - 1, 1, 1); ctx.fillRect(ex + 2, ey - 1, 1, 1); ctx.fillRect(ex - 2, ey + 2, 1, 1); ctx.fillRect(ex + 2, ey + 2, 1, 1); }
     }
     if (opts.extra) opts.extra(ctx, wp, facing, s);
     return wp;
+  },
+
+  // Sombreado, brillos y detalles de traje (telarañas, capucha, quemaduras...)
+  detail(ctx, wp, f, s, pal, lw, tw, hx, hy, hs) {
+    // cabeza redondeada: esquinas con contorno
+    ctx.fillStyle = pal.outline;
+    ctx.fillRect(hx, hy, 1, 1); ctx.fillRect(hx + hs - 1, hy, 1, 1);
+    // brillo superior de la cabeza
+    ctx.fillStyle = pal.light.head;
+    ctx.fillRect(hx + 1, hy, hs - 2, 1);
+    // brillos en extremidades delanteras y torso (luz desde arriba)
+    const hi = (k, a, b) => { ctx.fillStyle = pal.light[k]; thickLine(ctx, a[0], a[1] - Math.floor(lw / 2), b[0], b[1] - Math.floor(lw / 2), 1); };
+    hi('arm', wp.sh, wp.e2); hi('arm2', wp.e2, wp.h2);
+    hi('leg', wp.hip, wp.k2);
+    ctx.fillStyle = pal.light.torso;
+    thickLine(ctx, wp.mid[0] + f * Math.floor(tw / 2), wp.mid[1], wp.neck[0] + f * Math.floor(tw / 2), wp.neck[1], 1);
+    // hombro
+    ctx.fillStyle = pal.torso; ctx.fillRect(wp.sh[0] - 1, wp.sh[1] - 1, 3, 2);
+    // pies con punta
+    ctx.fillStyle = pal.boot; ctx.fillRect(wp.f2[0] + (f > 0 ? 0 : -1), wp.f2[1], 2, 1);
+    // cinturón entre la parte alta y baja del torso
+    if (pal.torsoLow !== pal.torso) { ctx.fillStyle = pal.dark.torsoLow; thickLine(ctx, wp.mid[0] - Math.floor(tw / 2), wp.mid[1], wp.mid[0] + Math.floor(tw / 2), wp.mid[1], 1); }
+    // líneas de telaraña del traje
+    if (pal.webs) {
+      ctx.fillStyle = pal.webLine;
+      thickLine(ctx, wp.mid[0], wp.mid[1], wp.neck[0], wp.neck[1], 1);
+      ctx.fillRect(hx + Math.floor(hs / 2), hy + 1, 1, hs - 1);
+      ctx.fillRect(hx + 1, hy + hs - 2, hs - 2, 1);
+      const m1 = mixp(wp.sh, wp.e2, 0.5), m2 = mixp(wp.hip, wp.k2, 0.5);
+      ctx.fillRect(m1[0], m1[1], 1, 1); ctx.fillRect(m2[0], m2[1], 1, 1);
+    }
+    if (pal.deco === 'hood') {
+      ctx.fillStyle = pal.dark.torso;
+      ctx.fillRect(hx - 1, hy - 1, hs + 2, 2);
+      ctx.fillRect(f > 0 ? hx - 1 : hx + hs - 1, hy, 2, hs);
+    } else if (pal.deco === 'burn') {
+      ctx.fillStyle = '#3a2014';
+      ctx.fillRect(hx + (f > 0 ? 0 : hs - 2), hy + 1, 2, 2);
+      ctx.fillStyle = '#e06020';
+      const m = mixp(wp.hip, wp.neck, 0.3); ctx.fillRect(m[0] - f, m[1], 1, 1);
+      if (Math.floor(Date.now() / 150) % 3 === 0) ctx.fillRect(wp.k2[0], wp.k2[1] - 1, 1, 1);
+    } else if (pal.deco === 'stealth') {
+      ctx.fillStyle = '#3a4050';
+      thickLine(ctx, wp.sh[0] - 2, wp.sh[1], wp.hip[0] - 2, wp.hip[1], 1);
+    }
+  },
+
+  // Patas mecánicas de la Iron Spider
+  ironLegs(ctx, wp, f, s, pose) {
+    const t = Date.now() / 300;
+    const base = mixp(wp.sh, wp.hip, 0.3);
+    ctx.fillStyle = '#e0b030';
+    for (let i = 0; i < 4; i++) {
+      const side = i < 2 ? -1 : 1, k = i % 2;
+      const kx = base[0] + side * (6 + k * 3) * s, ky = base[1] - (5 - k * 3) * s + Math.sin(t + i) * 1;
+      const tx = kx + side * (4 + k * 2) * s, ty = ky + (8 + k * 3) * s;
+      thickLine(ctx, base[0], base[1], kx, ky, 1);
+      thickLine(ctx, kx, ky, tx, ty, 1);
+    }
   },
 
   face(ctx, hx, hy, hs, f, pal, s, pose) {

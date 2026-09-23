@@ -40,7 +40,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 | Golpear (combos) | X / J | X |
 | Balancearse (mantener) | C / L | RB / RT |
 | Disparar red | V / I | Y |
-| Esquivar | Shift / O | B |
+| Esquivar (adelante: rueda / mortal; atrás: voltereta / mortal girando; golpean un poco) | Shift / O | B |
 | Especial (mantener = curar) | B / U / Q | LB / LT |
 | Refuerzo multiversal (otro Spider-Man te ayuda, recarga 90 s) | E / F | R3 (hundir stick derecho) |
 | Pausa | Esc / P | Start / Select |
@@ -57,6 +57,12 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 4. **Mando Nintendo Pro por Bluetooth:** si no se empareja, mantén pulsado el botón pequeño de arriba (sincronizar) hasta que las luces parpadeen y conéctalo desde Ajustes → Bluetooth.
 5. Si algún botón no hace lo que esperas, cámbialo en **Controles**.
 6. **El stick:** el juego lo calibra solo (centro y recorrido), así que funciona aunque el mando lo envíe descentrado. En **Controles** hay un cuadrito que muestra el stick en vivo. Los dos sticks sirven para moverse.
+
+## Dificultad
+
+- **Enemigos:** tienen más vida, pegan más fuerte, atacan más rápido y a veces **bloquean**. Rompe su guardia con un golpe fuerte (el tercero del combo, una patada balanceada o en picado) o atrápalos con red.
+- **Jefes:** tienen más del doble de vida y **tres fases**; en la tercera se enfurecen y piden refuerzos. Necesitas 4 redes para aturdirlos, y si solo machacas botones, **contraatacan** con una onda de choque.
+- Si se hace muy difícil, baja la dificultad en **Opciones**.
 
 ## Estructura
 
@@ -76,6 +82,7 @@ node tools/build.mjs          # genera dist/spiderman.html
 node tests/smoke.mjs          # recorre todas las escenas, misiones, ciudad y menús buscando errores
 node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
+node tests/dodge.mjs          # las 4 esquivas (tipo, dirección, invulnerabilidad y daño)
 node tests/voices.mjs         # diálogos hablados y recarga del refuerzo
 node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea
 node tests/rebind.mjs         # reasignación de teclado y mando

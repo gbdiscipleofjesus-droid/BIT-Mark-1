@@ -58,7 +58,7 @@ class Player {
     const pr = (a) => !!(inp && inp.pressed(a));
     const ix = (R ? 1 : 0) - (L ? 1 : 0);
     this.anim += dt;
-    for (const k of ['inv', 'dodgeCd', 'shootCd', 'grabCd', 'lockT', 'coyote', 'jumpBuf', 'flipT', 'comboT', 'dropTimer', 'landT', 'pendingWeb']) {
+    for (const k of ['inv', 'hurtT', 'dodgeCd', 'shootCd', 'grabCd', 'lockT', 'coyote', 'jumpBuf', 'flipT', 'comboT', 'dropTimer', 'landT', 'pendingWeb']) {
       if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
     }
     this.sense = Math.max(0, this.sense - dt);
@@ -86,12 +86,22 @@ class Player {
     // ---- esquiva (disponible en casi todos los estados) ----
     if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing', 'facade'].includes(this.state)) {
       this.attack = null;
-      const dir = ix || this.facing;
-      this.facing = dir;
+      const back = ix !== 0 && ix !== this.facing;
+      const ground = this.onGround;
+      // 4 esquivas: rueda (suelo, adelante), voltereta atrás (suelo, atrás),
+      // mortal (aire, adelante) y mortal atrás girando en horizontal (aire, atrás)
+      this.dodgeKind = ground ? (back ? 'backflip' : 'roll') : (back ? 'corkscrew' : 'frontflip');
       this.anchor = null;
-      this.state = 'dodge'; this.st = 0.28;
-      this.inv = Math.max(this.inv, 0.36);
-      this.vx = dir * 250; this.vy = this.onGround ? 0 : Math.min(this.vy, -60);
+      this.state = 'dodge'; this.st = this.dodgeDur = back ? 0.36 : 0.3;
+      this.inv = Math.max(this.inv, this.dodgeDur + 0.06);
+      this.dodgeHit = new Set();
+      const f = this.facing;
+      switch (this.dodgeKind) {
+        case 'roll': this.facing = ix || f; this.vx = this.facing * 250; this.vy = 0; break;
+        case 'backflip': this.vx = -f * 215; this.vy = -175; this.onGround = false; break;
+        case 'frontflip': this.facing = ix || f; this.vx = this.facing * 245; this.vy = Math.min(this.vy, -130); break;
+        default: this.vx = -f * 230; this.vy = Math.min(this.vy, -150); break;
+      }
       this.dodgeCd = 0.6;
       Audio2.sfx('dodge');
       if (world.threatNear(this)) world.perfectDodge(this);
@@ -131,12 +141,24 @@ class Player {
       case 'wall': this.updWall(dt, world, ix, U, Dn, pr); break;
       case 'facade': this.updFacade(dt, world, ix, U, Dn, pr); break;
       case 'swing': this.updSwing(dt, world, ix, U, Dn, pr); break;
-      case 'dodge':
+      case 'dodge': {
         this.st -= dt;
-        this.vy += GRAV * 0.4 * dt;
+        this.vy += GRAV * (this.dodgeKind === 'roll' ? 1 : 0.55) * dt;
         lv.move(this, dt);
+        // las esquivas también golpean (menos que un ataque)
+        const airFlip = this.dodgeKind === 'frontflip' || this.dodgeKind === 'corkscrew';
+        const box = { x: this.x - 6, y: this.y, w: this.w + 12, h: this.h + (airFlip ? 22 : 0) };
+        for (const e of world.enemies) {
+          if (e.dead || this.dodgeHit.has(e) || !e.hittable() || Math.abs((e.z || 0) - this.z) > LANE) continue;
+          if (overlap(box, e.hurtbox())) {
+            this.dodgeHit.add(e);
+            world.playerHits(e, 0.6 * this.dmgMul, sign(this.vx || this.facing) * 90, this.dodgeKind === 'roll' ? -40 : -90, false);
+          }
+        }
+        if (this.dodgeKind === 'roll' && this.onGround && Math.floor(this.st * 40) % 3 === 0) world.particles.dust(this.cx, this.feet, 1);
         if (this.st <= 0) { this.state = 'normal'; this.vx *= 0.5; }
         break;
+      }
       case 'hurt':
         this.st -= dt;
         this.vy = Math.min(this.vy + GRAV * dt, PHYS.maxFall);
@@ -284,6 +306,14 @@ class Player {
     if (this.y + this.h <= f.y + 3) {
       this.y = f.y - this.h; this.vy = 0; this.vx = 0; this.state = 'normal'; this.grabCd = 0.25;
       return;
+    }
+    // abajo del todo (donde empieza la calle): se suelta y cae a la calle
+    const bottom = facadeBottom(f, lv);
+    if (this.y + this.h > bottom + 1) {
+      // se agarró por debajo de la parte visible: sube solo hasta la fachada
+      this.y = Math.max(bottom - this.h, this.y - 180 * dt);
+    } else if (this.y + this.h >= bottom - 1 && Dn) {
+      this.state = 'normal'; this.grabCd = 0.35; this.vy = 40; return;
     }
     // se salió por un lado o llegó al suelo
     const cx = this.cx;
@@ -484,7 +514,7 @@ class Player {
   takeDamage(dmg, srcX, world) {
     if (this.inv > 0 || this.state === 'dodge' || this.state === 'dead' || this.state === 'cutscene') return false;
     this.hp -= dmg;
-    this.inv = 1.0;
+    this.inv = 1.0; this.hurtT = 1.0;
     this.anchor = null; this.attack = null;
     const dir = this.cx >= srcX ? 1 : -1;
     this.state = 'hurt'; this.st = 0.3;
@@ -502,7 +532,8 @@ class Player {
 
   // ---------------- Dibujo ----------------
   draw(ctx, cam, t) {
-    if (this.inv > 0 && this.state !== 'dead' && Math.floor(this.inv * 16) % 2 === 0) return;
+    // parpadea solo tras recibir daño (no durante esquivas)
+    if (this.hurtT > 0 && this.state !== 'dead' && Math.floor(this.hurtT * 16) % 2 === 0) return;
     const suit = SUITS.find((s) => s.id === Game.save.suit) || SUITS[0];
     const pal = suit.palObj;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.feet - cam.y);
@@ -511,7 +542,14 @@ class Player {
     switch (this.state) {
       case 'dead': pose = Poses.ko(); break;
       case 'hurt': pose = Poses.hurt(); break;
-      case 'dodge': pose = this.onGround ? Poses.crouch() : Poses.flip(0.28 - this.st); if (this.onGround) pose = Poses.flip((0.28 - this.st) * 1.2); break;
+      case 'dodge': {
+        const u = clamp(1 - this.st / (this.dodgeDur || 0.3), 0, 1);
+        if (this.dodgeKind === 'roll') pose = Poses.roll(u);
+        else if (this.dodgeKind === 'backflip') pose = Poses.backflip(u);
+        else if (this.dodgeKind === 'frontflip') pose = Poses.flip(u);
+        else { pose = Poses.corkscrew(u); this.spinX = Math.cos(u * TAU * 1.5); }
+        break;
+      }
       case 'wall': pose = Poses.wall(this.vy !== 0 ? this.anim : 0); f = this.wallDir; dx = f * 2; break;
       case 'facade': pose = Poses.wall((this.vy !== 0 || this.vx !== 0) ? this.anim : 0); pose.t = 0; break;
       case 'charge': pose = Poses.heal(this.anim); break;
@@ -534,7 +572,47 @@ class Player {
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
         else pose = this.vy < 0 ? Poses.jump() : Poses.fall();
     }
-    const wp = Rig.draw(ctx, x + dx, y, f, pose, pal);
+    // inclinación según la velocidad al correr
+    if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 6;
+    // aterrizaje con peso: se hunde un poco
+    if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
+    const SC = 1.2;
+    // estela de movimiento cuando va rápido (balanceo, esquiva, picado, patada balanceada)
+    const speed = Math.hypot(this.vx, this.vy);
+    const fast = speed > 230 || this.state === 'dodge' || (this.attack && (this.attack.type === 'dive' || this.attack.type === 'swingkick'));
+    if (!this.trail) this.trail = [];
+    this.trailT = (this.trailT || 0) + 1;
+    if (fast && this.trailT % 2 === 0) this.trail.push({ x: this.cx, y: this.feet, f, pose: Object.assign({}, pose), life: 1 });
+    for (const tr of this.trail) tr.life -= 0.12;
+    this.trail = this.trail.filter((tr) => tr.life > 0);
+    for (const tr of this.trail) {
+      ctx.globalAlpha = tr.life * 0.35;
+      Rig.draw(ctx, Math.round(tr.x - cam.x), Math.round(tr.y - cam.y), tr.f, tr.pose, TRAIL_PAL, { scale: SC });
+    }
+    ctx.globalAlpha = 1;
+    const cork = this.state === 'dodge' && this.dodgeKind === 'corkscrew';
+    if (cork) {
+      const k = this.spinX || 1;
+      ctx.save(); ctx.translate(x, 0); ctx.scale(Math.abs(k) < 0.2 ? 0.2 * sign(k || 1) : k, 1); ctx.translate(-x, 0);
+    }
+    const wp = Rig.draw(ctx, x + dx, y, f, pose, pal, { scale: SC });
+    if (cork) ctx.restore();
+    // arco de impacto durante los golpes
+    if (this.attack) {
+      const d = this.attack.def, at = this.attack.t;
+      if (at >= d.act[0] && at <= d.act[1] + 0.04) {
+        const u = (at - d.act[0]) / Math.max(0.05, d.act[1] - d.act[0]);
+        const heavy = !!d.heavy;
+        const r = heavy ? 14 : 10;
+        const cx0 = x + f * (d.box[0] + d.box[2] * 0.5), cy0 = y + d.box[1] + d.box[3] * 0.5;
+        ctx.strokeStyle = heavy ? 'rgba(255,230,120,0.85)' : 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = heavy ? 2 : 1;
+        ctx.beginPath();
+        const a0 = f > 0 ? -1.2 : Math.PI + 1.2, a1 = f > 0 ? -1.2 + 2.4 * Math.min(1, u + 0.3) : Math.PI + 1.2 - 2.4 * Math.min(1, u + 0.3);
+        ctx.arc(cx0 - f * 4, cy0, r, Math.min(a0, a1), Math.max(a0, a1));
+        ctx.stroke();
+      }
+    }
     // línea de telaraña
     if (this.state === 'swing' && this.anchor) {
       ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;

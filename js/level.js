@@ -183,7 +183,7 @@ class Level {
   // Fachada que tiene delante un cuerpo (para trepar)
   facadeAt(e) {
     for (const s of this.near(e.x, e.x + e.w)) {
-      if (s.facade && e.x + e.w / 2 > s.x + 1 && e.x + e.w / 2 < s.x + s.w - 1 && e.y + e.h > s.y + 2 && e.y < s.y + (s.vis || s.h)) return s;
+      if (s.facade && e.x + e.w / 2 > s.x + 1 && e.x + e.w / 2 < s.x + s.w - 1 && e.y + e.h > s.y + 2 && e.y + e.h < this.groundY - 1) return s;
     }
     return null;
   }
@@ -348,6 +348,9 @@ const BAND_COLS = {
   stone: { back: '#8a8672', mid: '#5e5a4a', line: '#4a4638', front: '#6e6a58' },
   floor: { back: '#6a6e76', mid: '#3a3e46', line: '#e0b020', front: '#4a4e56' },
 };
+// Parte baja escalable de una fachada: la franja de calle tapa la base del edificio
+function facadeBottom(s, lv) { return Math.min(s.y + (s.vis || s.h), lv.groundY) - STREET_D; }
+
 function drawStreetBand(ctx, s, sx, sy, cx) {
   const c = BAND_COLS[s.style] || BAND_COLS.street;
   const x1 = Math.max(sx, -80), x2 = Math.min(sx + s.w, W + 80);
