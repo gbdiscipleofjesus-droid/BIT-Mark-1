@@ -201,6 +201,37 @@ function drawHUD(ctx, w, t) {
     ctx.fillStyle = i < p.webs ? '#ffffff' : '#3a3a4a';
     ctx.fillRect(28 + i * 5, 21, 3, 3);
   }
+  // Nivel y experiencia
+  const sv = Game.save;
+  UI.bar(ctx, 3, 28, 96, 2, (sv.xp || 0) / Progress.xpNeed(sv.level || 1), '#60c0ff');
+  Font.draw(ctx, 'NV ' + (sv.level || 1) + (sv.skillPts ? '  +' + sv.skillPts + ' PH' : ''), 4, 33, sv.skillPts ? UI.gold : '#a0c8ff', { shadow: UI.ink });
+  // Compañeros (multijugador)
+  if (w.coop) {
+    const cols = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
+    w.players.slice(1).forEach((q, i) => {
+      const x = 120 + i * 50, y = 14;
+      UI.panel(ctx, x, y, 47, 13, 'rgba(12,10,24,0.7)');
+      Font.draw(ctx, 'J' + (q.idx + 1), x + 3, y + 3, cols[q.idx], {});
+      if (q.state === 'dead') Font.draw(ctx, q.reviveT > 0 ? Math.ceil(q.reviveT) + 's' : 'KO', x + 17, y + 3, '#ff8080', {});
+      else { UI.bar(ctx, x + 16, y + 3, 28, 3, q.hp / q.maxHp, UI.red); UI.bar(ctx, x + 16, y + 8, 28, 2, q.focus / 100, UI.gold); }
+    });
+  }
+  // Artilugio y poder del traje
+  {
+    const g = GADGETS.find((x) => x.id === Gadgets.selected(p));
+    const gx = 4, gy = H - 26;
+    if (g && Progress.gadgetUnlocked(g) && !w.dialog) {
+      UI.panel(ctx, gx, gy, 128, 22, 'rgba(12,10,24,0.7)');
+      ctx.fillStyle = g.color; ctx.fillRect(gx + 3, gy + 3, 7, 7); ctx.fillStyle = UI.ink; ctx.fillRect(gx + 5, gy + 5, 3, 3);
+      Font.draw(ctx, g.name.toUpperCase(), gx + 13, gy + 3, UI.paper, {});
+      const max = Progress.gadgetMax(g), ch = (p.gch && p.gch[g.id]) || 0;
+      for (let i = 0; i < max; i++) { ctx.fillStyle = i < ch ? g.color : '#3a3a4a'; ctx.fillRect(gx + 124 - (max - i) * 5, gy + 4, 3, 4); }
+      // poder del traje
+      const pw = SUIT_POWERS[SuitPowers.current(p)], rdy = !(p.powerCd > 0);
+      Font.draw(ctx, (rdy ? '' : Math.ceil(p.powerCd) + 's ') + pw.name.toUpperCase(), gx + 13, gy + 13, rdy ? UI.gold : UI.dim, {});
+      ctx.fillStyle = rdy ? UI.gold : '#3a3a4a'; ctx.fillRect(gx + 4, gy + 14, 5, 5);
+    }
+  }
   // Refuerzo multiversal
   if (w.allyList && w.allyList().length) {
     const ready = w.allyCd <= 0 && !w.ally;
@@ -238,13 +269,13 @@ function drawHUD(ctx, w, t) {
   }
   // Objetivo
   if (w.objective) {
-    Font.draw(ctx, w.objective, 4, 32, UI.paper, { shadow: UI.ink });
+    Font.draw(ctx, w.objective, 4, 42, UI.paper, { shadow: UI.ink });
   }
   if (w.crime) {
     const c = w.crime;
     const s = Math.max(0, Math.ceil(c.t));
     const lbl = 'CRIMEN: ' + c.label + '  ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
-    Font.draw(ctx, lbl, 4, w.objective ? 43 : 32, '#ff6060', { shadow: UI.ink });
+    Font.draw(ctx, lbl, 4, w.objective ? 53 : 42, '#ff6060', { shadow: UI.ink });
   }
   // Jefe
   if (w.boss && !w.boss.dead && w.boss.state !== 'wait') {

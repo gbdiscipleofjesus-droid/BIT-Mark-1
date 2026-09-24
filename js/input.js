@@ -2,23 +2,23 @@
 // ---------------------------------------------------------------------------
 // Entrada unificada: teclado, cualquier mando (Gamepad API) y pantalla táctil
 // ---------------------------------------------------------------------------
-const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'ALLY', 'PAUSE'];
+const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'GADGET', 'NEXT_GADGET', 'POWER', 'ALLY', 'PAUSE'];
 const ACTION_NAMES = {
   LEFT: 'Izquierda', RIGHT: 'Derecha', UP: 'Arriba', DOWN: 'Abajo', JUMP: 'Saltar',
   ATTACK: 'Golpear', WEB: 'Balancearse', SHOOT: 'Disparar red', DODGE: 'Esquivar',
-  SPECIAL: 'Especial / curar', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
+  SPECIAL: 'Especial / curar', GADGET: 'Usar artilugio', NEXT_GADGET: 'Cambiar artilugio', POWER: 'Poder del traje', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
 };
 const DEFAULT_KEYS = {
   LEFT: ['ArrowLeft', 'KeyA'], RIGHT: ['ArrowRight', 'KeyD'], UP: ['ArrowUp', 'KeyW'], DOWN: ['ArrowDown', 'KeyS'],
   JUMP: ['Space', 'KeyZ', 'KeyK'], ATTACK: ['KeyX', 'KeyJ'], WEB: ['KeyC', 'KeyL'], SHOOT: ['KeyV', 'KeyI'],
-  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
+  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], GADGET: ['KeyG', 'KeyN'], NEXT_GADGET: ['KeyT', 'KeyM'], POWER: ['KeyH', 'KeyY'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
 };
 // Mapeo "standard" del navegador (Xbox, PlayStation, Switch Pro, 8BitDo, etc.)
 const DEFAULT_PAD = {
   LEFT: [{ b: 14 }, { a: 0, d: -1 }], RIGHT: [{ b: 15 }, { a: 0, d: 1 }],
   UP: [{ b: 12 }, { a: 1, d: -1 }], DOWN: [{ b: 13 }, { a: 1, d: 1 }],
   JUMP: [{ b: 0 }], DODGE: [{ b: 1 }], ATTACK: [{ b: 2 }], SHOOT: [{ b: 3 }],
-  SPECIAL: [{ b: 4 }, { b: 6 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }, { b: 8 }],
+  SPECIAL: [{ b: 4 }], GADGET: [{ b: 6 }], NEXT_GADGET: [{ b: 8 }], POWER: [{ b: 10 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }],
 };
 const AXIS_T = 0.45;
 
@@ -30,6 +30,8 @@ const TOUCH_BTNS = [
   { id: 'WEB', x: 272, y: 192, r: 16, label: 'RED' },
   { id: 'SPECIAL', x: 270, y: 150, r: 11, label: 'ESP' },
   { id: 'ALLY', x: 236, y: 178, r: 10, label: 'R3' },
+  { id: 'GADGET', x: 236, y: 146, r: 10, label: 'ART' },
+  { id: 'POWER', x: 304, y: 112, r: 9, label: 'POD' },
   { id: 'PAUSE', x: 368, y: 16, r: 10, label: 'II' },
 ];
 
@@ -54,6 +56,11 @@ const Input = {
     this.keyBinds = deepCopy(DEFAULT_KEYS);
     this.padBinds = deepCopy(DEFAULT_PAD);
     if (saved && saved.keys && saved.pad) {
+      // controles guardados antes de existir los artilugios: L2 y SELECT pasan a ser artilugios
+      if (!saved.pad.GADGET) {
+        if (Array.isArray(saved.pad.SPECIAL)) saved.pad.SPECIAL = saved.pad.SPECIAL.filter((b) => b.b !== 6);
+        if (Array.isArray(saved.pad.PAUSE)) saved.pad.PAUSE = saved.pad.PAUSE.filter((b) => b.b !== 8);
+      }
       for (const a of ACTIONS) {
         if (Array.isArray(saved.keys[a]) && saved.keys[a].length) this.keyBinds[a] = saved.keys[a];
         if (Array.isArray(saved.pad[a]) && saved.pad[a].length) this.padBinds[a] = saved.pad[a];
@@ -237,34 +244,57 @@ const Input = {
     return false;
   },
 
+  // Estado por dispositivo (teclado+táctil = 'kb', cada mando = 'pad0'..'pad3'):
+  // permite que hasta 4 jugadores usen cada uno su propio mando.
+  dev: {},
+  devState(id) {
+    let d = this.dev[id];
+    if (!d) { d = this.dev[id] = { down: {}, prev: {}, pressed: {}, released: {}, seen: false }; }
+    return d;
+  },
+  setDev(id, downMap, latchMap) {
+    const d = this.devState(id);
+    for (const a of ACTIONS) {
+      d.prev[a] = !!d.down[a];
+      d.down[a] = !!downMap[a];
+      d.pressed[a] = (d.down[a] && !d.prev[a]) || !!(latchMap && latchMap[a] && d.prev[a]);
+      d.released[a] = !d.down[a] && d.prev[a];
+      if (d.down[a]) d.seen = true;
+    }
+  },
   poll() {
     const pads = this.getPads();
     const padDown = {};
     for (const a of ACTIONS) padDown[a] = false;
+    const livePads = new Set();
     for (const gp of pads) {
       if (!this.padConnected || this.padName !== gp.id) this.onPad(gp);
       let any = false;
+      const one = {};
       for (const a of ACTIONS) {
         for (const bind of this.padBinds[a]) {
-          if (this.padActive(gp, bind)) { padDown[a] = true; any = true; }
+          if (this.padActive(gp, bind)) { one[a] = true; any = true; }
         }
       }
       const st = this.stickDir(gp);
       if (st) {
-        if (st.x < -0.5) padDown.LEFT = true;
-        if (st.x > 0.5) padDown.RIGHT = true;
-        if (st.y < -0.5) padDown.UP = true;
-        if (st.y > 0.5) padDown.DOWN = true;
+        if (st.x < -0.5) one.LEFT = true;
+        if (st.x > 0.5) one.RIGHT = true;
+        if (st.y < -0.5) one.UP = true;
+        if (st.y > 0.5) one.DOWN = true;
         any = true;
       }
       const hat = this.hatDir(gp);
       if (hat) {
-        if (hat.includes('U')) padDown.UP = true;
-        if (hat.includes('D')) padDown.DOWN = true;
-        if (hat.includes('L')) padDown.LEFT = true;
-        if (hat.includes('R')) padDown.RIGHT = true;
+        if (hat.includes('U')) one.UP = true;
+        if (hat.includes('D')) one.DOWN = true;
+        if (hat.includes('L')) one.LEFT = true;
+        if (hat.includes('R')) one.RIGHT = true;
         any = true;
       }
+      for (const a in one) padDown[a] = true;
+      this.setDev('pad' + gp.index, one);
+      livePads.add('pad' + gp.index);
       if (any) this.lastDevice = 'pad';
       if (this.capture) this.checkPadCapture(gp);
     }
@@ -284,6 +314,14 @@ const Input = {
       if (dy > 10) tdown.DOWN = true;
     }
     for (const k in this.touch.buttons) tdown[k] = true;
+    // teclado + táctil como un dispositivo propio
+    const kbDown = {}, kbLatch = {};
+    for (const a of ACTIONS) {
+      for (const code of this.keyBinds[a]) { if (this.keys[code]) kbDown[a] = true; if (this.keyLatch[code]) { kbDown[a] = true; kbLatch[a] = true; } }
+      if (tdown[a]) kbDown[a] = true;
+    }
+    this.setDev('kb', kbDown, kbLatch);
+    for (const id in this.dev) if (id !== 'kb' && !livePads.has(id)) this.setDev(id, {});
 
     for (const a of ACTIONS) {
       this.prev[a] = this.down[a];
@@ -331,10 +369,21 @@ const Input = {
     this.capture = (res) => { this.capture = null; this.padRest = null; this.keys = {}; fn(res); };
   },
 
+  // nombre legible de un dispositivo
+  devName(id) {
+    if (id === 'kb') return 'TECLADO';
+    const i = parseInt(id.slice(3), 10);
+    const gp = this.getPads().find((g) => g.index === i);
+    const n = gp ? (gp.id || '') : '';
+    const t = /054c|playstation|dualsense|dualshock|sony/i.test(n) ? 'PLAYSTATION' : /057e|nintendo|pro controller/i.test(n) ? 'NINTENDO' : /xbox|045e/i.test(n) ? 'XBOX' : 'MANDO';
+    return t + ' ' + (i + 1);
+  },
+
   saveBinds() { Store.set('sm_binds', { keys: this.keyBinds, pad: this.padBinds }); },
   resetBinds() { this.keyBinds = deepCopy(DEFAULT_KEYS); this.padBinds = deepCopy(DEFAULT_PAD); this.saveBinds(); },
 
   isDown(a) { return !!this.down[a]; },
+  pressedOn(id, a) { const d = this.dev[id]; return !!(d && d.pressed[a]); },
   pressed(a) { return !!this.pressedMap[a]; },
   released(a) { return !!this.releasedMap[a]; },
   anyPressed() {
@@ -412,3 +461,11 @@ const Input = {
     return 'BOTÓN ' + (i + 1);
   },
 };
+
+// Entrada de un jugador concreto (multijugador local): solo lee sus dispositivos
+class PlayerInput {
+  constructor(devs) { this.devs = devs; }
+  isDown(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].down[a]); }
+  pressed(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].pressed[a]); }
+  released(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].released[a]); }
+}

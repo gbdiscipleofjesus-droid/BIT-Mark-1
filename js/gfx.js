@@ -133,8 +133,31 @@ const Rig = {
     const wp = {};
     for (const k in lp) wp[k] = [Math.round(x + facing * lp[k][0]), Math.round(y + lp[k][1])];
     if (opts.extraBack) opts.extraBack(ctx, wp, facing, s);
+    if (pal.deco === 'cape' && pal.face !== 'flat') {
+      // capa que ondea hacia atrás
+      const t = Date.now() / 300, f = facing;
+      ctx.fillStyle = pal.capeCol || pal.boot; ctx.strokeStyle = pal.outline; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(wp.sh[0] + f * 2 * s, wp.sh[1] - 1 * s); ctx.lineTo(wp.sh[0] - f * 3 * s, wp.sh[1]);
+      ctx.lineTo(wp.hip[0] - f * (9 + Math.sin(t) * 2) * s, wp.hip[1] + 6 * s); ctx.lineTo(wp.hip[0] - f * 2 * s, wp.hip[1] + 4 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     const img = Sprite.render(lp, facing, s, pal, opts);
     ctx.drawImage(img.canvas, 0, 0, img.w, img.h, x - img.ox / RES, y - img.oy / RES, img.w / RES, img.h / RES);
+    if (pal.deco === 'noir' && pal.face !== 'flat') {
+      // sombrero de ala (fedora)
+      const hx = wp.head[0], hy = wp.head[1];
+      ctx.fillStyle = '#18181c';
+      ctx.fillRect(hx - 3.6 * s, hy - 2.4 * s, 7.2 * s, 1 * s);
+      ctx.fillRect(hx - 2.3 * s, hy - 4.6 * s, 4.6 * s, 2.4 * s);
+      ctx.fillStyle = '#50505a'; ctx.fillRect(hx - 2.3 * s, hy - 2.9 * s, 4.6 * s, 0.6 * s);
+    } else if (pal.deco === 'punk' && pal.face !== 'flat') {
+      // cresta de colores
+      const hx = wp.head[0], hy = wp.head[1];
+      const cols = ['#40e0ff', '#ff40a0', '#ffe040'];
+      for (let i = -2; i <= 2; i++) {
+        ctx.fillStyle = cols[(i + 3) % 3];
+        ctx.beginPath(); ctx.moveTo(hx + i * s - 0.7 * s, hy - 2 * s); ctx.lineTo(hx + i * s + 0.7 * s, hy - 2 * s); ctx.lineTo(hx + i * s * 1.3, hy - (4.8 - Math.abs(i) * 0.6) * s); ctx.fill();
+      }
+    }
     if (pal.face === 'bowl') {
       ctx.fillStyle = 'rgba(190,230,255,0.22)'; ctx.strokeStyle = 'rgba(230,245,255,0.7)'; ctx.lineWidth = 0.5;
       ctx.beginPath(); ctx.arc(wp.head[0] + 0.5, wp.head[1], 3.6 * s, 0, TAU); ctx.fill(); ctx.stroke();

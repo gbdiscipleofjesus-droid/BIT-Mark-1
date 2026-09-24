@@ -17,6 +17,8 @@ const ATK = {
   swingkick: { dur: 0.35, act: [0.02, 0.26], box: [2, -21, 23, 21], dmg: 3, kx: 300, ky: -130, pose: 'swingkick', heavy: true },
 };
 
+function world_coop(p) { const w = Game.scene && Game.scene.world; return !!(w && w.coop && p.idx !== undefined); }
+
 class Player {
   constructor(x, y) {
     this.w = 10; this.h = 22;
@@ -32,17 +34,22 @@ class Player {
     this.lastSafe = { x, y }; this.safeT = 0;
     this.dropTimer = 0; this.landT = 0; this.wasGround = false;
     this.refreshStats();
-    this.hp = this.maxHp; this.focus = 0; this.webs = this.maxWebs;
+    this.hp = this.maxHp; this.focus = 0; this.webs = this.maxWebs; this.airJumps = this.maxAirJumps;
   }
 
   refreshStats() {
     const u = Game.save.upgrades;
-    this.maxHp = 100 + u.hp * 20;
+    const S = (id) => Progress.has(id);
+    this.maxHp = 100 + u.hp * 20 + (S('d_vida') ? 25 : 0);
     this.dmgMul = 1 + u.dmg * 0.25;
     this.webStun = 2.2 + u.web * 0.6;
-    this.maxWebs = 5 + u.web;
-    this.swingMul = 1 + u.swing * 0.12;
-    this.focusMul = 1 + u.focus * 0.3;
+    this.maxWebs = 5 + u.web + (S('i_cartuchos') ? 2 : 0);
+    this.swingMul = 1 + u.swing * 0.12 + (S('b_veloz') ? 0.15 : 0);
+    this.focusMul = 1 + u.focus * 0.3 + (S('d_foco') ? 0.3 : 0);
+    this.maxAirJumps = S('b_triple') ? 2 : 1;
+    this.climbMul = S('b_trepa') ? 1.6 : 1;
+    this.webRegenT = S('i_recarga') ? 0.4 : 0.8;
+    this.armor = S('d_escudo') ? 0.8 : 1;
     if (this.hp > this.maxHp) this.hp = this.maxHp;
   }
 
@@ -52,7 +59,7 @@ class Player {
 
   update(dt, world) {
     const lv = world.level;
-    const inp = world.inputEnabled ? Input : null;
+    const inp = world.inputEnabled ? (this.input || Input) : null;
     const L = inp && inp.isDown('LEFT'), R = inp && inp.isDown('RIGHT');
     const U = inp && inp.isDown('UP'), Dn = inp && inp.isDown('DOWN');
     const pr = (a) => !!(inp && inp.pressed(a));
@@ -65,9 +72,13 @@ class Player {
     // recarga de cartuchos de red
     if (this.webs < this.maxWebs) {
       this.webRegen += dt;
-      if (this.webRegen >= 0.8) { this.webRegen = 0; this.webs++; }
+      if (this.webRegen >= this.webRegenT) { this.webRegen = 0; this.webs++; }
     }
     if (pr('JUMP')) this.jumpBuf = 0.12;
+    Gadgets.tick(this, dt);
+    // récord de tiempo en el aire
+    if (!this.onGround && !['wall', 'facade', 'dead', 'cutscene'].includes(this.state)) this.airT = (this.airT || 0) + dt;
+    else { if (this.airT > 1) Progress.rec('airMax', Math.floor(this.airT), 'max'); this.airT = 0; }
 
     if (this.state === 'dead') {
       this.vy += GRAV * dt; this.vx = approach(this.vx, 0, 300 * dt);
@@ -116,13 +127,22 @@ class Player {
         default: this.vx = -f * 230; this.vy = Math.min(this.vy, -150); break;
       }
       this.dodgeCd = 0.6;
+      if (!ground && Progress.has('b_trucos')) this.gainFocus(4);
       Audio2.sfx('dodge');
       if (world.threatNear(this)) world.perfectDodge(this);
       world.particles.dust(this.cx, this.feet, 5);
     }
 
+    // ---- artilugios y poder del traje ----
+    if (['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
+      if (pr('GADGET')) Gadgets.use(this, world);
+      if (pr('NEXT_GADGET')) Gadgets.cycle(this, world);
+      if (pr('POWER')) SuitPowers.use(this, world);
+    }
     // ---- disparo de red ----
-    if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
+    if (pr('SHOOT') && this.shootCd <= 0 && U && Progress.has('d_tiron') && this.state === 'normal' && world.yank(this)) {
+      this.shootCd = 0.4; this.shootPose = 0.2;
+    } else if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
       if (this.webs > 0) {
         this.webs--; this.shootCd = 0.3;
         let dy = 0;
@@ -185,7 +205,7 @@ class Player {
         this.vy = Math.min(this.vy + GRAV * dt, PHYS.maxFall);
         lv.move(this, dt);
         if (this.holdT > 0.15 && Math.floor(this.holdT * 30) % 3 === 0) world.particles.spark(this.cx + rand(-8, 8), this.feet - rand(0, 20), '#80ff90', 1);
-        if (!Input.isDown('SPECIAL') || !world.inputEnabled) {
+        if (!(this.input || Input).isDown('SPECIAL') || !world.inputEnabled) {
           if (this.holdT < 0.6) this.doSpin(world);
           else this.state = 'normal';
         } else if (this.holdT >= 0.6) {
@@ -216,7 +236,7 @@ class Player {
     // ---- aterrizaje ----
     if (this.onGround && !this.wasGround) {
       if (this.vyBefore > 250) { Audio2.sfx('land'); world.particles.dust(this.cx, this.feet, 4); this.landT = 0.1; }
-      this.airJumps = 1;
+      this.airJumps = this.maxAirJumps;
     }
     this.vyBefore = this.vy;
     this.wasGround = this.onGround;
@@ -266,11 +286,12 @@ class Player {
         Audio2.sfx('jump');
       } else if (this.airJumps > 0) {
         this.vy = PHYS.djump; this.airJumps--; this.jumpBuf = 0; this.flipT = 0.4;
+        if (Progress.has('b_trucos')) this.gainFocus(4);
         Audio2.sfx('jump');
         world.particles.dust(this.cx, this.feet, 3);
       }
     }
-    if (!Input.isDown('JUMP') && this.vy < -120 && !this.attack) this.vy += 1800 * dt; // salto variable
+    if (!(this.input || Input).isDown('JUMP') && this.vy < -120 && !this.attack) this.vy += 1800 * dt; // salto variable
     // telaraña para balancearse
     if (pr('WEB') && !this.attack) {
       if (this.onGround) {
@@ -279,7 +300,7 @@ class Player {
         Audio2.sfx('jump');
       } else this.tryAttach(world, ix);
     }
-    if (this.pendingWeb > 0 && !this.onGround && Input.isDown('WEB') && this.vy > -200) { this.pendingWeb = 0; this.tryAttach(world, ix); }
+    if (this.pendingWeb > 0 && !this.onGround && (this.input || Input).isDown('WEB') && this.vy > -200) { this.pendingWeb = 0; this.tryAttach(world, ix); }
     // ataques
     if (pr('ATTACK')) {
       if (this.attack) this.queued = true;
@@ -287,18 +308,24 @@ class Player {
     }
     // gravedad y movimiento
     const g = (this.attack && !this.onGround && this.attack.type !== 'dive') ? GRAV * 0.5 : GRAV;
-    this.vy = Math.min(this.vy + g * dt, this.attack && this.attack.type === 'dive' ? 520 : PHYS.maxFall);
+    this.vy = Math.min(this.vy + g * dt, this.attack && this.attack.type === 'dive' ? (Progress.has('b_picado') ? 700 : 520) : PHYS.maxFall);
+    // alas de telaraña: planear manteniendo SALTO al caer
+    this.gliding = false;
+    if (Progress.has('b_planeo') && !this.onGround && this.vy > 50 && this.airJumps === 0 && !this.attack && (this.input || Input).isDown('JUMP')) {
+      this.vy = 50; this.gliding = true;
+      if (Math.abs(this.vx) < 150) this.vx += this.facing * 200 * dt;
+    }
     lv.move(this, dt);
     // agarrarse a paredes
     if (!this.onGround && this.hitWall && this.grabCd <= 0 && this.wallObj && this.wallObj.climb && !this.attack &&
       (ix === this.hitWall || this.vy > 60)) {
       this.state = 'wall'; this.wallDir = this.hitWall; this.facing = this.hitWall;
-      this.vx = 0; this.vy = 0; this.airJumps = 1;
+      this.vx = 0; this.vy = 0; this.airJumps = this.maxAirJumps;
     }
     // trepar por la fachada de un edificio: en el aire, delante del edificio, mantén ARRIBA
     if (!this.onGround && U && this.grabCd <= 0 && !this.attack) {
       const f = lv.facadeAt(this);
-      if (f) { this.state = 'facade'; this.facadeObj = f; this.vx = 0; this.vy = 0; this.airJumps = 1; }
+      if (f) { this.state = 'facade'; this.facadeObj = f; this.vx = 0; this.vy = 0; this.airJumps = this.maxAirJumps; }
     }
   }
 
@@ -312,8 +339,8 @@ class Player {
     }
     if (pr('WEB')) { this.state = 'normal'; this.grabCd = 0.3; this.vy = -150; this.tryAttach(world, ix || this.facing); return; }
     if (ix) this.facing = ix;
-    this.vx = ix * 70;
-    this.vy = U ? -PHYS.climb : Dn ? PHYS.climb : 0;
+    this.vx = ix * 70 * this.climbMul;
+    this.vy = (U ? -PHYS.climb : Dn ? PHYS.climb : 0) * this.climbMul;
     lv.move(this, dt);
     // arriba del todo: subir al tejado
     if (this.y + this.h <= f.y + 3) {
@@ -338,7 +365,7 @@ class Player {
     const lv = world.level;
     this.facing = this.wallDir;
     let vy = 0;
-    if (U) vy = -PHYS.climb; else if (Dn) vy = PHYS.climb;
+    if (U) vy = -PHYS.climb * this.climbMul; else if (Dn) vy = PHYS.climb * this.climbMul;
     this.vx = this.wallDir * 40; this.vy = vy;
     const oldY = this.y;
     lv.move(this, dt);
@@ -398,7 +425,7 @@ class Player {
     const lv = world.level;
     const a = this.anchor;
     if (!a) { this.state = 'normal'; return; }
-    if (!Input.isDown('WEB') || !world.inputEnabled) { this.releaseSwing(); return; }
+    if (!(this.input || Input).isDown('WEB') || !world.inputEnabled) { this.releaseSwing(); return; }
     if (pr('ATTACK')) {
       this.releaseSwing();
       this.attack = { type: 'swingkick', t: 0, hit: new Set(), def: ATK.swingkick };
@@ -423,6 +450,7 @@ class Player {
     this.vy += GRAV * dt;
     lv.move(this, dt);
     if (this.onGround) { this.releaseSwing(); return; }
+    Progress.rec('swingDist', Math.hypot(this.vx, this.vy) * dt / 10);
     if (this.hitWall && this.wallObj && this.wallObj.climb) {
       this.anchor = null; this.state = 'wall'; this.wallDir = this.hitWall; this.facing = this.hitWall; this.vx = 0; this.vy = 0;
       return;
@@ -446,9 +474,9 @@ class Player {
     if (this.state !== 'swing') return;
     this.state = 'normal';
     this.anchor = null;
-    this.vx *= 1.12;
-    if (this.vy < 0) this.vy -= 50;
-    this.airJumps = 1;
+    this.vx *= Progress.has('b_impulso') ? 1.3 : 1.12;
+    if (this.vy < 0) this.vy -= Progress.has('b_impulso') ? 90 : 50;
+    this.airJumps = this.maxAirJumps;
     this.grabCd = 0.1;
     Audio2.sfx('whoosh');
   }
@@ -463,7 +491,7 @@ class Player {
     else if (this.comboT > 0 && this.comboNext) type = this.comboNext;
     else type = 'punch1';
     this.attack = { type, t: 0, hit: new Set(), def: ATK[type] };
-    if (type === 'dive') { this.vy = 380; this.vx = this.facing * 70; }
+    if (type === 'dive') { this.vy = Progress.has('b_picado') ? 520 : 380; this.vx = this.facing * 70; }
     else if (type === 'uppercut') { this.vy = -200; this.onGround = false; }
     else if (this.onGround) this.vx = this.facing * 60;
     Audio2.sfx(type === 'kick' || type === 'uppercut' ? 'whoosh' : 'dodge');
@@ -477,7 +505,9 @@ class Player {
       world.particles.dust(this.cx, this.feet, 8);
       world.shake(3);
       Audio2.sfx('heavy');
-      world.areaHit(this.cx, this.feet - 8, 28, 1, 120, -160, this);
+      const big = Progress.has('d_sismo');
+      world.areaHit(this.cx, this.feet - 8, big ? 64 : 28, Progress.has('b_picado') ? 1.6 : 1, 120, -160, this, big);
+      if (big) world.fx.push(new GRing(this.cx, this.feet - 4, 64, '#e0c080', 0.4));
       this.attack = null;
       return;
     }
@@ -489,7 +519,8 @@ class Player {
         if (Math.abs((e.z || 0) - this.z) > LANE) continue;
         if (overlap(box, e.hurtbox())) {
           at.hit.add(e);
-          world.playerHits(e, d.dmg * this.dmgMul, d.kx * this.facing, d.ky, !!d.heavy);
+          const extra = (at.type === 'kick' && Progress.has('d_remate') ? 1.5 : 1) * (at.type === 'dive' && Progress.has('b_picado') ? 1.5 : 1);
+          world.playerHits(e, d.dmg * this.dmgMul * extra, d.kx * this.facing, d.ky, !!d.heavy);
         }
       }
       world.hitObjects(box, this);
@@ -526,7 +557,8 @@ class Player {
   // Devuelve true si el golpe entró
   takeDamage(dmg, srcX, world) {
     if (this.inv > 0 || this.state === 'dodge' || this.state === 'dead' || this.state === 'cutscene') return false;
-    this.hp -= dmg;
+    if (this.cloakT > 0 || this.shieldT > 0) return false;
+    this.hp -= Math.round(dmg * (this.armor || 1));
     this.inv = 1.0; this.hurtT = 1.0;
     this.anchor = null; this.attack = null;
     const dir = this.cx >= srcX ? 1 : -1;
@@ -547,6 +579,7 @@ class Player {
   draw(ctx, cam, t) {
     // parpadea solo tras recibir daño (no durante esquivas)
     if (this.hurtT > 0 && this.state !== 'dead' && Math.floor(this.hurtT * 16) % 2 === 0) return;
+    if (this.cloakT > 0) ctx.globalAlpha = 0.3;
     const suit = SUITS.find((s) => s.id === (this.suitId || Game.save.suit)) || SUITS[0];
     const pal = suit.palObj;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.feet - cam.y);
@@ -633,6 +666,11 @@ class Player {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(Math.round(this.anchor.x - cam.x) - 1, Math.round(this.anchor.y - cam.y) - 1, 3, 3);
     }
+    // etiqueta de jugador en multijugador
+    if (world_coop(this)) {
+      const cols = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
+      Font.draw(ctx, 'J' + (this.idx + 1), wp.head[0], wp.head[1] - 16, cols[this.idx] || '#fff', { align: 'center', outline: '#000000' });
+    }
     // hormigueo arácnido
     if (this.sense > 0) {
       ctx.fillStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#ffe040';
@@ -650,5 +688,11 @@ class Player {
       const r = 8 + this.holdT * 12;
       ctx.fillRect(x - r, y - 26, r * 2, 28);
     }
+    ctx.globalAlpha = 1;
+    // efectos de los poderes de traje
+    if (this.shieldT > 0) { ctx.strokeStyle = Math.floor(t * 10) % 2 ? '#80e0ff' : '#ffffff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y - 14, 17, 0, TAU); ctx.stroke(); }
+    if (this.furyT > 0 && Math.floor(t * 12) % 2) { ctx.fillStyle = 'rgba(255,80,40,0.25)'; ctx.fillRect(x - 9, y - 30, 18, 30); }
+    if (this.shockT > 0 && Math.floor(t * 20) % 3 === 0) { ctx.fillStyle = '#a0f0ff'; ctx.fillRect(x + rand(-8, 8), y - rand(4, 28), 1, 3); }
+    if (this.gliding) { ctx.fillStyle = 'rgba(240,240,255,0.7)'; ctx.fillRect(x - 12, y - 20, 24, 1); ctx.fillRect(x - 9, y - 19, 18, 1); }
   }
 }

@@ -631,23 +631,23 @@ const Voice = {
 // ---------------------------------------------------------------------------
 // Entrada unificada: teclado, cualquier mando (Gamepad API) y pantalla táctil
 // ---------------------------------------------------------------------------
-const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'ALLY', 'PAUSE'];
+const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'GADGET', 'NEXT_GADGET', 'POWER', 'ALLY', 'PAUSE'];
 const ACTION_NAMES = {
   LEFT: 'Izquierda', RIGHT: 'Derecha', UP: 'Arriba', DOWN: 'Abajo', JUMP: 'Saltar',
   ATTACK: 'Golpear', WEB: 'Balancearse', SHOOT: 'Disparar red', DODGE: 'Esquivar',
-  SPECIAL: 'Especial / curar', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
+  SPECIAL: 'Especial / curar', GADGET: 'Usar artilugio', NEXT_GADGET: 'Cambiar artilugio', POWER: 'Poder del traje', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
 };
 const DEFAULT_KEYS = {
   LEFT: ['ArrowLeft', 'KeyA'], RIGHT: ['ArrowRight', 'KeyD'], UP: ['ArrowUp', 'KeyW'], DOWN: ['ArrowDown', 'KeyS'],
   JUMP: ['Space', 'KeyZ', 'KeyK'], ATTACK: ['KeyX', 'KeyJ'], WEB: ['KeyC', 'KeyL'], SHOOT: ['KeyV', 'KeyI'],
-  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
+  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], GADGET: ['KeyG', 'KeyN'], NEXT_GADGET: ['KeyT', 'KeyM'], POWER: ['KeyH', 'KeyY'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
 };
 // Mapeo "standard" del navegador (Xbox, PlayStation, Switch Pro, 8BitDo, etc.)
 const DEFAULT_PAD = {
   LEFT: [{ b: 14 }, { a: 0, d: -1 }], RIGHT: [{ b: 15 }, { a: 0, d: 1 }],
   UP: [{ b: 12 }, { a: 1, d: -1 }], DOWN: [{ b: 13 }, { a: 1, d: 1 }],
   JUMP: [{ b: 0 }], DODGE: [{ b: 1 }], ATTACK: [{ b: 2 }], SHOOT: [{ b: 3 }],
-  SPECIAL: [{ b: 4 }, { b: 6 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }, { b: 8 }],
+  SPECIAL: [{ b: 4 }], GADGET: [{ b: 6 }], NEXT_GADGET: [{ b: 8 }], POWER: [{ b: 10 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }],
 };
 const AXIS_T = 0.45;
 
@@ -659,6 +659,8 @@ const TOUCH_BTNS = [
   { id: 'WEB', x: 272, y: 192, r: 16, label: 'RED' },
   { id: 'SPECIAL', x: 270, y: 150, r: 11, label: 'ESP' },
   { id: 'ALLY', x: 236, y: 178, r: 10, label: 'R3' },
+  { id: 'GADGET', x: 236, y: 146, r: 10, label: 'ART' },
+  { id: 'POWER', x: 304, y: 112, r: 9, label: 'POD' },
   { id: 'PAUSE', x: 368, y: 16, r: 10, label: 'II' },
 ];
 
@@ -683,6 +685,11 @@ const Input = {
     this.keyBinds = deepCopy(DEFAULT_KEYS);
     this.padBinds = deepCopy(DEFAULT_PAD);
     if (saved && saved.keys && saved.pad) {
+      // controles guardados antes de existir los artilugios: L2 y SELECT pasan a ser artilugios
+      if (!saved.pad.GADGET) {
+        if (Array.isArray(saved.pad.SPECIAL)) saved.pad.SPECIAL = saved.pad.SPECIAL.filter((b) => b.b !== 6);
+        if (Array.isArray(saved.pad.PAUSE)) saved.pad.PAUSE = saved.pad.PAUSE.filter((b) => b.b !== 8);
+      }
       for (const a of ACTIONS) {
         if (Array.isArray(saved.keys[a]) && saved.keys[a].length) this.keyBinds[a] = saved.keys[a];
         if (Array.isArray(saved.pad[a]) && saved.pad[a].length) this.padBinds[a] = saved.pad[a];
@@ -866,34 +873,57 @@ const Input = {
     return false;
   },
 
+  // Estado por dispositivo (teclado+táctil = 'kb', cada mando = 'pad0'..'pad3'):
+  // permite que hasta 4 jugadores usen cada uno su propio mando.
+  dev: {},
+  devState(id) {
+    let d = this.dev[id];
+    if (!d) { d = this.dev[id] = { down: {}, prev: {}, pressed: {}, released: {}, seen: false }; }
+    return d;
+  },
+  setDev(id, downMap, latchMap) {
+    const d = this.devState(id);
+    for (const a of ACTIONS) {
+      d.prev[a] = !!d.down[a];
+      d.down[a] = !!downMap[a];
+      d.pressed[a] = (d.down[a] && !d.prev[a]) || !!(latchMap && latchMap[a] && d.prev[a]);
+      d.released[a] = !d.down[a] && d.prev[a];
+      if (d.down[a]) d.seen = true;
+    }
+  },
   poll() {
     const pads = this.getPads();
     const padDown = {};
     for (const a of ACTIONS) padDown[a] = false;
+    const livePads = new Set();
     for (const gp of pads) {
       if (!this.padConnected || this.padName !== gp.id) this.onPad(gp);
       let any = false;
+      const one = {};
       for (const a of ACTIONS) {
         for (const bind of this.padBinds[a]) {
-          if (this.padActive(gp, bind)) { padDown[a] = true; any = true; }
+          if (this.padActive(gp, bind)) { one[a] = true; any = true; }
         }
       }
       const st = this.stickDir(gp);
       if (st) {
-        if (st.x < -0.5) padDown.LEFT = true;
-        if (st.x > 0.5) padDown.RIGHT = true;
-        if (st.y < -0.5) padDown.UP = true;
-        if (st.y > 0.5) padDown.DOWN = true;
+        if (st.x < -0.5) one.LEFT = true;
+        if (st.x > 0.5) one.RIGHT = true;
+        if (st.y < -0.5) one.UP = true;
+        if (st.y > 0.5) one.DOWN = true;
         any = true;
       }
       const hat = this.hatDir(gp);
       if (hat) {
-        if (hat.includes('U')) padDown.UP = true;
-        if (hat.includes('D')) padDown.DOWN = true;
-        if (hat.includes('L')) padDown.LEFT = true;
-        if (hat.includes('R')) padDown.RIGHT = true;
+        if (hat.includes('U')) one.UP = true;
+        if (hat.includes('D')) one.DOWN = true;
+        if (hat.includes('L')) one.LEFT = true;
+        if (hat.includes('R')) one.RIGHT = true;
         any = true;
       }
+      for (const a in one) padDown[a] = true;
+      this.setDev('pad' + gp.index, one);
+      livePads.add('pad' + gp.index);
       if (any) this.lastDevice = 'pad';
       if (this.capture) this.checkPadCapture(gp);
     }
@@ -913,6 +943,14 @@ const Input = {
       if (dy > 10) tdown.DOWN = true;
     }
     for (const k in this.touch.buttons) tdown[k] = true;
+    // teclado + táctil como un dispositivo propio
+    const kbDown = {}, kbLatch = {};
+    for (const a of ACTIONS) {
+      for (const code of this.keyBinds[a]) { if (this.keys[code]) kbDown[a] = true; if (this.keyLatch[code]) { kbDown[a] = true; kbLatch[a] = true; } }
+      if (tdown[a]) kbDown[a] = true;
+    }
+    this.setDev('kb', kbDown, kbLatch);
+    for (const id in this.dev) if (id !== 'kb' && !livePads.has(id)) this.setDev(id, {});
 
     for (const a of ACTIONS) {
       this.prev[a] = this.down[a];
@@ -960,10 +998,21 @@ const Input = {
     this.capture = (res) => { this.capture = null; this.padRest = null; this.keys = {}; fn(res); };
   },
 
+  // nombre legible de un dispositivo
+  devName(id) {
+    if (id === 'kb') return 'TECLADO';
+    const i = parseInt(id.slice(3), 10);
+    const gp = this.getPads().find((g) => g.index === i);
+    const n = gp ? (gp.id || '') : '';
+    const t = /054c|playstation|dualsense|dualshock|sony/i.test(n) ? 'PLAYSTATION' : /057e|nintendo|pro controller/i.test(n) ? 'NINTENDO' : /xbox|045e/i.test(n) ? 'XBOX' : 'MANDO';
+    return t + ' ' + (i + 1);
+  },
+
   saveBinds() { Store.set('sm_binds', { keys: this.keyBinds, pad: this.padBinds }); },
   resetBinds() { this.keyBinds = deepCopy(DEFAULT_KEYS); this.padBinds = deepCopy(DEFAULT_PAD); this.saveBinds(); },
 
   isDown(a) { return !!this.down[a]; },
+  pressedOn(id, a) { const d = this.dev[id]; return !!(d && d.pressed[a]); },
   pressed(a) { return !!this.pressedMap[a]; },
   released(a) { return !!this.releasedMap[a]; },
   anyPressed() {
@@ -1041,6 +1090,14 @@ const Input = {
     return 'BOTÓN ' + (i + 1);
   },
 };
+
+// Entrada de un jugador concreto (multijugador local): solo lee sus dispositivos
+class PlayerInput {
+  constructor(devs) { this.devs = devs; }
+  isDown(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].down[a]); }
+  pressed(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].pressed[a]); }
+  released(a) { return this.devs.some((d) => Input.dev[d] && Input.dev[d].released[a]); }
+}
 
 </script>
 <script>
@@ -1180,8 +1237,31 @@ const Rig = {
     const wp = {};
     for (const k in lp) wp[k] = [Math.round(x + facing * lp[k][0]), Math.round(y + lp[k][1])];
     if (opts.extraBack) opts.extraBack(ctx, wp, facing, s);
+    if (pal.deco === 'cape' && pal.face !== 'flat') {
+      // capa que ondea hacia atrás
+      const t = Date.now() / 300, f = facing;
+      ctx.fillStyle = pal.capeCol || pal.boot; ctx.strokeStyle = pal.outline; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(wp.sh[0] + f * 2 * s, wp.sh[1] - 1 * s); ctx.lineTo(wp.sh[0] - f * 3 * s, wp.sh[1]);
+      ctx.lineTo(wp.hip[0] - f * (9 + Math.sin(t) * 2) * s, wp.hip[1] + 6 * s); ctx.lineTo(wp.hip[0] - f * 2 * s, wp.hip[1] + 4 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     const img = Sprite.render(lp, facing, s, pal, opts);
     ctx.drawImage(img.canvas, 0, 0, img.w, img.h, x - img.ox / RES, y - img.oy / RES, img.w / RES, img.h / RES);
+    if (pal.deco === 'noir' && pal.face !== 'flat') {
+      // sombrero de ala (fedora)
+      const hx = wp.head[0], hy = wp.head[1];
+      ctx.fillStyle = '#18181c';
+      ctx.fillRect(hx - 3.6 * s, hy - 2.4 * s, 7.2 * s, 1 * s);
+      ctx.fillRect(hx - 2.3 * s, hy - 4.6 * s, 4.6 * s, 2.4 * s);
+      ctx.fillStyle = '#50505a'; ctx.fillRect(hx - 2.3 * s, hy - 2.9 * s, 4.6 * s, 0.6 * s);
+    } else if (pal.deco === 'punk' && pal.face !== 'flat') {
+      // cresta de colores
+      const hx = wp.head[0], hy = wp.head[1];
+      const cols = ['#40e0ff', '#ff40a0', '#ffe040'];
+      for (let i = -2; i <= 2; i++) {
+        ctx.fillStyle = cols[(i + 3) % 3];
+        ctx.beginPath(); ctx.moveTo(hx + i * s - 0.7 * s, hy - 2 * s); ctx.lineTo(hx + i * s + 0.7 * s, hy - 2 * s); ctx.lineTo(hx + i * s * 1.3, hy - (4.8 - Math.abs(i) * 0.6) * s); ctx.fill();
+      }
+    }
     if (pal.face === 'bowl') {
       ctx.fillStyle = 'rgba(190,230,255,0.22)'; ctx.strokeStyle = 'rgba(230,245,255,0.7)'; ctx.lineWidth = 0.5;
       ctx.beginPath(); ctx.arc(wp.head[0] + 0.5, wp.head[1], 3.6 * s, 0, TAU); ctx.fill(); ctx.stroke();
@@ -1891,6 +1971,12 @@ const Sprite = {
             const eX = (v * r * facing) / eu - 0.35 / emb.unit, eY = (embU - u) / eu;
             if (inEmblem(emb, eX, eY)) color = this.ramp(pal.emblem)[Math.max(1, tone)];
           }
+          if (!color && pal.deco === 'armor' && !P.head) {
+            // placas de armadura: juntas oscuras y remaches brillantes
+            const pp = per * 1.5;
+            if (((u + pp * 0.5) % pp + pp) % pp < lw * 1.4) color = this.ramp(col)[Math.max(0, tone - 2)];
+            else if (Math.abs(v) < 0.12 && ((u % pp) + pp) % pp < lw * 2) color = this.ramp(col)[3];
+          }
           if (!color && webs && col === pal.head && !P.head) {
             const ring = ((u + per * 0.5 + (1 - nz) * 0.9 * U) % per + per) % per < lw;
             const arc = Math.asin(clamp(v, -1, 1)) * r;
@@ -1982,6 +2068,14 @@ const Sprite = {
       case 'spot':
         for (const sp of [[0.55, -0.08, 0.26], [0.08, 0.35, 0.16], [-0.4, -0.3, 0.2], [0.1, -0.5, 0.12]]) if (Math.hypot(fx - sp[0], fy - sp[1]) < sp[2]) return R4('#101010', 2);
         return 0;
+      case 'bag': {
+        // bolsa de papel con agujeros para los ojos y la boca
+        for (const e of [[0.58, -0.08], [0.12, -0.1]]) if (Math.hypot(fx - e[0], (fy - e[1]) * 1.2) < 0.13) return R4('#140a12', 2);
+        if (fx > 0.25 && fx < 0.75 && Math.abs(fy - 0.4) < 0.05) return R4('#140a12', 2);
+        if (fy < -0.78) return R4(pal.head, 0);
+        if (Math.floor((fx + 1) * 6) % 3 === 0 && Math.abs(fy) < 0.9) return R4(pal.head, Math.max(0, tone - 1));
+        return 0;
+      }
       case 'bowl':
         if (Math.abs(fx - 0.55) < 0.12 && Math.abs(fy + 0.05) < 0.1) return R4('#ffffff', 3);
         return R4('#4cd060', tone);
@@ -2913,6 +3007,8 @@ const ATK = {
   swingkick: { dur: 0.35, act: [0.02, 0.26], box: [2, -21, 23, 21], dmg: 3, kx: 300, ky: -130, pose: 'swingkick', heavy: true },
 };
 
+function world_coop(p) { const w = Game.scene && Game.scene.world; return !!(w && w.coop && p.idx !== undefined); }
+
 class Player {
   constructor(x, y) {
     this.w = 10; this.h = 22;
@@ -2928,17 +3024,22 @@ class Player {
     this.lastSafe = { x, y }; this.safeT = 0;
     this.dropTimer = 0; this.landT = 0; this.wasGround = false;
     this.refreshStats();
-    this.hp = this.maxHp; this.focus = 0; this.webs = this.maxWebs;
+    this.hp = this.maxHp; this.focus = 0; this.webs = this.maxWebs; this.airJumps = this.maxAirJumps;
   }
 
   refreshStats() {
     const u = Game.save.upgrades;
-    this.maxHp = 100 + u.hp * 20;
+    const S = (id) => Progress.has(id);
+    this.maxHp = 100 + u.hp * 20 + (S('d_vida') ? 25 : 0);
     this.dmgMul = 1 + u.dmg * 0.25;
     this.webStun = 2.2 + u.web * 0.6;
-    this.maxWebs = 5 + u.web;
-    this.swingMul = 1 + u.swing * 0.12;
-    this.focusMul = 1 + u.focus * 0.3;
+    this.maxWebs = 5 + u.web + (S('i_cartuchos') ? 2 : 0);
+    this.swingMul = 1 + u.swing * 0.12 + (S('b_veloz') ? 0.15 : 0);
+    this.focusMul = 1 + u.focus * 0.3 + (S('d_foco') ? 0.3 : 0);
+    this.maxAirJumps = S('b_triple') ? 2 : 1;
+    this.climbMul = S('b_trepa') ? 1.6 : 1;
+    this.webRegenT = S('i_recarga') ? 0.4 : 0.8;
+    this.armor = S('d_escudo') ? 0.8 : 1;
     if (this.hp > this.maxHp) this.hp = this.maxHp;
   }
 
@@ -2948,7 +3049,7 @@ class Player {
 
   update(dt, world) {
     const lv = world.level;
-    const inp = world.inputEnabled ? Input : null;
+    const inp = world.inputEnabled ? (this.input || Input) : null;
     const L = inp && inp.isDown('LEFT'), R = inp && inp.isDown('RIGHT');
     const U = inp && inp.isDown('UP'), Dn = inp && inp.isDown('DOWN');
     const pr = (a) => !!(inp && inp.pressed(a));
@@ -2961,9 +3062,13 @@ class Player {
     // recarga de cartuchos de red
     if (this.webs < this.maxWebs) {
       this.webRegen += dt;
-      if (this.webRegen >= 0.8) { this.webRegen = 0; this.webs++; }
+      if (this.webRegen >= this.webRegenT) { this.webRegen = 0; this.webs++; }
     }
     if (pr('JUMP')) this.jumpBuf = 0.12;
+    Gadgets.tick(this, dt);
+    // récord de tiempo en el aire
+    if (!this.onGround && !['wall', 'facade', 'dead', 'cutscene'].includes(this.state)) this.airT = (this.airT || 0) + dt;
+    else { if (this.airT > 1) Progress.rec('airMax', Math.floor(this.airT), 'max'); this.airT = 0; }
 
     if (this.state === 'dead') {
       this.vy += GRAV * dt; this.vx = approach(this.vx, 0, 300 * dt);
@@ -3012,13 +3117,22 @@ class Player {
         default: this.vx = -f * 230; this.vy = Math.min(this.vy, -150); break;
       }
       this.dodgeCd = 0.6;
+      if (!ground && Progress.has('b_trucos')) this.gainFocus(4);
       Audio2.sfx('dodge');
       if (world.threatNear(this)) world.perfectDodge(this);
       world.particles.dust(this.cx, this.feet, 5);
     }
 
+    // ---- artilugios y poder del traje ----
+    if (['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
+      if (pr('GADGET')) Gadgets.use(this, world);
+      if (pr('NEXT_GADGET')) Gadgets.cycle(this, world);
+      if (pr('POWER')) SuitPowers.use(this, world);
+    }
     // ---- disparo de red ----
-    if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
+    if (pr('SHOOT') && this.shootCd <= 0 && U && Progress.has('d_tiron') && this.state === 'normal' && world.yank(this)) {
+      this.shootCd = 0.4; this.shootPose = 0.2;
+    } else if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
       if (this.webs > 0) {
         this.webs--; this.shootCd = 0.3;
         let dy = 0;
@@ -3081,7 +3195,7 @@ class Player {
         this.vy = Math.min(this.vy + GRAV * dt, PHYS.maxFall);
         lv.move(this, dt);
         if (this.holdT > 0.15 && Math.floor(this.holdT * 30) % 3 === 0) world.particles.spark(this.cx + rand(-8, 8), this.feet - rand(0, 20), '#80ff90', 1);
-        if (!Input.isDown('SPECIAL') || !world.inputEnabled) {
+        if (!(this.input || Input).isDown('SPECIAL') || !world.inputEnabled) {
           if (this.holdT < 0.6) this.doSpin(world);
           else this.state = 'normal';
         } else if (this.holdT >= 0.6) {
@@ -3112,7 +3226,7 @@ class Player {
     // ---- aterrizaje ----
     if (this.onGround && !this.wasGround) {
       if (this.vyBefore > 250) { Audio2.sfx('land'); world.particles.dust(this.cx, this.feet, 4); this.landT = 0.1; }
-      this.airJumps = 1;
+      this.airJumps = this.maxAirJumps;
     }
     this.vyBefore = this.vy;
     this.wasGround = this.onGround;
@@ -3162,11 +3276,12 @@ class Player {
         Audio2.sfx('jump');
       } else if (this.airJumps > 0) {
         this.vy = PHYS.djump; this.airJumps--; this.jumpBuf = 0; this.flipT = 0.4;
+        if (Progress.has('b_trucos')) this.gainFocus(4);
         Audio2.sfx('jump');
         world.particles.dust(this.cx, this.feet, 3);
       }
     }
-    if (!Input.isDown('JUMP') && this.vy < -120 && !this.attack) this.vy += 1800 * dt; // salto variable
+    if (!(this.input || Input).isDown('JUMP') && this.vy < -120 && !this.attack) this.vy += 1800 * dt; // salto variable
     // telaraña para balancearse
     if (pr('WEB') && !this.attack) {
       if (this.onGround) {
@@ -3175,7 +3290,7 @@ class Player {
         Audio2.sfx('jump');
       } else this.tryAttach(world, ix);
     }
-    if (this.pendingWeb > 0 && !this.onGround && Input.isDown('WEB') && this.vy > -200) { this.pendingWeb = 0; this.tryAttach(world, ix); }
+    if (this.pendingWeb > 0 && !this.onGround && (this.input || Input).isDown('WEB') && this.vy > -200) { this.pendingWeb = 0; this.tryAttach(world, ix); }
     // ataques
     if (pr('ATTACK')) {
       if (this.attack) this.queued = true;
@@ -3183,18 +3298,24 @@ class Player {
     }
     // gravedad y movimiento
     const g = (this.attack && !this.onGround && this.attack.type !== 'dive') ? GRAV * 0.5 : GRAV;
-    this.vy = Math.min(this.vy + g * dt, this.attack && this.attack.type === 'dive' ? 520 : PHYS.maxFall);
+    this.vy = Math.min(this.vy + g * dt, this.attack && this.attack.type === 'dive' ? (Progress.has('b_picado') ? 700 : 520) : PHYS.maxFall);
+    // alas de telaraña: planear manteniendo SALTO al caer
+    this.gliding = false;
+    if (Progress.has('b_planeo') && !this.onGround && this.vy > 50 && this.airJumps === 0 && !this.attack && (this.input || Input).isDown('JUMP')) {
+      this.vy = 50; this.gliding = true;
+      if (Math.abs(this.vx) < 150) this.vx += this.facing * 200 * dt;
+    }
     lv.move(this, dt);
     // agarrarse a paredes
     if (!this.onGround && this.hitWall && this.grabCd <= 0 && this.wallObj && this.wallObj.climb && !this.attack &&
       (ix === this.hitWall || this.vy > 60)) {
       this.state = 'wall'; this.wallDir = this.hitWall; this.facing = this.hitWall;
-      this.vx = 0; this.vy = 0; this.airJumps = 1;
+      this.vx = 0; this.vy = 0; this.airJumps = this.maxAirJumps;
     }
     // trepar por la fachada de un edificio: en el aire, delante del edificio, mantén ARRIBA
     if (!this.onGround && U && this.grabCd <= 0 && !this.attack) {
       const f = lv.facadeAt(this);
-      if (f) { this.state = 'facade'; this.facadeObj = f; this.vx = 0; this.vy = 0; this.airJumps = 1; }
+      if (f) { this.state = 'facade'; this.facadeObj = f; this.vx = 0; this.vy = 0; this.airJumps = this.maxAirJumps; }
     }
   }
 
@@ -3208,8 +3329,8 @@ class Player {
     }
     if (pr('WEB')) { this.state = 'normal'; this.grabCd = 0.3; this.vy = -150; this.tryAttach(world, ix || this.facing); return; }
     if (ix) this.facing = ix;
-    this.vx = ix * 70;
-    this.vy = U ? -PHYS.climb : Dn ? PHYS.climb : 0;
+    this.vx = ix * 70 * this.climbMul;
+    this.vy = (U ? -PHYS.climb : Dn ? PHYS.climb : 0) * this.climbMul;
     lv.move(this, dt);
     // arriba del todo: subir al tejado
     if (this.y + this.h <= f.y + 3) {
@@ -3234,7 +3355,7 @@ class Player {
     const lv = world.level;
     this.facing = this.wallDir;
     let vy = 0;
-    if (U) vy = -PHYS.climb; else if (Dn) vy = PHYS.climb;
+    if (U) vy = -PHYS.climb * this.climbMul; else if (Dn) vy = PHYS.climb * this.climbMul;
     this.vx = this.wallDir * 40; this.vy = vy;
     const oldY = this.y;
     lv.move(this, dt);
@@ -3294,7 +3415,7 @@ class Player {
     const lv = world.level;
     const a = this.anchor;
     if (!a) { this.state = 'normal'; return; }
-    if (!Input.isDown('WEB') || !world.inputEnabled) { this.releaseSwing(); return; }
+    if (!(this.input || Input).isDown('WEB') || !world.inputEnabled) { this.releaseSwing(); return; }
     if (pr('ATTACK')) {
       this.releaseSwing();
       this.attack = { type: 'swingkick', t: 0, hit: new Set(), def: ATK.swingkick };
@@ -3319,6 +3440,7 @@ class Player {
     this.vy += GRAV * dt;
     lv.move(this, dt);
     if (this.onGround) { this.releaseSwing(); return; }
+    Progress.rec('swingDist', Math.hypot(this.vx, this.vy) * dt / 10);
     if (this.hitWall && this.wallObj && this.wallObj.climb) {
       this.anchor = null; this.state = 'wall'; this.wallDir = this.hitWall; this.facing = this.hitWall; this.vx = 0; this.vy = 0;
       return;
@@ -3342,9 +3464,9 @@ class Player {
     if (this.state !== 'swing') return;
     this.state = 'normal';
     this.anchor = null;
-    this.vx *= 1.12;
-    if (this.vy < 0) this.vy -= 50;
-    this.airJumps = 1;
+    this.vx *= Progress.has('b_impulso') ? 1.3 : 1.12;
+    if (this.vy < 0) this.vy -= Progress.has('b_impulso') ? 90 : 50;
+    this.airJumps = this.maxAirJumps;
     this.grabCd = 0.1;
     Audio2.sfx('whoosh');
   }
@@ -3359,7 +3481,7 @@ class Player {
     else if (this.comboT > 0 && this.comboNext) type = this.comboNext;
     else type = 'punch1';
     this.attack = { type, t: 0, hit: new Set(), def: ATK[type] };
-    if (type === 'dive') { this.vy = 380; this.vx = this.facing * 70; }
+    if (type === 'dive') { this.vy = Progress.has('b_picado') ? 520 : 380; this.vx = this.facing * 70; }
     else if (type === 'uppercut') { this.vy = -200; this.onGround = false; }
     else if (this.onGround) this.vx = this.facing * 60;
     Audio2.sfx(type === 'kick' || type === 'uppercut' ? 'whoosh' : 'dodge');
@@ -3373,7 +3495,9 @@ class Player {
       world.particles.dust(this.cx, this.feet, 8);
       world.shake(3);
       Audio2.sfx('heavy');
-      world.areaHit(this.cx, this.feet - 8, 28, 1, 120, -160, this);
+      const big = Progress.has('d_sismo');
+      world.areaHit(this.cx, this.feet - 8, big ? 64 : 28, Progress.has('b_picado') ? 1.6 : 1, 120, -160, this, big);
+      if (big) world.fx.push(new GRing(this.cx, this.feet - 4, 64, '#e0c080', 0.4));
       this.attack = null;
       return;
     }
@@ -3385,7 +3509,8 @@ class Player {
         if (Math.abs((e.z || 0) - this.z) > LANE) continue;
         if (overlap(box, e.hurtbox())) {
           at.hit.add(e);
-          world.playerHits(e, d.dmg * this.dmgMul, d.kx * this.facing, d.ky, !!d.heavy);
+          const extra = (at.type === 'kick' && Progress.has('d_remate') ? 1.5 : 1) * (at.type === 'dive' && Progress.has('b_picado') ? 1.5 : 1);
+          world.playerHits(e, d.dmg * this.dmgMul * extra, d.kx * this.facing, d.ky, !!d.heavy);
         }
       }
       world.hitObjects(box, this);
@@ -3422,7 +3547,8 @@ class Player {
   // Devuelve true si el golpe entró
   takeDamage(dmg, srcX, world) {
     if (this.inv > 0 || this.state === 'dodge' || this.state === 'dead' || this.state === 'cutscene') return false;
-    this.hp -= dmg;
+    if (this.cloakT > 0 || this.shieldT > 0) return false;
+    this.hp -= Math.round(dmg * (this.armor || 1));
     this.inv = 1.0; this.hurtT = 1.0;
     this.anchor = null; this.attack = null;
     const dir = this.cx >= srcX ? 1 : -1;
@@ -3443,6 +3569,7 @@ class Player {
   draw(ctx, cam, t) {
     // parpadea solo tras recibir daño (no durante esquivas)
     if (this.hurtT > 0 && this.state !== 'dead' && Math.floor(this.hurtT * 16) % 2 === 0) return;
+    if (this.cloakT > 0) ctx.globalAlpha = 0.3;
     const suit = SUITS.find((s) => s.id === (this.suitId || Game.save.suit)) || SUITS[0];
     const pal = suit.palObj;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.feet - cam.y);
@@ -3529,6 +3656,11 @@ class Player {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(Math.round(this.anchor.x - cam.x) - 1, Math.round(this.anchor.y - cam.y) - 1, 3, 3);
     }
+    // etiqueta de jugador en multijugador
+    if (world_coop(this)) {
+      const cols = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
+      Font.draw(ctx, 'J' + (this.idx + 1), wp.head[0], wp.head[1] - 16, cols[this.idx] || '#fff', { align: 'center', outline: '#000000' });
+    }
     // hormigueo arácnido
     if (this.sense > 0) {
       ctx.fillStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#ffe040';
@@ -3546,6 +3678,12 @@ class Player {
       const r = 8 + this.holdT * 12;
       ctx.fillRect(x - r, y - 26, r * 2, 28);
     }
+    ctx.globalAlpha = 1;
+    // efectos de los poderes de traje
+    if (this.shieldT > 0) { ctx.strokeStyle = Math.floor(t * 10) % 2 ? '#80e0ff' : '#ffffff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y - 14, 17, 0, TAU); ctx.stroke(); }
+    if (this.furyT > 0 && Math.floor(t * 12) % 2) { ctx.fillStyle = 'rgba(255,80,40,0.25)'; ctx.fillRect(x - 9, y - 30, 18, 30); }
+    if (this.shockT > 0 && Math.floor(t * 20) % 3 === 0) { ctx.fillStyle = '#a0f0ff'; ctx.fillRect(x + rand(-8, 8), y - rand(4, 28), 1, 3); }
+    if (this.gliding) { ctx.fillStyle = 'rgba(240,240,255,0.7)'; ctx.fillRect(x - 12, y - 20, 24, 1); ctx.fillRect(x - 9, y - 19, 18, 1); }
   }
 }
 
@@ -3647,6 +3785,16 @@ class Enemy {
       if (this.onGround) this.vx = approach(this.vx, 0, 500 * dt);
       world.level.move(this, dt);
       if (this.koT <= 0) this.remove = true;
+      return;
+    }
+    // Matriz de suspensión: flota indefenso
+    if (this.suspendT > 0) {
+      this.suspendT -= dt;
+      this.vx = approach(this.vx, 0, 300 * dt); this.vy = 0;
+      this.y = approach(this.y, this.suspY - 26 + Math.sin(this.anim * 3) * 2, 60 * dt);
+      this.x += this.vx * dt;
+      if (Math.floor(this.anim * 10) % 3 === 0) world.particles.spark(this.cx + rand(-6, 6), this.y + this.h, '#c080ff', 1);
+      if (this.suspendT <= 0) { this.state = 'air'; this.vy = 60; }
       return;
     }
     const p = world.player;
@@ -4722,6 +4870,7 @@ class Proj {
         if (overlap(this.box(), e.hurtbox())) {
           e.web(world.player.webStun, world);
           if (!e.isBoss) e.takeHit(0.5, sign(this.vx) * 40, 0, false, world);
+          world.onWebHit(e, this);
           Audio2.sfx('webhit');
           world.stats.webs++;
           this.dead = true;
@@ -5739,6 +5888,291 @@ const Powers = {
 
 </script>
 <script>
+// ---- js/gadgets.js ----
+'use strict';
+// ---------------------------------------------------------------------------
+// Artilugios y poderes de traje en acción. Cada efecto es un objeto con
+// update(dt, world) -> bool (sigue vivo) y draw(ctx, cam, t).
+// ---------------------------------------------------------------------------
+const Gadgets = {
+  // cargas y recarga por jugador
+  tick(p, dt) {
+    if (!p.gch) { p.gch = {}; p.gcd = {}; }
+    for (const g of GADGETS) {
+      if (!Progress.gadgetUnlocked(g)) continue;
+      const max = Progress.gadgetMax(g);
+      if (p.gch[g.id] === undefined) p.gch[g.id] = max;
+      if (p.gch[g.id] < max) {
+        p.gcd[g.id] = (p.gcd[g.id] || 0) + dt;
+        if (p.gcd[g.id] >= Progress.gadgetCd(g)) { p.gcd[g.id] = 0; p.gch[g.id]++; }
+      } else p.gcd[g.id] = 0;
+      if (p.gch[g.id] > max) p.gch[g.id] = max;
+    }
+    if (p.powerCd > 0) p.powerCd -= dt;
+    for (const k of ['furyT', 'cloakT', 'armsT', 'shieldT', 'shockT', 'counterT']) if (p[k] > 0) p[k] = Math.max(0, p[k] - dt);
+    if (p.furyT > 0) p.focus = Math.min(100, p.focus + 20 * dt);
+  },
+  selected(p) { return p.idx > 0 ? (p.gadgetSel || 'impacto') : Game.save.gadget; },
+  cycle(p, world) {
+    const owned = GADGETS.filter((g) => Progress.gadgetUnlocked(g));
+    if (!owned.length) return;
+    const cur = this.selected(p);
+    const i = owned.findIndex((g) => g.id === cur);
+    const n = owned[(i + 1) % owned.length];
+    if (p.idx > 0) p.gadgetSel = n.id; else { Game.save.gadget = n.id; }
+    world.float(n.name.toUpperCase(), p.cx, p.y - 14, n.color);
+    Audio2.sfx('menu');
+  },
+  use(p, world) {
+    const g = GADGETS.find((x) => x.id === this.selected(p));
+    if (!g || !Progress.gadgetUnlocked(g)) return;
+    if (!p.gch || !(p.gch[g.id] > 0)) { world.float('SIN CARGAS', p.cx, p.y - 10, '#a0a0a0'); Audio2.sfx('back'); return; }
+    p.gch[g.id]--;
+    const lv = Progress.gadgetLevel(g), f = p.facing, x = p.cx + f * 8, y = p.y + 8;
+    p.shootPose = 0.25;
+    Audio2.sfx('thwip');
+    switch (g.id) {
+      case 'impacto': world.fx.push(new GShot('impacto', p, x, y, f * 380, 0, lv)); break;
+      case 'electrica': world.fx.push(new GShot('electrica', p, x, y, f * 360, 0, lv)); break;
+      case 'rebote': world.fx.push(new GShot('rebote', p, x, y, f * 340, 0, lv)); break;
+      case 'bomba': world.fx.push(new GBomb(p, x, y, f * 190, -230, lv)); break;
+      case 'mina': world.fx.push(new GMine(p, p.cx, p.feet, lv)); break;
+      case 'dron': world.fx.push(new GDrone(p, 9 + lv * 3)); break;
+      case 'onda': {
+        Audio2.sfx('special'); world.shake(3);
+        world.fx.push(new GRing(p.cx + f * 20, p.cy, 70, '#c0ffc0', 0.35));
+        for (const e of world.enemies) {
+          if (e.dead || !e.hittable() || Math.abs((e.z || 0) - p.z) > LANE + 6) continue;
+          const dx = e.cx - p.cx;
+          if (dx * f > -8 && Math.abs(dx) < 90 + lv * 15 && Math.abs(e.cy - p.cy) < 40) { world.playerHits(e, 1 + lv * 0.3, f * 420, -220, true); Progress.rec('gadgetHits', 1); }
+        }
+        break;
+      }
+      case 'matriz': {
+        Audio2.sfx('glitch');
+        world.fx.push(new GRing(p.cx, p.cy, 90 + lv * 10, '#c080ff', 0.5));
+        for (const e of world.enemies) {
+          if (e.dead || !e.hittable() || dist(e.cx, e.cy, p.cx, p.cy) > 90 + lv * 10) continue;
+          if (e.isBoss) { e.web(1, world); continue; }
+          e.suspendT = 3 + lv; e.suspY = e.y; Progress.rec('gadgetHits', 1);
+        }
+        break;
+      }
+    }
+  },
+};
+
+// Proyectil de artilugio (impacto, eléctrica, rebote)
+class GShot {
+  constructor(kind, p, x, y, vx, vy, lv) { this.kind = kind; this.p = p; this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.lv = lv; this.z = p.z; this.t = 0; this.hits = new Set(); this.bounces = kind === 'rebote' ? 3 + lv : 0; }
+  update(dt, world) {
+    this.t += dt;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    if (this.t > 1.2 || world.level.pointSolid(this.x, this.y, false, false)) return false;
+    for (const e of world.enemies) {
+      if (e.dead || this.hits.has(e) || !e.hittable() || Math.abs((e.z || 0) - this.z) > LANE + 6) continue;
+      if (!overlap({ x: this.x - 4, y: this.y - 4, w: 8, h: 8 }, e.hurtbox())) continue;
+      this.hits.add(e);
+      Progress.rec('gadgetHits', 1);
+      const f = sign(this.vx) || 1;
+      if (this.kind === 'impacto') { world.playerHits(e, 1 + this.lv * 0.4, f * 320, -120, true); if (!e.dead) e.web(3 + this.lv, world); return false; }
+      if (this.kind === 'electrica') {
+        world.playerHits(e, 1.5 + this.lv * 0.5, f * 80, -60, false);
+        if (!e.dead) e.web(2.5 + this.lv * 0.5, world);
+        for (let i = 0; i < 10; i++) world.particles.spark(e.cx + rand(-8, 8), e.cy + rand(-10, 10), '#80e0ff', 1);
+        Audio2.sfx('zap'); return false;
+      }
+      // rebote: salta al siguiente enemigo
+      world.playerHits(e, 1 + this.lv * 0.3, f * 90, -60, false);
+      if (!e.dead) e.web(2, world);
+      if (--this.bounces <= 0) return false;
+      let best = null, bd = 150;
+      for (const o of world.enemies) { if (o.dead || this.hits.has(o) || !o.hittable()) continue; const d = dist(o.cx, o.cy, this.x, this.y); if (d < bd) { bd = d; best = o; } }
+      if (!best) return false;
+      const d = Math.max(1, bd); this.vx = (best.cx - this.x) / d * 360; this.vy = (best.cy - this.y) / d * 360; this.z = best.z || 0; this.t = 0;
+    }
+    return true;
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y - this.z);
+    const c = { impacto: '#ffffff', electrica: Math.floor(t * 30) % 2 ? '#ffffff' : '#60e0ff', rebote: '#ffa0e0' }[this.kind];
+    ctx.fillStyle = c; ctx.fillRect(x - 3, y - 3, 6, 6);
+    ctx.fillStyle = '#20202a'; ctx.fillRect(x - 1, y - 1, 2, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - Math.sign(this.vx) * 8, y - 1, 6, 2);
+  }
+}
+
+// Bomba de red: arco con gravedad, explota al tocar suelo o enemigo
+class GBomb {
+  constructor(p, x, y, vx, vy, lv) { this.p = p; this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.lv = lv; this.z = p.z; this.t = 0; }
+  update(dt, world) {
+    this.t += dt; this.vy += GRAV * 0.7 * dt; this.x += this.vx * dt; this.y += this.vy * dt;
+    let boom = this.t > 1.6 || world.level.pointSolid(this.x, this.y + 2, true, false);
+    for (const e of world.enemies) if (!e.dead && overlap({ x: this.x - 3, y: this.y - 3, w: 6, h: 6 }, e.hurtbox())) boom = true;
+    if (!boom) return true;
+    const r = 55 + this.lv * 12;
+    Audio2.sfx('explode'); world.shake(4);
+    world.particles.burst(this.x, this.y, 30, '#ffffff', 150);
+    world.fx.push(new GRing(this.x, this.y, r, '#a0e0ff', 0.4));
+    for (const e of world.enemies) {
+      if (e.dead || !e.hittable() || dist(e.cx, e.cy, this.x, this.y) > r) continue;
+      world.playerHits(e, 0.8 + this.lv * 0.3, sign(e.cx - this.x || 1) * 120, -120, false);
+      if (!e.dead) e.web(3.5 + this.lv * 0.5, world);
+      Progress.rec('gadgetHits', 1);
+    }
+    return false;
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y - this.z);
+    ctx.fillStyle = '#2a2a34'; ctx.fillRect(x - 3, y - 3, 7, 7);
+    ctx.fillStyle = Math.floor(t * 12) % 2 ? '#ff4040' : '#a0e0ff'; ctx.fillRect(x - 1, y - 1, 3, 3);
+  }
+}
+
+// Mina trampa
+class GMine {
+  constructor(p, x, feet, lv) { this.p = p; this.x = x; this.y = feet - 2; this.lv = lv; this.z = p.z; this.t = 0; }
+  update(dt, world) {
+    this.t += dt;
+    if (this.t > 25) return false;
+    for (const e of world.enemies) {
+      if (e.dead || !e.hittable() || Math.abs((e.z || 0) - this.z) > LANE + 6) continue;
+      if (Math.abs(e.cx - this.x) < 16 && Math.abs(e.y + e.h - this.y) < 14) {
+        Audio2.sfx('zap'); world.shake(3);
+        world.fx.push(new GRing(this.x, this.y - 6, 40, '#ffd040', 0.35));
+        for (const o of world.enemies) {
+          if (o.dead || !o.hittable() || dist(o.cx, o.cy, this.x, this.y) > 40 + this.lv * 8) continue;
+          world.playerHits(o, 1.5 + this.lv * 0.4, sign(o.cx - this.x || 1) * 60, -80, false);
+          if (!o.dead) o.web(3 + this.lv * 0.5, world);
+          Progress.rec('gadgetHits', 1);
+        }
+        return false;
+      }
+    }
+    return true;
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y - this.z);
+    ctx.fillStyle = '#20202a'; ctx.fillRect(x - 4, y - 2, 9, 3);
+    ctx.fillStyle = Math.floor(t * 3) % 2 ? '#ffd040' : '#806010'; ctx.fillRect(x, y - 3, 1, 1);
+    ctx.fillStyle = 'rgba(255,208,64,0.25)'; ctx.fillRect(x - 12, y, 25, 1);
+  }
+}
+
+// Dron araña (también el poder Spider-Bro)
+class GDrone {
+  constructor(p, life, bro) { this.p = p; this.life = life; this.bro = bro; this.x = p.cx; this.y = p.y - 20; this.fire = 0.5; this.z = p.z; }
+  update(dt, world) {
+    this.life -= dt;
+    if (this.life <= 0 || this.p.state === 'dead') { world.particles.burst(this.x, this.y, 8, '#ff6060', 60); return false; }
+    const tx = this.p.cx - this.p.facing * 14, ty = this.p.y - 18 + Math.sin(world.t * 4) * 3;
+    this.x += (tx - this.x) * Math.min(1, dt * 5); this.y += (ty - this.y) * Math.min(1, dt * 5); this.z = this.p.z;
+    this.fire -= dt;
+    if (this.fire <= 0) {
+      let best = null, bd = this.bro ? 200 : 170;
+      for (const e of world.enemies) { if (e.dead || !e.hittable()) continue; const d = dist(e.cx, e.cy, this.x, this.y); if (d < bd) { bd = d; best = e; } }
+      if (best) {
+        this.fire = this.bro ? 0.45 : 0.6;
+        world.fx.push(new GBeam(this.x, this.y, best.cx, best.cy, this.bro ? '#80ffe0' : '#ff6060'));
+        world.playerHits(best, this.bro ? 0.8 : 0.5, sign(best.cx - this.x) * 60, -40, false);
+        Progress.rec('gadgetHits', 1);
+        Audio2.sfx('laser');
+      } else this.fire = 0.2;
+    }
+    return true;
+  }
+  draw(ctx, cam, t) {
+    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y - this.z);
+    ctx.fillStyle = '#20202a'; ctx.fillRect(x - 4, y - 2, 9, 5);
+    ctx.fillStyle = this.bro ? '#80ffe0' : '#ff4040'; ctx.fillRect(x - 1, y - 1, 3, 2);
+    ctx.fillStyle = '#a0a0b0'; const w = Math.floor(t * 30) % 2 ? 4 : 2; ctx.fillRect(x - 4 - w, y - 3, w, 1); ctx.fillRect(x + 5, y - 3, w, 1);
+    for (let i = 0; i < 4; i++) ctx.fillRect(x - 3 + i * 2, y + 3, 1, 2);
+  }
+}
+class GBeam {
+  constructor(x0, y0, x1, y1, c) { Object.assign(this, { x0, y0, x1, y1, c, t: 0.12 }); }
+  update(dt) { this.t -= dt; return this.t > 0; }
+  draw(ctx, cam) { ctx.strokeStyle = this.c; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(this.x0 - cam.x, this.y0 - cam.y); ctx.lineTo(this.x1 - cam.x, this.y1 - cam.y); ctx.stroke(); }
+}
+class GRing {
+  constructor(x, y, r, c, dur) { Object.assign(this, { x, y, r, c, dur, t: 0 }); }
+  update(dt) { this.t += dt; return this.t < this.dur; }
+  draw(ctx, cam) {
+    const u = this.t / this.dur;
+    ctx.strokeStyle = this.c; ctx.globalAlpha = 1 - u; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(this.x - cam.x, this.y - cam.y, this.r * (0.3 + u * 0.7), 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+// Patas mecánicas del poder "Brazos de hierro"
+class GArms {
+  constructor(p) { this.p = p; this.hitT = 0; }
+  update(dt, world) {
+    const p = this.p;
+    if (!(p.armsT > 0) || p.state === 'dead') return false;
+    this.hitT -= dt;
+    if (this.hitT <= 0) {
+      this.hitT = 0.45;
+      for (const e of world.enemies) {
+        if (e.dead || !e.hittable() || Math.abs((e.z || 0) - p.z) > LANE + 4) continue;
+        if (Math.abs(e.cx - p.cx) < 42 && Math.abs(e.cy - p.cy) < 30) { world.playerHits(e, 0.8, sign(e.cx - p.cx || 1) * 140, -90, false); this.flash = 0.1; break; }
+      }
+    }
+    if (this.flash > 0) this.flash -= dt;
+    return true;
+  }
+  draw(ctx, cam, t) {
+    const p = this.p, x = Math.round(p.cx - cam.x), y = Math.round(p.y + 6 - cam.y - (p.z || 0));
+    ctx.strokeStyle = '#e0b030'; ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const s = i < 2 ? -1 : 1, k = i % 2, a = Math.sin(t * 6 + i) * 3 + (this.flash > 0 ? 10 : 0);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + s * (10 + k * 5), y - 8 + k * 6 - a); ctx.lineTo(x + s * (18 + k * 6 + a), y + 6 + k * 4); ctx.stroke();
+    }
+  }
+}
+
+// ---- Poderes de traje ----
+const SuitPowers = {
+  current(p) {
+    if (p.idx > 0) { const s = SUITS.find((x) => x.id === p.suitId); return (s && s.power) || 'furia'; }
+    if (Game.save.power) return Game.save.power;
+    const s = SUITS.find((x) => x.id === (p.suitId || Game.save.suit));
+    return (s && s.power) || 'furia';
+  },
+  use(p, world) {
+    if (p.powerCd > 0) { world.float('PODER EN ' + Math.ceil(p.powerCd) + ' s', p.cx, p.y - 12, '#c0c0d0'); Audio2.sfx('back'); return; }
+    const id = this.current(p), P = SUIT_POWERS[id];
+    p.powerCd = POWER_CD * (Progress.has('i_poder') ? 0.6 : 1);
+    Progress.rec('powers', 1);
+    world.float(P.name.toUpperCase() + '!', p.cx, p.y - 20, '#ffd040');
+    Audio2.sfx('special'); world.shake(4); Input.rumble(0.7, 0.7, 250);
+    world.particles.burst(p.cx, p.cy, 24, '#ffd040', 120);
+    const onScreen = (e) => !e.dead && e.hittable() && world.onScreen(e);
+    switch (id) {
+      case 'furia': p.furyT = 10; break;
+      case 'rafaga':
+        for (const e of world.enemies) if (onScreen(e)) { e.web(4, world); world.fx.push(new GBeam(p.cx, p.cy, e.cx, e.cy, '#ffffff')); }
+        break;
+      case 'hermano': world.fx.push(new GDrone(p, 15, true)); break;
+      case 'invisible': p.cloakT = 8; break;
+      case 'brazos': p.armsT = 12; world.fx.push(new GArms(p)); break;
+      case 'escudo': p.shieldT = 6; p.inv = Math.max(p.inv, 6); break;
+      case 'electrico': p.shockT = 12; break;
+      case 'sismo':
+        world.shake(8); world.fx.push(new GRing(p.cx, p.feet, 140, '#e0c080', 0.6));
+        world.areaHit(p.cx, p.feet - 6, 140, 2.2 * p.dmgMul, 260, -300, p);
+        break;
+      case 'tiempo': world.slowEnemiesT = 6; break;
+      case 'negativo':
+        world.fx.push(new GRing(p.cx, p.cy, 110, '#ffffff', 0.5)); world.fx.push(new GRing(p.cx, p.cy, 80, '#101010', 0.5));
+        world.areaHit(p.cx, p.cy, 110, 1.6 * p.dmgMul, 320, -200, p, true);
+        break;
+    }
+  },
+};
+
+</script>
+<script>
 // ---- js/story.js ----
 'use strict';
 // ---------------------------------------------------------------------------
@@ -6399,6 +6833,224 @@ function prepLines(lines) {
 
 </script>
 <script>
+// ---- js/progress.js ----
+'use strict';
+// ---------------------------------------------------------------------------
+// Progreso estilo PlayStation: experiencia y niveles, árbol de habilidades,
+// artilugios, poderes de traje, trajes fabricables, récords y retos.
+// ---------------------------------------------------------------------------
+
+// ---- Árbol de habilidades (3 ramas) ----
+const SKILL_BRANCHES = [
+  { id: 'd', name: 'DEFENSOR', color: '#ff5060', desc: 'Combate cuerpo a cuerpo' },
+  { id: 'b', name: 'BALANCEADOR', color: '#40c0ff', desc: 'Movimiento y acrobacias' },
+  { id: 'i', name: 'INNOVADOR', color: '#ffd040', desc: 'Telarañas y artilugios' },
+];
+const SKILLS = [
+  { id: 'd_vida', b: 'd', name: 'Vitalidad', desc: '+25 de vida máxima.' },
+  { id: 'd_foco', b: 'd', name: 'Concentración', desc: 'El foco sube un 30% más rápido.' },
+  { id: 'd_remate', b: 'd', name: 'Remate', desc: 'La patada final del combo hace +50% de daño.', req: 'd_foco' },
+  { id: 'd_contra', b: 'd', name: 'Contraataque perfecto', desc: 'Tras una esquiva perfecta, tu siguiente golpe hace el doble y lanza.', req: 'd_vida' },
+  { id: 'd_sismo', b: 'd', name: 'Impacto sísmico', desc: 'El picado crea una onda enorme que atrapa a los enemigos.', req: 'd_remate' },
+  { id: 'd_tiron', b: 'd', name: 'Tirón de red', desc: 'ARRIBA + disparo de red: atrae al enemigo hacia ti.', req: 'd_contra' },
+  { id: 'd_escudo', b: 'd', name: 'Piel dura', desc: 'Recibes un 20% menos de daño.', req: 'd_sismo' },
+  { id: 'b_veloz', b: 'b', name: 'Balanceo veloz', desc: 'Te balanceas un 15% más rápido.' },
+  { id: 'b_triple', b: 'b', name: 'Triple salto', desc: 'Un salto extra en el aire.' },
+  { id: 'b_trepa', b: 'b', name: 'Trepador experto', desc: 'Trepas un 60% más rápido.', req: 'b_veloz' },
+  { id: 'b_planeo', b: 'b', name: 'Alas de telaraña', desc: 'Mantén SALTO mientras caes para planear.', req: 'b_triple' },
+  { id: 'b_trucos', b: 'b', name: 'Acrobacias', desc: 'Los saltos y esquivas en el aire te dan foco.', req: 'b_trepa' },
+  { id: 'b_picado', b: 'b', name: 'Picado relámpago', desc: 'El picado es más rápido y hace más daño.', req: 'b_planeo' },
+  { id: 'b_impulso', b: 'b', name: 'Impulso final', desc: 'Al soltar la telaraña sales disparado más lejos.', req: 'b_trucos' },
+  { id: 'i_cartuchos', b: 'i', name: 'Cartuchos extra', desc: '+2 cartuchos de red.' },
+  { id: 'i_recarga', b: 'i', name: 'Recarga rápida', desc: 'La red se recarga el doble de rápido.' },
+  { id: 'i_electrica', b: 'i', name: 'Red eléctrica', desc: 'Tus bolas de red también electrocutan.', req: 'i_cartuchos' },
+  { id: 'i_impacto', b: 'i', name: 'Red de impacto', desc: 'Tus bolas de red empujan y derriban.', req: 'i_electrica' },
+  { id: 'i_ingenio', b: 'i', name: 'Ingeniería', desc: '+1 carga en todos los artilugios.', req: 'i_recarga' },
+  { id: 'i_frio', b: 'i', name: 'Refrigeración', desc: 'Los artilugios se recargan un 35% más rápido.', req: 'i_ingenio' },
+  { id: 'i_poder', b: 'i', name: 'Batería del traje', desc: 'El poder del traje se recarga un 40% más rápido.', req: 'i_impacto' },
+];
+
+// ---- Artilugios ----
+const GADGETS = [
+  { id: 'impacto', name: 'Red de impacto', desc: 'Una red pesada que empuja al enemigo y lo deja atrapado.', charges: 3, cd: 7, lvl: 1, color: '#e8e8f0' },
+  { id: 'bomba', name: 'Bomba de red', desc: 'Explota y atrapa a todos los enemigos a su alrededor.', charges: 2, cd: 11, lvl: 2, color: '#a0e0ff' },
+  { id: 'mina', name: 'Mina trampa', desc: 'Colócala en el suelo: atrapa y electrocuta al primero que pase.', charges: 3, cd: 9, lvl: 4, color: '#ffd040' },
+  { id: 'dron', name: 'Dron araña', desc: 'Un pequeño dron que dispara a los enemigos durante un rato.', charges: 1, cd: 18, lvl: 6, color: '#ff6060' },
+  { id: 'onda', name: 'Onda de choque', desc: 'Una ráfaga de aire que lanza lejos a los enemigos.', charges: 2, cd: 9, lvl: 8, color: '#c0ffc0' },
+  { id: 'matriz', name: 'Matriz de suspensión', desc: 'Los enemigos cercanos flotan indefensos unos segundos.', charges: 2, cd: 13, lvl: 10, color: '#c080ff' },
+  { id: 'electrica', name: 'Red eléctrica', desc: 'Electrocuta y aturde al enemigo.', charges: 3, cd: 8, lvl: 12, color: '#60e0ff' },
+  { id: 'rebote', name: 'Red de rebote', desc: 'Rebota entre varios enemigos seguidos.', charges: 3, cd: 9, lvl: 14, color: '#ffa0e0' },
+];
+const GADGET_COST = [0, 20, 40];   // tecnología para subir a nivel 2 y 3
+
+// ---- Poderes de traje ----
+const SUIT_POWERS = {
+  furia: { name: 'Furia de batalla', desc: '10 s: el foco se llena solo y golpeas un 50% más fuerte.' },
+  rafaga: { name: 'Explosión de red', desc: 'Atrapa con red a todos los enemigos de la pantalla.' },
+  hermano: { name: 'Spider-Bro', desc: 'Un dron amigo lucha contigo durante 15 s.' },
+  invisible: { name: 'Camuflaje', desc: '8 s invisible: no te pueden dañar y tus golpes hacen el doble.' },
+  brazos: { name: 'Brazos de hierro', desc: '12 s: patas mecánicas golpean a los enemigos cercanos.' },
+  escudo: { name: 'Barrera', desc: '6 s de invulnerabilidad total.' },
+  electrico: { name: 'Puños eléctricos', desc: '12 s: tus golpes electrocutan y aturden.' },
+  sismo: { name: 'Terremoto', desc: 'Un golpe al suelo que derriba a todos los enemigos cercanos.' },
+  tiempo: { name: 'Velocidad', desc: '6 s: el mundo va a cámara lenta, tú no.' },
+  negativo: { name: 'Onda negativa', desc: 'Una onda que empuja, daña y atrapa a los enemigos.' },
+};
+const POWER_CD = 45;
+// poder de los trajes de la historia
+const STORY_SUIT_POWERS = { bnd: 'furia', nwh: 'rafaga', casero: 'hermano', sigilo: 'invisible', stark: 'electrico', ffh: 'escudo', iron: 'brazos', raimi: 'sismo', tasm: 'electrico', verse: 'invisible', avanzado: 'rafaga', sociedad: 'tiempo', tierra0: 'furia', cero: 'negativo' };
+
+// ---- Trajes fabricables (estilo PlayStation) ----
+// lvl = nivel mínimo, tech = coste de fabricación
+const EXTRA_SUITS = [
+  ['negro', 'Traje simbionte', 'Negro, con la araña blanca enorme. Tiene hambre.', 'rafaga', 2, 20, { head: '#141418', torso: '#141418', torsoLow: '#141418', arm: '#141418', leg: '#141418', boot: '#141418', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'big', eye: '#ffffff' }],
+  ['escarlata', 'Araña Escarlata', 'Sudadera azul sin mangas sobre el traje rojo.', 'furia', 2, 20, { deco: 'hood', webs: true, webLine: '#5a0a10', head: '#c01820', torso: '#2a50b8', torsoLow: '#c01820', arm: '#c01820', arm2: '#c01820', leg: '#c01820', boot: '#c01820', face: 'spider', emblem: '#c01820', emblemStyle: 'long', eye: '#e8f0f4' }],
+  ['noir', 'Spider-Man Noir', 'Años 30, blanco y negro, sombrero y gafas de aviador.', 'invisible', 3, 25, { deco: 'noir', head: '#24242a', torso: '#2a2a30', torsoLow: '#1a1a20', arm: '#2a2a30', arm2: '#1a1a20', leg: '#1a1a20', boot: '#101014', face: 'goggles', eye: '#a0a0a8' }],
+  ['punk', 'Spider-Punk', 'Cresta, chaqueta con pinchos y mucha actitud.', 'sismo', 3, 25, { deco: 'punk', webs: true, webLine: '#1a1a22', head: '#d82030', torso: '#20242e', torsoLow: '#2a40c0', side: '#d82030', arm: '#20242e', arm2: '#d82030', leg: '#2a40c0', boot: '#20242e', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'small', eye: '#ffffff' }],
+  ['clasico2099', 'Spider-Man 2099 clásico', 'Azul oscuro con la calavera araña roja.', 'tiempo', 4, 30, { deco: 'cape', capeCol: '#d01a2a', head: '#1a2050', torso: '#1a2050', torsoLow: '#1a2050', arm: '#1a2050', leg: '#1a2050', boot: '#1a2050', hand: '#d01a2a', face: 'spider', emblem: '#d01a2a', emblemStyle: 'big', eye: '#ff3040' }],
+  ['uk', 'Spider-UK', 'El agente araña del Reino Unido.', 'escudo', 4, 30, { webs: true, webLine: '#0a1a50', head: '#d0202c', torso: '#1a3a9a', torsoLow: '#1a3a9a', side: '#d0202c', trim: '#f4f4f4', arm: '#d0202c', arm2: '#1a3a9a', leg: '#1a3a9a', boot: '#d0202c', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'long' }],
+  ['superior', 'Superior Spider-Man', 'Rojo y negro, garras y ojos rojos. Más listo que nadie.', 'brazos', 5, 35, { webs: true, webLine: '#1a1a22', head: '#c01820', torso: '#c01820', torsoLow: '#16161c', side: '#16161c', arm: '#16161c', arm2: '#c01820', leg: '#16161c', boot: '#c01820', face: 'spider', emblem: '#16161c', emblemStyle: 'long', eye: '#ff3a3a' }],
+  ['velocity', 'Traje Velocity', 'Líneas de energía azules para correr más que nadie.', 'tiempo', 5, 35, { head: '#16161c', torso: '#16161c', torsoLow: '#16161c', side: '#c01820', trim: '#40e0ff', arm: '#16161c', arm2: '#c01820', leg: '#16161c', boot: '#c01820', face: 'spider', emblem: '#40e0ff', emblemStyle: 'long', eye: '#80f0ff' }],
+  ['fundacion', 'Fundación Futura', 'Blanco y negro, del grupo de científicos más brillante.', 'escudo', 6, 40, { head: '#1a1a22', torso: '#f0f0f4', torsoLow: '#1a1a22', side: '#1a1a22', arm: '#f0f0f4', arm2: '#1a1a22', leg: '#1a1a22', boot: '#f0f0f4', face: 'spider', emblem: '#1a1a22', emblemStyle: 'small', eye: '#80c0ff' }],
+  ['antiock', 'Traje Anti-Ock', 'Diseñado para vencer al doctor de los tentáculos.', 'electrico', 6, 40, { head: '#16161c', torso: '#16161c', torsoLow: '#16161c', side: '#2060e0', trim: '#80c0ff', arm: '#16161c', leg: '#16161c', boot: '#16161c', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'big', eye: '#60c0ff' }],
+  ['bigtime', 'Traje de sigilo verde', 'Brilla en verde para despistar a los sensores.', 'invisible', 7, 40, { deco: 'stealth', head: '#101418', torso: '#101418', torsoLow: '#101418', side: '#101418', trim: '#40ff90', arm: '#101418', leg: '#101418', boot: '#101418', face: 'spider', emblem: '#40ff90', emblemStyle: 'long', eye: '#40ff90' }],
+  ['armadura1', 'Armadura MK I', 'Placas de metal atornilladas. Pesada pero dura.', 'escudo', 7, 45, { deco: 'armor', head: '#8a8e96', torso: '#8a8e96', torsoLow: '#5a5e66', arm: '#8a8e96', arm2: '#5a5e66', leg: '#5a5e66', boot: '#3a3e46', face: 'spider', emblem: '#d01a2a', emblemStyle: 'small', eye: '#d0e8ff' }],
+  ['armadura2', 'Armadura MK II', 'Plata y rojo, con blindaje reactivo.', 'escudo', 8, 45, { deco: 'armor', head: '#c01820', torso: '#b8bcc4', torsoLow: '#c01820', side: '#c01820', arm: '#b8bcc4', arm2: '#c01820', leg: '#b8bcc4', boot: '#c01820', face: 'spider', emblem: '#c01820', emblemStyle: 'long', eye: '#ffffff' }],
+  ['armadura4', 'Armadura MK IV', 'Rojo oscuro y negro, con lentes brillantes.', 'brazos', 9, 50, { deco: 'armor', head: '#16161c', torso: '#9a1018', torsoLow: '#16161c', side: '#16161c', trim: '#ff4040', arm: '#16161c', arm2: '#9a1018', leg: '#16161c', boot: '#9a1018', face: 'spider', emblem: '#ff4040', emblemStyle: 'long', eye: '#ff6060' }],
+  ['electro2', 'Traje eléctrico', 'Azul y blanco, con chispas en las manos.', 'electrico', 9, 50, { head: '#f4f4f8', torso: '#2050d0', torsoLow: '#2050d0', side: '#f4f4f8', trim: '#ffe040', arm: '#2050d0', arm2: '#f4f4f8', hand: '#ffe040', leg: '#2050d0', boot: '#f4f4f8', face: 'spider', emblem: '#ffe040', emblemStyle: 'long', eye: '#80e0ff' }],
+  ['reilly', 'Traje de Ben Reilly', 'Azul con una araña roja gigante en el pecho.', 'furia', 10, 50, { deco: 'hood', webs: true, webLine: '#0a1a60', head: '#d01a24', torso: '#2a4ad8', torsoLow: '#d01a24', arm: '#d01a24', arm2: '#d01a24', leg: '#d01a24', boot: '#d01a24', face: 'spider', emblem: '#d01a24', emblemStyle: 'big' }],
+  ['guerras', 'Guerras Secretas', 'Blanco y negro, de otro planeta.', 'rafaga', 10, 55, { head: '#16161c', torso: '#16161c', torsoLow: '#16161c', side: '#f0f0f4', arm: '#16161c', arm2: '#f0f0f4', leg: '#16161c', boot: '#f0f0f4', face: 'spider', emblem: '#f0f0f4', emblemStyle: 'long', eye: '#ffffff' }],
+  ['bastion', 'Último bastión', 'El traje clásico, roto después de mil batallas.', 'furia', 11, 55, { deco: 'burn', webs: true, webLine: '#4a0a10', head: '#b01820', torso: '#b01820', torsoLow: '#1a2a7a', side: '#1a2a7a', arm: '#b01820', leg: '#1a2a7a', boot: '#b01820', face: 'spider', emblem: '#140a12', emblemStyle: 'small', eye: '#e8f0f4' }],
+  ['negativo', 'Traje negativo', 'Colores invertidos, como una foto en negativo.', 'negativo', 11, 55, { webs: true, webLine: '#f4f4f4', head: '#101010', torso: '#101010', torsoLow: '#f0f0f0', side: '#f0f0f0', arm: '#101010', arm2: '#101010', leg: '#f0f0f0', boot: '#101010', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'long', eye: '#101010' }],
+  ['luchador', 'Traje de lucha libre', 'Con el que Peter peleó por dinero. Qué tiempos.', 'sismo', 12, 55, { deco: 'hood', head: '#c01820', torso: '#2040a0', torsoLow: '#2040a0', arm: '#c01820', arm2: '#c01820', leg: '#2040a0', boot: '#c01820', face: 'goggles', emblem: '#140a12', eye: '#a0c0ff' }],
+  ['calzones', 'Solo ropa interior', 'Eh... ¿dónde está el resto del traje?', 'furia', 12, 60, { head: '#d0202c', torso: '#e8b890', torsoLow: '#f4f4f4', arm: '#e8b890', arm2: '#e8b890', hand: '#e8b890', leg: '#e8b890', boot: '#d0202c', face: 'spider', eye: '#e8f0f4', webs: true, webLine: '#5a0a10' }],
+  ['bolsa', 'Hombre Bolsa Bombástico', 'Una bolsa de papel en la cabeza y mucha dignidad.', 'escudo', 13, 60, { head: '#c8a870', torso: '#16161c', torsoLow: '#16161c', arm: '#16161c', leg: '#16161c', boot: '#16161c', face: 'bag', eye: '#140a12' }],
+  ['milesclasico', 'Miles clásico', 'Negro con telarañas rojas. El de Brooklyn.', 'invisible', 13, 60, { webs: true, webLine: '#e0202c', head: '#16161c', torso: '#16161c', torsoLow: '#16161c', arm: '#16161c', leg: '#16161c', boot: '#e0202c', hand: '#e0202c', face: 'spider', emblem: '#e0202c', emblemStyle: 'big', eye: '#ffffff' }],
+  ['ghost', 'Ghost-Spider', 'Capucha blanca, telarañas rosas y zapatillas turquesa.', 'rafaga', 14, 60, { deco: 'hood', webs: true, webLine: '#e04a9a', head: '#f4f4f8', torso: '#f4f4f8', torsoLow: '#f4f4f8', side: '#16161c', arm: '#e04a9a', arm2: '#f4f4f8', hand: '#40c0d0', leg: '#f4f4f8', boot: '#40c0d0', face: 'spider', emblem: '#16161c', eye: '#ffffff' }],
+  ['mayday', 'Spider-Girl', 'La hija de Peter en otro futuro.', 'tiempo', 14, 65, { webs: true, webLine: '#0a1a50', head: '#d0202c', torso: '#d0202c', torsoLow: '#1a3aa0', side: '#1a3aa0', arm: '#1a3aa0', arm2: '#d0202c', leg: '#1a3aa0', boot: '#d0202c', face: 'spider', emblem: '#f4f4f4', emblemStyle: 'small', eye: '#ffffff' }],
+  ['seda', 'Seda', 'Negro y blanco, fabrica su propia tela.', 'rafaga', 15, 65, { head: '#16161c', torso: '#16161c', torsoLow: '#16161c', side: '#f0f0f4', arm: '#f0f0f4', arm2: '#16161c', leg: '#16161c', boot: '#16161c', face: 'mask', hair: '#16161c', emblem: '#f0f0f4', emblemStyle: 'long', eye: '#f0f0f4' }],
+  ['1602', 'Araña de 1602', 'Capa, botas altas y siglos de historia.', 'sismo', 15, 65, { deco: 'cape', webs: true, webLine: '#3a1a10', head: '#b01820', torso: '#b01820', torsoLow: '#5a3a20', arm: '#b01820', leg: '#5a3a20', boot: '#3a2414', face: 'spider', emblem: '#140a12', emblemStyle: 'small', eye: '#f0e0c0' }],
+  ['cyborg', 'Spider-Cyborg', 'Medio máquina, medio arácnido.', 'brazos', 16, 70, { head: '#b8bcc4', torso: '#d0202c', torsoLow: '#2040a0', side: '#b8bcc4', trim: '#40e0ff', arm: '#b8bcc4', arm2: '#b8bcc4', hand: '#b8bcc4', leg: '#2040a0', boot: '#b8bcc4', face: 'spider', emblem: '#40e0ff', emblemStyle: 'small', eye: '#40e0ff' }],
+  ['vintage', 'Cómic vintage', 'Como en las primeras viñetas: líneas gruesas y colores planos.', 'furia', 16, 70, { webs: true, webLine: '#000000', head: '#e02020', torso: '#e02020', torsoLow: '#1a3ae0', side: '#1a3ae0', arm: '#e02020', arm2: '#e02020', leg: '#1a3ae0', boot: '#e02020', face: 'spider', emblem: '#000000', emblemStyle: 'small', eye: '#ffffff', eyeSize: 1.15 }],
+  ['dorado', 'Armadura dorada', 'Oro puro. Brilla demasiado para el sigilo.', 'escudo', 17, 75, { deco: 'armor', head: '#e0b030', torso: '#e0b030', torsoLow: '#a07818', arm: '#e0b030', arm2: '#a07818', leg: '#a07818', boot: '#e0b030', face: 'spider', emblem: '#6a4a08', emblemStyle: 'long', eye: '#fff4c0' }],
+  ['sombra', 'Traje sombra', 'Morado y negro, para moverse de noche.', 'invisible', 17, 75, { head: '#1a1426', torso: '#1a1426', torsoLow: '#1a1426', side: '#5a2a90', trim: '#c080ff', arm: '#1a1426', leg: '#1a1426', boot: '#5a2a90', face: 'spider', emblem: '#c080ff', emblemStyle: 'long', eye: '#e0c0ff' }],
+  ['integrado', 'Traje integrado', 'Rojo, azul y oro: lo mejor de Stark y de Peter.', 'brazos', 18, 80, { webs: true, webLine: '#3a0a10', head: '#c81820', torso: '#c81820', torsoLow: '#c81820', side: '#1c38a8', trim: '#e0b030', shoulder: '#c81820', arm: '#1c38a8', arm2: '#c81820', leg: '#1c38a8', boot: '#c81820', face: 'spider', emblem: '#e0b030', emblemStyle: 'long' }],
+  ['oscuro', 'Traje oscuro', 'Negro mate con líneas rojas. Para las noches largas.', 'negativo', 19, 85, { webs: true, webLine: '#a01018', head: '#121216', torso: '#121216', torsoLow: '#121216', side: '#121216', trim: '#c01820', arm: '#121216', leg: '#121216', boot: '#121216', face: 'spider', emblem: '#c01820', emblemStyle: 'long', eye: '#ff5050' }],
+  ['arana_hierro_2', 'Iron Spider clásico', 'Rojo y dorado con patas mecánicas, versión cómic.', 'brazos', 20, 90, { deco: 'ironlegs', head: '#c01822', torso: '#c01822', torsoLow: '#e0b030', side: '#e0b030', arm: '#c01822', arm2: '#e0b030', leg: '#c01822', boot: '#e0b030', face: 'spider', emblem: '#e0b030', emblemStyle: 'big', eye: '#fff0c0' }],
+  ['multiverso', 'Traje del multiverso', 'Cambia de color con cada grieta que cruzaste.', 'tiempo', 22, 100, { webs: true, webLine: '#ffffff', head: '#6020c0', torso: '#20a0c0', torsoLow: '#c020a0', side: '#e0c020', arm: '#c02060', arm2: '#20c080', leg: '#2040c0', boot: '#e06020', face: 'spider', emblem: '#ffffff', emblemStyle: 'long', eye: '#ffffff' }],
+];
+for (const [id, name, desc, power, lvl, tech, pal] of EXTRA_SUITS) {
+  SUITS.push({ id, name, desc, pal, power, lvl, tech, craft: true, palObj: makePal(Object.assign({ outline: '#140a12' }, pal)) });
+}
+for (const s of SUITS) if (!s.power) s.power = STORY_SUIT_POWERS[s.id] || 'furia';
+
+// ---- Retos (bronce, plata, oro) ----
+const CHALLENGES = [
+  { id: 'combo', name: 'Maestro del combo', desc: 'Consigue un combo de golpes', stat: 'maxCombo', goals: [10, 25, 50], unit: 'x' },
+  { id: 'kos', name: 'Amigo y vecino', desc: 'Derrota enemigos', stat: 'kos', goals: [50, 200, 500] },
+  { id: 'crimes', name: 'Guardián de la ciudad', desc: 'Detén crímenes', stat: 'crimes', goals: [5, 20, 50] },
+  { id: 'swing', name: 'Balanceador', desc: 'Recorre metros balanceándote', stat: 'swingDist', goals: [1000, 5000, 20000], unit: ' m' },
+  { id: 'dodge', name: 'Sentido arácnido', desc: 'Esquivas perfectas', stat: 'perfect', goals: [10, 50, 150] },
+  { id: 'gadget', name: 'Ingeniero', desc: 'Golpea enemigos con artilugios', stat: 'gadgetHits', goals: [10, 50, 150] },
+  { id: 'boss', name: 'Cazavillanos', desc: 'Derrota jefes', stat: 'bosses', goals: [3, 9, 20] },
+  { id: 'air', name: 'Siempre en el aire', desc: 'Segundos seguidos sin tocar el suelo', stat: 'airMax', goals: [6, 12, 25], unit: ' s' },
+  { id: 'frag', name: 'Coleccionista', desc: 'Encuentra fragmentos del multiverso', stat: 'tokens', goals: [10, 20, 30] },
+  { id: 'power', name: 'Poderoso', desc: 'Usa poderes de traje', stat: 'powers', goals: [5, 20, 60] },
+];
+const MEDALS = ['BRONCE', 'PLATA', 'ORO'];
+const MEDAL_COL = ['#d08850', '#c8d0e0', '#ffd040'];
+
+const Progress = {
+  save() { return Game.save; },
+  ensure() {
+    const s = Game.save;
+    if (typeof s.xp !== 'number') s.xp = 0;
+    if (typeof s.level !== 'number') s.level = 1;
+    if (typeof s.skillPts !== 'number') s.skillPts = 0;
+    if (!Array.isArray(s.skills)) s.skills = [];
+    if (!s.gadgetLvl || typeof s.gadgetLvl !== 'object') s.gadgetLvl = {};
+    if (!GADGETS.find((g) => g.id === s.gadget)) s.gadget = 'impacto';
+    if (!s.records || typeof s.records !== 'object') s.records = {};
+    if (!s.medals || typeof s.medals !== 'object') s.medals = {};
+    if (!s.bestTimes || typeof s.bestTimes !== 'object') s.bestTimes = {};
+    if (s.power && !SUIT_POWERS[s.power]) s.power = null;
+    // partidas antiguas: experiencia según lo ya conseguido
+    if (!s.xpInit) {
+      s.xpInit = true;
+      const past = (s.stage || 0) * 300 + (s.tokens ? s.tokens.length * 40 : 0) + ((s.stats && s.stats.kos) || 0) * 10 + ((s.stats && s.stats.crimes) || 0) * 60;
+      if (past > 0) this.addXP(past, null, true);
+    }
+  },
+  has(id) { return Game.save.skills && Game.save.skills.includes(id); },
+  xpNeed(lvl) { return 120 + lvl * 70; },
+  addXP(n, world, silent) {
+    const s = Game.save;
+    s.xp += Math.round(n);
+    while (s.level < 40 && s.xp >= this.xpNeed(s.level)) {
+      s.xp -= this.xpNeed(s.level); s.level++; s.skillPts++;
+      if (!silent && world) {
+        const p = world.player;
+        world.float('¡NIVEL ' + s.level + '! +1 PUNTO DE HABILIDAD', p.cx, p.y - 24, '#ffd040');
+        Audio2.sfx('win');
+        const g = GADGETS.find((x) => x.lvl === s.level);
+        if (g) world.showTip('Nuevo artilugio: ' + g.name + '. Equípalo en el menú (ARTILUGIOS).', 6);
+      }
+    }
+  },
+  canLearn(sk) {
+    const s = Game.save;
+    return !this.has(sk.id) && s.skillPts > 0 && (!sk.req || this.has(sk.req));
+  },
+  learn(sk) {
+    if (!this.canLearn(sk)) return false;
+    Game.save.skillPts--; Game.save.skills.push(sk.id); Game.saveGame();
+    return true;
+  },
+  gadgetUnlocked(g) { return (Game.save.level || 1) >= g.lvl; },
+  gadgetLevel(g) { return Game.save.gadgetLvl[g.id] || 1; },
+  gadgetMax(g) { return g.charges + (this.gadgetLevel(g) - 1) + (this.has('i_ingenio') ? 1 : 0); },
+  gadgetCd(g) { return g.cd * (this.has('i_frio') ? 0.65 : 1) * (1 - (this.gadgetLevel(g) - 1) * 0.1); },
+  suitOwned(s) { return Game.save.suits.includes(s.id); },
+  // registra un récord (suma o máximo)
+  rec(key, v, mode = 'add') {
+    const r = Game.save.records;
+    if (mode === 'max') { if (!(r[key] >= v)) r[key] = v; }
+    else r[key] = (r[key] || 0) + v;
+  },
+  stat(key) {
+    const s = Game.save;
+    if (key === 'kos') return (s.stats && s.stats.kos) || 0;
+    if (key === 'crimes') return (s.stats && s.stats.crimes) || 0;
+    if (key === 'tokens') return (s.tokens || []).length;
+    const v = s.records[key] || 0;
+    return key === 'swingDist' ? Math.floor(v) : v;
+  },
+  medal(ch) { return Game.save.medals[ch.id] || 0; },
+  // comprueba los retos y entrega medallas (XP + tecnología)
+  checkChallenges(world) {
+    for (const ch of CHALLENGES) {
+      const have = this.medal(ch), v = this.stat(ch.stat);
+      if (have < 3 && v >= ch.goals[have]) {
+        Game.save.medals[ch.id] = have + 1;
+        Game.save.tech += 10 * (have + 1);
+        if (world) {
+          const p = world.player;
+          world.float('RETO: ' + ch.name.toUpperCase() + ' · ' + MEDALS[have], p.cx, p.y - 34, MEDAL_COL[have]);
+          Audio2.sfx('coin');
+        }
+        this.addXP(100 * (have + 1), world);
+      }
+    }
+  },
+  bestTime(i, secs) {
+    const b = Game.save.bestTimes;
+    if (!(b[i] <= secs)) { b[i] = Math.round(secs); return true; }
+    return false;
+  },
+};
+
+</script>
+<script>
 // ---- js/ui.js ----
 'use strict';
 // ---------------------------------------------------------------------------
@@ -6603,6 +7255,37 @@ function drawHUD(ctx, w, t) {
     ctx.fillStyle = i < p.webs ? '#ffffff' : '#3a3a4a';
     ctx.fillRect(28 + i * 5, 21, 3, 3);
   }
+  // Nivel y experiencia
+  const sv = Game.save;
+  UI.bar(ctx, 3, 28, 96, 2, (sv.xp || 0) / Progress.xpNeed(sv.level || 1), '#60c0ff');
+  Font.draw(ctx, 'NV ' + (sv.level || 1) + (sv.skillPts ? '  +' + sv.skillPts + ' PH' : ''), 4, 33, sv.skillPts ? UI.gold : '#a0c8ff', { shadow: UI.ink });
+  // Compañeros (multijugador)
+  if (w.coop) {
+    const cols = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
+    w.players.slice(1).forEach((q, i) => {
+      const x = 120 + i * 50, y = 14;
+      UI.panel(ctx, x, y, 47, 13, 'rgba(12,10,24,0.7)');
+      Font.draw(ctx, 'J' + (q.idx + 1), x + 3, y + 3, cols[q.idx], {});
+      if (q.state === 'dead') Font.draw(ctx, q.reviveT > 0 ? Math.ceil(q.reviveT) + 's' : 'KO', x + 17, y + 3, '#ff8080', {});
+      else { UI.bar(ctx, x + 16, y + 3, 28, 3, q.hp / q.maxHp, UI.red); UI.bar(ctx, x + 16, y + 8, 28, 2, q.focus / 100, UI.gold); }
+    });
+  }
+  // Artilugio y poder del traje
+  {
+    const g = GADGETS.find((x) => x.id === Gadgets.selected(p));
+    const gx = 4, gy = H - 26;
+    if (g && Progress.gadgetUnlocked(g) && !w.dialog) {
+      UI.panel(ctx, gx, gy, 128, 22, 'rgba(12,10,24,0.7)');
+      ctx.fillStyle = g.color; ctx.fillRect(gx + 3, gy + 3, 7, 7); ctx.fillStyle = UI.ink; ctx.fillRect(gx + 5, gy + 5, 3, 3);
+      Font.draw(ctx, g.name.toUpperCase(), gx + 13, gy + 3, UI.paper, {});
+      const max = Progress.gadgetMax(g), ch = (p.gch && p.gch[g.id]) || 0;
+      for (let i = 0; i < max; i++) { ctx.fillStyle = i < ch ? g.color : '#3a3a4a'; ctx.fillRect(gx + 124 - (max - i) * 5, gy + 4, 3, 4); }
+      // poder del traje
+      const pw = SUIT_POWERS[SuitPowers.current(p)], rdy = !(p.powerCd > 0);
+      Font.draw(ctx, (rdy ? '' : Math.ceil(p.powerCd) + 's ') + pw.name.toUpperCase(), gx + 13, gy + 13, rdy ? UI.gold : UI.dim, {});
+      ctx.fillStyle = rdy ? UI.gold : '#3a3a4a'; ctx.fillRect(gx + 4, gy + 14, 5, 5);
+    }
+  }
   // Refuerzo multiversal
   if (w.allyList && w.allyList().length) {
     const ready = w.allyCd <= 0 && !w.ally;
@@ -6640,13 +7323,13 @@ function drawHUD(ctx, w, t) {
   }
   // Objetivo
   if (w.objective) {
-    Font.draw(ctx, w.objective, 4, 32, UI.paper, { shadow: UI.ink });
+    Font.draw(ctx, w.objective, 4, 42, UI.paper, { shadow: UI.ink });
   }
   if (w.crime) {
     const c = w.crime;
     const s = Math.max(0, Math.ceil(c.t));
     const lbl = 'CRIMEN: ' + c.label + '  ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
-    Font.draw(ctx, lbl, 4, w.objective ? 43 : 32, '#ff6060', { shadow: UI.ink });
+    Font.draw(ctx, lbl, 4, w.objective ? 53 : 42, '#ff6060', { shadow: UI.ink });
   }
   // Jefe
   if (w.boss && !w.boss.dead && w.boss.state !== 'wait') {
@@ -6812,6 +7495,512 @@ class ChoiceBox {
 
 </script>
 <script>
+// ---- js/psmenu.js ----
+'use strict';
+// ---------------------------------------------------------------------------
+// Menú de pausa estilo PlayStation: pestañas MAPA · HABILIDADES · ARTILUGIOS ·
+// TRAJES · RÉCORDS · MULTIJUGADOR · SISTEMA. Cambia de pestaña con L1 / R1
+// (Q / E en el teclado).
+// ---------------------------------------------------------------------------
+const PS_COL = { bg: 'rgba(6,8,22,0.94)', line: 'rgba(90,120,200,0.18)', sel: 'rgba(224,32,44,0.45)', dim: '#6a6a88', blue: '#40b0ff' };
+const COOP_COLS = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
+
+function psBackground(ctx, t) {
+  ctx.fillStyle = PS_COL.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = PS_COL.line;
+  for (let i = -H; i < W; i += 18) { const x = (i + t * 6) % (W + H); ctx.fillRect(x, 0, 1, H); }
+}
+function psHints(ctx, parts) {
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, H - 11, W, 11);
+  let p = parts.slice();
+  while (p.length > 1 && Font.width(p.join('  ')) > W - 6) p.pop();
+  Font.draw(ctx, p.join('  '), W / 2, H - 9, '#c8c8dc', { align: 'center' });
+}
+const L = (a) => '[' + Input.label(a) + ']';
+
+// Qué dispositivo pulsó algo este fotograma (para saber quién es el jugador 1)
+function pressedDevice(actions) {
+  for (const id in Input.dev) for (const a of actions) if (Input.dev[id].pressed[a]) return id;
+  if (Input.menuKeys && (Input.menuKeys.confirm || Input.menuKeys.back)) return 'kb';
+  return null;
+}
+
+// ------------------------------------------------------------------ MAPA
+class MapTab {
+  constructor(M) { this.M = M; this.name = 'MAPA'; this.sel = 0; }
+  list() {
+    const w = this.M.world;
+    return UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || u === w.universe || (u === '616' && Game.save.stage >= STORY_DONE));
+  }
+  update(dt) {
+    const L2 = this.list();
+    if (Input.menu('up', dt)) { this.sel = (this.sel + L2.length - 1) % L2.length; Audio2.sfx('menu'); }
+    if (Input.menu('down', dt)) { this.sel = (this.sel + 1) % L2.length; Audio2.sfx('menu'); }
+    if (Input.confirm()) {
+      const w = this.M.world, u = L2[this.sel];
+      if (w.mode !== 'city') { this.msg = 'Termina o abandona el capítulo para viajar.'; Audio2.sfx('back'); }
+      else if (u === w.universe) { this.msg = 'Ya estás aquí.'; }
+      else { Audio2.sfx('select'); Game.save.cityPos[w.universe] = w.player.x; Game.saveGame(); Game.goCity({ universe: u }); return 'close'; }
+    }
+    return null;
+  }
+  draw(ctx, t) {
+    const w = this.M.world, lv = w.level, U = UNIVERSES[w.universe];
+    const mx = 10, my = 38, mw = W - 20, mh = 70;
+    Font.draw(ctx, (w.mode === 'mission' ? chapterLabel(w.missionIdx) + ': ' + MISSIONS[w.missionIdx].name : U.name + ' · ' + U.city).toUpperCase(), mx, 30, UI.gold, {});
+    ctx.fillStyle = 'rgba(20,24,48,0.9)'; ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = '#3a4a80'; ctx.lineWidth = 1; ctx.strokeRect(mx + 0.5, my + 0.5, mw - 1, mh - 1);
+    const sx = (x) => mx + x / lv.width * mw, sy = (y) => my + y / lv.height * mh;
+    for (const s of lv.solids) {
+      if (s.kind === 'block') continue;
+      ctx.fillStyle = s.kind === 'ground' ? '#4a4a64' : s.kind === 'tower' ? '#7a86b0' : '#56608a';
+      ctx.fillRect(sx(s.x), sy(s.y), Math.max(1, s.w / lv.width * mw), Math.max(1, s.h / lv.height * mh));
+    }
+    ctx.fillStyle = '#8a90b0';
+    for (const o of lv.oneways || []) ctx.fillRect(sx(o.x), sy(o.y), Math.max(1, o.w / lv.width * mw), 1);
+    if (lv.water) { ctx.fillStyle = 'rgba(60,120,200,0.5)'; ctx.fillRect(mx, sy(lv.water), mw, my + mh - sy(lv.water)); }
+    // arenas de la misión
+    for (const a of lv.arenas) {
+      ctx.fillStyle = a.done ? 'rgba(120,120,140,0.35)' : a.boss ? 'rgba(255,60,60,0.45)' : 'rgba(255,160,60,0.35)';
+      ctx.fillRect(sx(a.x1), my + 2, Math.max(2, (a.x2 - a.x1) / lv.width * mw), mh - 4);
+      if (a.boss && !a.done) Font.draw(ctx, 'JEFE', sx((a.x1 + a.x2) / 2), my + 3, '#ff8080', { align: 'center' });
+    }
+    // fragmentos
+    for (const tk of lv.tokens) {
+      const got = Game.save.tokens.includes(tk.id);
+      ctx.fillStyle = got ? '#4a4a60' : (Math.floor(t * 3 + tk.idx) % 2 ? '#80ffe8' : '#ff60c0');
+      ctx.fillRect(Math.round(sx(tk.x)) - 1, Math.round(sy(tk.y)) - 1, 3, 3);
+    }
+    if (w.markerX) { ctx.fillStyle = Math.floor(t * 4) % 2 ? '#60e0ff' : '#2080c0'; ctx.fillRect(Math.round(sx(w.markerX)), my, 2, mh); Font.draw(ctx, 'MISIÓN', sx(w.markerX), my + mh + 2, '#60e0ff', { align: 'center' }); }
+    if (w.crime) { ctx.fillStyle = Math.floor(t * 6) % 2 ? '#ff3030' : '#ffffff'; ctx.fillRect(Math.round(sx(w.crime.x)) - 2, sy(lv.groundY) - 6, 5, 5); Font.draw(ctx, '!', sx(w.crime.x), sy(lv.groundY) - 14, '#ff4040', { align: 'center' }); }
+    // vista de la cámara y jugadores
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.strokeRect(Math.round(sx(w.cam.x)) + 0.5, Math.round(sy(w.cam.y)) + 0.5, W / lv.width * mw, H / lv.height * mh);
+    w.players.forEach((q, i) => {
+      if (q.state === 'dead') return;
+      ctx.fillStyle = COOP_COLS[i]; const px = Math.round(sx(q.cx)), py = Math.round(sy(q.cy));
+      ctx.fillRect(px - 2, py - 2, 5, 5); ctx.fillStyle = '#fff'; ctx.fillRect(px, py, 1, 1);
+      if (w.coop) Font.draw(ctx, 'J' + (i + 1), px, py - 9, COOP_COLS[i], { align: 'center', outline: '#000' });
+    });
+    // leyenda
+    const ly = my + mh + 10;
+    const leg = [['#ff5060', 'TÚ'], ['#80ffe8', 'FRAGMENTO'], ['#60e0ff', 'MISIÓN'], ['#ff3030', 'CRIMEN'], ['#ff8080', 'JEFE']];
+    leg.forEach(([c, n], i) => { ctx.fillStyle = c; ctx.fillRect(mx + 238 + (i % 2) * 64, ly + Math.floor(i / 2) * 11 + 1, 4, 4); Font.draw(ctx, n, mx + 246 + (i % 2) * 64, ly + Math.floor(i / 2) * 11, UI.paper, {}); });
+    // universos
+    Font.draw(ctx, 'VIAJAR ENTRE UNIVERSOS', mx, ly, UI.gold, {});
+    this.list().forEach((u, i) => {
+      const y = ly + 11 + i * 9, sel = i === this.sel;
+      if (sel) { ctx.fillStyle = PS_COL.sel; ctx.fillRect(mx - 2, y - 1, 224, 9); }
+      const n = Game.save.tokens.filter((k) => String(k).startsWith(u + ':')).length;
+      Font.draw(ctx, UNIVERSES[u].name.toUpperCase() + (u === w.universe ? ' (AQUÍ)' : ''), mx, y, sel ? UI.gold : UI.paper, {});
+      Font.draw(ctx, n + '/5', mx + 220, y, n === 5 ? '#80ff80' : UI.dim, { align: 'right' });
+    });
+    if (this.msg) Font.draw(ctx, this.msg, W / 2, H - 22, '#ff9080', { align: 'center' });
+  }
+  hints() { return [L('JUMP') + ' VIAJAR', L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ HABILIDADES
+class SkillsTab {
+  constructor(M) { this.M = M; this.name = 'HABILIDADES'; this.col = 0; this.row = 0; }
+  cols() { return SKILL_BRANCHES.map((b) => SKILLS.filter((s) => s.b === b.id)); }
+  update(dt) {
+    const C = this.cols();
+    if (Input.menu('left', dt)) { this.col = (this.col + 2) % 3; this.row = Math.min(this.row, C[this.col].length - 1); Audio2.sfx('menu'); }
+    if (Input.menu('right', dt)) { this.col = (this.col + 1) % 3; this.row = Math.min(this.row, C[this.col].length - 1); Audio2.sfx('menu'); }
+    if (Input.menu('up', dt)) { this.row = (this.row + C[this.col].length - 1) % C[this.col].length; Audio2.sfx('menu'); }
+    if (Input.menu('down', dt)) { this.row = (this.row + 1) % C[this.col].length; Audio2.sfx('menu'); }
+    if (Input.confirm()) {
+      const sk = C[this.col][this.row];
+      if (Progress.learn(sk)) { Audio2.sfx('heal'); this.flash = 0.4; for (const q of this.M.world.players) q.refreshStats(); }
+      else Audio2.sfx('back');
+    }
+    if (this.flash > 0) this.flash -= dt;
+    return null;
+  }
+  draw(ctx, t) {
+    const s = Game.save, C = this.cols();
+    Font.draw(ctx, 'NIVEL ' + s.level, 10, 29, UI.gold, {});
+    UI.bar(ctx, 62, 30, 80, 4, s.xp / Progress.xpNeed(s.level), '#60c0ff');
+    Font.draw(ctx, s.xp + '/' + Progress.xpNeed(s.level), 146, 29, '#a0c8ff', {});
+    Font.draw(ctx, 'PUNTOS: ' + s.skillPts, W - 10, 29, s.skillPts ? UI.gold : UI.dim, { align: 'right' });
+    const cw = (W - 20) / 3;
+    SKILL_BRANCHES.forEach((b, ci) => {
+      const x = 10 + ci * cw;
+      ctx.fillStyle = b.color; ctx.fillRect(x, 40, cw - 6, 2);
+      Font.draw(ctx, b.name, x + (cw - 6) / 2, 45, b.color, { align: 'center' });
+      C[ci].forEach((sk, ri) => {
+        const y = 57 + ri * 13, sel = ci === this.col && ri === this.row;
+        const has = Progress.has(sk.id), can = Progress.canLearn(sk), locked = sk.req && !Progress.has(sk.req);
+        ctx.fillStyle = sel ? PS_COL.sel : has ? 'rgba(255,208,64,0.15)' : 'rgba(255,255,255,0.05)';
+        ctx.fillRect(x, y - 2, cw - 6, 11);
+        if (sel && this.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x, y - 2, cw - 6, 11); }
+        ctx.fillStyle = has ? UI.gold : can ? '#ffffff' : '#3a3a50'; ctx.fillRect(x + 2, y + 1, 5, 5);
+        if (has) { ctx.fillStyle = UI.ink; ctx.fillRect(x + 3, y + 3, 1, 1); ctx.fillRect(x + 4, y + 4, 1, 1); ctx.fillRect(x + 5, y + 2, 1, 2); }
+        let nm = sk.name.toUpperCase(); while (Font.width(nm) > cw - 18) nm = nm.slice(0, -1);
+        Font.draw(ctx, nm, x + 10, y, has ? UI.gold : locked ? PS_COL.dim : UI.paper, {});
+      });
+    });
+    const sk = C[this.col][this.row];
+    UI.panel(ctx, 10, 152, W - 20, 40, 'rgba(20,24,48,0.9)');
+    Font.draw(ctx, sk.name.toUpperCase(), 16, 157, SKILL_BRANCHES[this.col].color, {});
+    Font.wrap(sk.desc, W - 40).slice(0, 2).forEach((ln, i) => Font.draw(ctx, ln, 16, 168 + i * 10, UI.paper, {}));
+    const st = Progress.has(sk.id) ? 'APRENDIDA' : sk.req && !Progress.has(sk.req) ? 'REQUIERE: ' + SKILLS.find((x) => x.id === sk.req).name.toUpperCase() : Game.save.skillPts ? 'COSTE: 1 PUNTO' : 'SIN PUNTOS: SUBE DE NIVEL';
+    Font.draw(ctx, st, W - 16, 157, Progress.has(sk.id) ? '#80ff80' : UI.dim, { align: 'right' });
+  }
+  hints() { return [L('JUMP') + ' APRENDER', L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ ARTILUGIOS
+class GadgetsTab {
+  constructor(M) { this.M = M; this.name = 'ARTILUGIOS'; this.sel = Math.max(0, GADGETS.findIndex((g) => g.id === Game.save.gadget)); }
+  rows() { return GADGETS.map((g) => ({ g })).concat(UPGRADES.map((u) => ({ u }))); }
+  update(dt) {
+    const R = this.rows();
+    if (Input.menu('up', dt)) { this.sel = (this.sel + R.length - 1) % R.length; Audio2.sfx('menu'); }
+    if (Input.menu('down', dt)) { this.sel = (this.sel + 1) % R.length; Audio2.sfx('menu'); }
+    const r = R[this.sel];
+    if (r.g) {
+      const g = r.g;
+      if (Input.confirm()) {
+        if (!Progress.gadgetUnlocked(g)) { this.msg = 'Se desbloquea en el nivel ' + g.lvl + '.'; Audio2.sfx('back'); }
+        else { Game.save.gadget = g.id; Game.saveGame(); this.msg = g.name + ' equipado.'; Audio2.sfx('select'); }
+      }
+      if (Input.pressed('ATTACK') && Progress.gadgetUnlocked(g)) {
+        const lv = Progress.gadgetLevel(g);
+        if (lv >= 3) this.msg = 'Ya está al máximo.';
+        else if (Game.save.tech < GADGET_COST[lv]) { this.msg = 'Te falta tecnología (' + (GADGET_COST[lv] - Game.save.tech) + ').'; Audio2.sfx('back'); }
+        else { Game.save.tech -= GADGET_COST[lv]; Game.save.gadgetLvl[g.id] = lv + 1; Game.saveGame(); this.msg = '¡' + g.name + ' mejorado a nivel ' + (lv + 1) + '!'; Audio2.sfx('heal'); }
+      }
+    } else if (Input.confirm()) {
+      const u = r.u, lvl = Game.save.upgrades[u.id];
+      if (lvl >= 3) this.msg = 'Ya está al máximo.';
+      else if (Game.save.tech < u.cost[lvl]) { this.msg = 'Te falta tecnología (' + (u.cost[lvl] - Game.save.tech) + ').'; Audio2.sfx('back'); }
+      else {
+        Game.save.tech -= u.cost[lvl]; Game.save.upgrades[u.id]++; Game.saveGame();
+        for (const q of this.M.world.players) { q.refreshStats(); if (u.id === 'hp') q.hp += 20; }
+        this.msg = '¡Mejora instalada!'; Audio2.sfx('heal');
+      }
+    }
+    return null;
+  }
+  draw(ctx, t) {
+    const R = this.rows();
+    Font.draw(ctx, 'ARTILUGIOS', 10, 29, UI.gold, {});
+    drawTechIcon(ctx, W - 64, 28, t); Font.draw(ctx, 'TECNOLOGÍA ' + Game.save.tech, W - 10, 29, UI.gold, { align: 'right' });
+    R.forEach((r, i) => {
+      const y = i < GADGETS.length ? 38 + i * 10 : 50 + i * 10, sel = i === this.sel;
+      if (i === GADGETS.length) Font.draw(ctx, 'MEJORAS STARK', 10, y - 11, UI.gold, {});
+      if (sel) { ctx.fillStyle = PS_COL.sel; ctx.fillRect(8, y - 1, 176, 9); }
+      if (r.g) {
+        const g = r.g, un = Progress.gadgetUnlocked(g);
+        ctx.fillStyle = un ? g.color : '#3a3a50'; ctx.fillRect(12, y, 6, 6);
+        Font.draw(ctx, un ? g.name.toUpperCase() : '???  (NV ' + g.lvl + ')', 22, y, un ? (Game.save.gadget === g.id ? UI.gold : UI.paper) : PS_COL.dim, {});
+        if (un) Font.draw(ctx, '*'.repeat(Progress.gadgetLevel(g)), 180, y, UI.gold, { align: 'right' });
+      } else {
+        const lvl = Game.save.upgrades[r.u.id];
+        Font.draw(ctx, r.u.name.toUpperCase(), 22, y, UI.paper, {});
+        Font.draw(ctx, '#'.repeat(lvl) + '-'.repeat(3 - lvl), 180, y, UI.gold, { align: 'right' });
+      }
+    });
+    // ficha del elemento seleccionado
+    const r = R[this.sel];
+    UI.panel(ctx, 192, 38, W - 200, 150, 'rgba(20,24,48,0.9)');
+    if (r.g) {
+      const g = r.g, un = Progress.gadgetUnlocked(g);
+      Font.draw(ctx, un ? g.name.toUpperCase() : 'BLOQUEADO', 198, 44, un ? g.color : PS_COL.dim, {});
+      Font.wrap(un ? g.desc : 'Sube al nivel ' + g.lvl + ' para desbloquearlo.', W - 214).forEach((ln, i) => Font.draw(ctx, ln, 198, 58 + i * 10, UI.paper, {}));
+      if (un) {
+        const lv = Progress.gadgetLevel(g);
+        Font.draw(ctx, 'NIVEL ' + lv + '/3', 198, 100, UI.gold, {});
+        Font.draw(ctx, 'CARGAS: ' + Progress.gadgetMax(g), 198, 112, UI.paper, {});
+        Font.draw(ctx, 'RECARGA: ' + Progress.gadgetCd(g).toFixed(1) + ' s', 198, 124, UI.paper, {});
+        Font.draw(ctx, lv < 3 ? 'MEJORAR: ' + GADGET_COST[lv] + ' TEC ' + L('ATTACK') : 'NIVEL MÁXIMO', 198, 140, lv < 3 ? '#80e0ff' : '#80ff80', {});
+        Font.draw(ctx, Game.save.gadget === g.id ? 'EQUIPADO' : L('JUMP') + ' EQUIPAR', 198, 152, Game.save.gadget === g.id ? '#80ff80' : UI.dim, {});
+        Font.draw(ctx, 'EN JUEGO: ' + L('GADGET') + ' USAR', 198, 166, UI.dim, {});
+        Font.draw(ctx, L('NEXT_GADGET') + ' CAMBIAR DE ARTILUGIO', 198, 176, UI.dim, {});
+      }
+    } else {
+      const u = r.u, lvl = Game.save.upgrades[u.id];
+      Font.draw(ctx, u.name.toUpperCase(), 198, 44, UI.gold, {});
+      Font.wrap(u.desc, W - 214).forEach((ln, i) => Font.draw(ctx, ln, 198, 58 + i * 10, UI.paper, {}));
+      Font.draw(ctx, lvl >= 3 ? 'NIVEL MÁXIMO' : 'COSTE: ' + u.cost[lvl] + ' TECNOLOGÍA', 198, 100, lvl >= 3 ? '#80ff80' : '#80e0ff', {});
+    }
+    if (this.msg) Font.draw(ctx, this.msg, W / 2, H - 22, UI.gold, { align: 'center' });
+  }
+  hints() { return [L('JUMP') + ' EQUIPAR / COMPRAR', L('ATTACK') + ' MEJORAR', L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ TRAJES
+class SuitsTab {
+  constructor(M) { this.M = M; this.name = 'TRAJES'; this.sel = Math.max(0, SUITS.findIndex((s) => s.id === Game.save.suit)); this.scroll = 0; }
+  status(s) {
+    if (Progress.suitOwned(s)) return { own: true };
+    if (s.craft) return { craft: true, ok: Game.save.level >= s.lvl && Game.save.tech >= s.tech };
+    const mi = MISSION_SUIT.indexOf(s.id);
+    return { story: mi >= 0 ? chapterLabel(mi) : 'la historia' };
+  }
+  update(dt) {
+    const C = 8, n = SUITS.length;
+    if (Input.menu('left', dt)) { this.sel = (this.sel + n - 1) % n; Audio2.sfx('menu'); }
+    if (Input.menu('right', dt)) { this.sel = (this.sel + 1) % n; Audio2.sfx('menu'); }
+    if (Input.menu('up', dt)) { this.sel = Math.max(0, this.sel - C); Audio2.sfx('menu'); }
+    if (Input.menu('down', dt)) { this.sel = Math.min(n - 1, this.sel + C); Audio2.sfx('menu'); }
+    const row = Math.floor(this.sel / C);
+    if (row < this.scroll) this.scroll = row; if (row > this.scroll + 2) this.scroll = row - 2;
+    const s = SUITS[this.sel], st = this.status(s);
+    if (Input.confirm()) {
+      if (st.own) { Game.save.suit = s.id; if (this.M.world.missionIdx !== EXTRA_MISSION) this.M.world.players[0].suitId = Game.coop ? s.id : undefined; if (Game.coop) Game.coop[0].suit = s.id; Game.saveGame(); this.msg = s.name + ' puesto.'; Audio2.sfx('select'); }
+      else if (st.craft) {
+        if (Game.save.level < s.lvl) { this.msg = 'Necesitas nivel ' + s.lvl + '.'; Audio2.sfx('back'); }
+        else if (Game.save.tech < s.tech) { this.msg = 'Te falta tecnología (' + (s.tech - Game.save.tech) + ').'; Audio2.sfx('back'); }
+        else { Game.save.tech -= s.tech; Game.save.suits.push(s.id); Game.save.suit = s.id; Game.saveGame(); this.msg = '¡' + s.name + ' fabricado!'; Audio2.sfx('win'); this.M.world.particles.burst(this.M.world.player.cx, this.M.world.player.cy, 20, UI.gold, 90); }
+      } else { this.msg = 'Se consigue en ' + st.story.toLowerCase() + '.'; Audio2.sfx('back'); }
+    }
+    if (Input.pressed('ATTACK') && st.own) { Game.save.power = s.power; Game.saveGame(); this.msg = 'Poder equipado: ' + SUIT_POWERS[s.power].name + '.'; Audio2.sfx('select'); }
+    if (Input.pressed('SHOOT')) { Game.save.power = null; Game.saveGame(); this.msg = 'Poder: el de cada traje.'; Audio2.sfx('menu'); }
+    return null;
+  }
+  draw(ctx, t) {
+    const C = 8, cw = 28, ch = 44, gx = 10, gy = 40;
+    Font.draw(ctx, 'TRAJES ' + SUITS.filter((s) => Progress.suitOwned(s)).length + '/' + SUITS.length, 10, 29, UI.gold, {});
+    drawTechIcon(ctx, W - 64, 28, t); Font.draw(ctx, 'TECNOLOGÍA ' + Game.save.tech, W - 10, 29, UI.gold, { align: 'right' });
+    for (let r = 0; r < 3; r++) for (let c = 0; c < C; c++) {
+      const i = (this.scroll + r) * C + c; if (i >= SUITS.length) continue;
+      const s = SUITS[i], x = gx + c * cw, y = gy + r * ch, sel = i === this.sel, st = this.status(s);
+      ctx.fillStyle = sel ? PS_COL.sel : Game.save.suit === s.id ? 'rgba(255,208,64,0.2)' : 'rgba(255,255,255,0.06)';
+      ctx.fillRect(x, y, cw - 2, ch - 2);
+      if (!st.own) ctx.globalAlpha = st.craft && st.ok ? 0.6 : 0.22;
+      Rig.draw(ctx, x + 13, y + ch - 6, 1, Poses.idle(t + i), st.own || (st.craft && st.ok) ? s.palObj : FLASH_PAL, { scale: 1.05 });
+      ctx.globalAlpha = 1;
+      if (st.craft && !st.own) Font.draw(ctx, 'NV' + s.lvl, x + 13, y + 2, st.ok ? UI.gold : PS_COL.dim, { align: 'center' });
+      if (Game.save.suit === s.id) { ctx.fillStyle = UI.gold; ctx.fillRect(x + 1, y + 1, 3, 3); }
+    }
+    // barra de desplazamiento
+    const rows = Math.ceil(SUITS.length / C);
+    ctx.fillStyle = '#2a2a40'; ctx.fillRect(gx + C * cw + 1, gy, 2, ch * 3);
+    ctx.fillStyle = UI.gold; ctx.fillRect(gx + C * cw + 1, gy + this.scroll / rows * ch * 3, 2, 3 / rows * ch * 3);
+    // ficha
+    const s = SUITS[this.sel], st = this.status(s), px = 244;
+    UI.panel(ctx, px, 38, W - px - 6, 162, 'rgba(20,24,48,0.9)');
+    Rig.draw(ctx, px + 67, 110, Math.sin(t * 0.8) > 0 ? 1 : -1, Poses.idle(t), st.own || st.craft ? s.palObj : FLASH_PAL, { scale: 2.6 });
+    let nm = s.name.toUpperCase(); while (Font.width(nm) > W - px - 12) nm = nm.slice(0, -1);
+    Font.draw(ctx, nm, px + 67, 116, st.own ? UI.gold : UI.paper, { align: 'center' });
+    Font.wrap(s.desc, W - px - 16).slice(0, 2).forEach((ln, i) => Font.draw(ctx, ln, px + 6, 128 + i * 9, '#b8b8d0', {}));
+    const P = SUIT_POWERS[s.power];
+    Font.draw(ctx, P.name.toUpperCase(), px + 6, 148, '#80e0ff', {});
+    Font.wrap(P.desc, W - px - 16).slice(0, 3).forEach((ln, i) => Font.draw(ctx, ln, px + 6, 157 + i * 8, '#b8b8d0', {}));
+    const stTxt = st.own ? (Game.save.suit === s.id ? 'PUESTO' : L('JUMP') + ' PONER') : st.craft ? 'CREAR: ' + s.tech + ' TEC NV' + s.lvl : st.story;
+    Font.draw(ctx, stTxt, px + 6, 186, st.own ? '#80ff80' : st.craft && st.ok ? UI.gold : PS_COL.dim, {});
+    const eq = Game.save.power ? SUIT_POWERS[Game.save.power].name : 'EL DEL TRAJE';
+    Font.draw(ctx, 'PODER EQUIPADO: ' + eq.toUpperCase(), 10, 176, UI.gold, {});
+    if (this.msg) Font.draw(ctx, this.msg, 10, 188, '#80ff80', {});
+  }
+  hints() { return [L('JUMP') + ' PONER / FABRICAR', L('ATTACK') + ' EQUIPAR PODER', L('SHOOT') + ' PODER DEL TRAJE', L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ RÉCORDS
+class RecordsTab {
+  constructor(M) { this.M = M; this.name = 'RÉCORDS'; }
+  update() { return null; }
+  draw(ctx, t) {
+    const r = Game.save.records, s = Game.save;
+    const rows = [
+      ['NIVEL', s.level], ['COMBO MÁXIMO', 'x' + (r.maxCombo || 0)], ['ENEMIGOS DERROTADOS', Progress.stat('kos')], ['CRÍMENES DETENIDOS', Progress.stat('crimes')],
+      ['JEFES DERROTADOS', r.bosses || 0], ['METROS BALANCEADO', Math.floor(r.swingDist || 0) + ' m'], ['MÁS TIEMPO EN EL AIRE', (r.airMax || 0) + ' s'],
+      ['ESQUIVAS PERFECTAS', r.perfect || 0], ['GOLPES CON ARTILUGIOS', r.gadgetHits || 0], ['PODERES USADOS', r.powers || 0],
+      ['FRAGMENTOS', Progress.stat('tokens') + '/' + STORY.fragments.length], ['TRAJES', SUITS.filter((x) => Progress.suitOwned(x)).length + '/' + SUITS.length],
+    ];
+    Font.draw(ctx, 'ESTADÍSTICAS', 10, 29, UI.gold, {});
+    rows.forEach(([a, b], i) => { Font.draw(ctx, a, 10, 40 + i * 9, UI.paper, {}); Font.draw(ctx, String(b), 170, 40 + i * 9, UI.gold, { align: 'right' }); });
+    Font.draw(ctx, 'MEJORES TIEMPOS', 10, 150, UI.gold, {});
+    MISSIONS.forEach((m, i) => {
+      const bt = s.bestTimes[i];
+      const x = 10 + (i % 2) * 84, y = 160 + Math.floor(i / 2) * 9;
+      Font.draw(ctx, (i === EXTRA_MISSION ? 'EX' : 'C' + (i + 1)) + ' ' + (bt ? Math.floor(bt / 60) + ':' + ('0' + (bt % 60)).slice(-2) : '--:--'), x, y, bt ? UI.paper : PS_COL.dim, {});
+    });
+    Font.draw(ctx, 'RETOS', 184, 29, UI.gold, {});
+    CHALLENGES.forEach((ch, i) => {
+      const y = 40 + i * 15, m = Progress.medal(ch), v = Progress.stat(ch.stat);
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = k < m ? MEDAL_COL[k] : '#2a2a40'; ctx.beginPath(); ctx.arc(188 + k * 7, y + 3, 3, 0, TAU); ctx.fill(); }
+      Font.draw(ctx, ch.name.toUpperCase(), 210, y, m === 3 ? UI.gold : UI.paper, {});
+      const goal = ch.goals[Math.min(m, 2)];
+      UI.bar(ctx, 210, y + 9, 76, 2, Math.min(1, v / goal), m === 3 ? '#ffd040' : '#60c0ff');
+      Font.draw(ctx, (m === 3 ? 'COMPLETO' : v + '/' + goal + (ch.unit || '')), W - 8, y + 7, UI.dim, { align: 'right' });
+    });
+  }
+  hints() { return [L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ MULTIJUGADOR
+// Hasta 4 jugadores. El J1 es quien abrió el menú; los demás se unen pulsando
+// SALTAR en su propio mando (o en el teclado, si el J1 usa mando).
+class CoopTab {
+  constructor(M, standalone) {
+    this.M = M; this.name = 'MULTIJUGADOR'; this.standalone = standalone;
+    if (!Game.p1Dev) Game.p1Dev = M.openDev || 'kb';
+    this.slots = Game.coop ? Game.coop.map((c) => ({ devs: c.devs.slice(), suit: c.suit })) : [{ devs: null, suit: Game.save.suit }];
+    this.slots[0].devs = null; // J1: todo lo que no usen los demás
+  }
+  claimed() { const s = new Set(); this.slots.slice(1).forEach((sl) => sl.devs.forEach((d) => s.add(d))); return s; }
+  ownedSuits() { return SUITS.filter((s) => Progress.suitOwned(s)); }
+  cycle(sl, d) { const o = this.ownedSuits(); const i = o.findIndex((s) => s.id === sl.suit); sl.suit = o[(i + d + o.length) % o.length].id; Audio2.sfx('menu'); }
+  update() {
+    const claimed = this.claimed();
+    for (const id in Input.dev) {
+      const d = Input.dev[id];
+      const slot = this.slots.findIndex((sl, i) => i > 0 && sl.devs.includes(id));
+      if (slot < 0) {
+        // unirse: cualquier dispositivo que no sea el del J1
+        if (d.pressed.JUMP && id !== Game.p1Dev && !claimed.has(id) && this.slots.length < 4) {
+          const used = new Set(this.slots.map((s) => s.suit));
+          const free = this.ownedSuits().find((s) => !used.has(s.id)) || SUITS[0];
+          this.slots.push({ devs: [id], suit: free.id });
+          Audio2.sfx('select'); this.apply(); return null;
+        }
+        if (id === Game.p1Dev || (!claimed.has(id) && this.slots.length === 1)) {
+          if (d.pressed.LEFT) this.cycle(this.slots[0], -1);
+          if (d.pressed.RIGHT) this.cycle(this.slots[0], 1);
+        }
+      } else {
+        const sl = this.slots[slot];
+        if (d.pressed.LEFT) { this.cycle(sl, -1); this.apply(); }
+        if (d.pressed.RIGHT) { this.cycle(sl, 1); this.apply(); }
+        if (d.pressed.DODGE) { this.slots.splice(slot, 1); Audio2.sfx('back'); this.apply(); return null; }
+      }
+    }
+    return null;
+  }
+  apply() {
+    const claimed = this.claimed();
+    if (this.slots.length < 2) { Game.coop = null; }
+    else {
+      // J1: su dispositivo + el teclado si nadie lo usa + mandos sin reclamar
+      const p1 = Object.keys(Input.dev).filter((id) => !claimed.has(id));
+      if (!p1.includes('kb') && !claimed.has('kb')) p1.push('kb');
+      Game.coop = this.slots.map((sl, i) => ({ devs: i === 0 ? p1 : sl.devs, suit: sl.suit }));
+    }
+    if (this.slots[0].suit !== Game.save.suit && Progress.suitOwned(SUITS.find((s) => s.id === this.slots[0].suit))) Game.save.suit = this.slots[0].suit;
+    const w = this.M && this.M.world;
+    if (w) { w.setupPlayers(); if (!Game.coop && w.missionIdx !== EXTRA_MISSION) w.players[0].suitId = undefined; }
+  }
+  draw(ctx, t) {
+    Font.draw(ctx, 'MULTIJUGADOR LOCAL · HASTA 4 JUGADORES', W / 2, 29, UI.gold, { align: 'center' });
+    Font.draw(ctx, 'Cada amigo pulsa SALTAR en su propio mando para unirse.', W / 2, 40, UI.paper, { align: 'center' });
+    const sw = (W - 20) / 4;
+    for (let i = 0; i < 4; i++) {
+      const x = 10 + i * sw, sl = this.slots[i];
+      UI.panel(ctx, x + 2, 52, sw - 4, 136, sl ? 'rgba(20,24,48,0.95)' : 'rgba(20,24,48,0.5)');
+      ctx.fillStyle = COOP_COLS[i]; ctx.fillRect(x + 2, 52, sw - 4, 3);
+      Font.draw(ctx, 'JUGADOR ' + (i + 1), x + sw / 2, 59, COOP_COLS[i], { align: 'center' });
+      if (!sl) {
+        const blink = Math.floor(t * 2) % 2;
+        Font.draw(ctx, 'PULSA', x + sw / 2, 100, blink ? UI.paper : UI.dim, { align: 'center' });
+        Font.draw(ctx, 'SALTAR', x + sw / 2, 110, blink ? UI.gold : UI.dim, { align: 'center' });
+        Font.draw(ctx, 'PARA UNIRTE', x + sw / 2, 120, blink ? UI.paper : UI.dim, { align: 'center' });
+        continue;
+      }
+      const s = SUITS.find((q) => q.id === sl.suit) || SUITS[0];
+      Rig.draw(ctx, x + sw / 2, 150, 1, i % 2 ? Poses.idle(t + i) : Poses.guard ? Poses.guard() : Poses.idle(t), s.palObj, { scale: 2.4 });
+      const fit = (txt, wmax) => { let q = txt; while (Font.width(q) > wmax) q = q.slice(0, -1); return q; };
+      const dev = i === 0 ? (Game.coop ? Input.devName(Game.p1Dev || 'kb') : 'TODOS') : sl.devs.map((d) => Input.devName(d)).join(' ');
+      Font.draw(ctx, fit(dev, sw - 10), x + sw / 2, 68, UI.dim, { align: 'center' });
+      Font.draw(ctx, '<', x + 6, 158, UI.gold, {}); Font.draw(ctx, '>', x + sw - 6, 158, UI.gold, { align: 'right' });
+      Font.draw(ctx, fit(s.name.toUpperCase(), sw - 24), x + sw / 2, 158, UI.paper, { align: 'center' });
+      Font.draw(ctx, fit(SUIT_POWERS[s.power].name.toUpperCase(), sw - 10), x + sw / 2, 168, '#80e0ff', { align: 'center' });
+      if (i > 0) Font.draw(ctx, fit('ESQUIVAR: SALIR', sw - 8), x + sw / 2, 178, PS_COL.dim, { align: 'center' });
+    }
+    Font.draw(ctx, 'Los caídos vuelven a los 5 s.', W / 2, 192, UI.dim, { align: 'center' });
+  }
+  hints() { return ['IZQ/DER CAMBIA TRAJE', L('PAUSE') + ' LISTO']; }
+}
+
+// ------------------------------------------------------------------ SISTEMA
+class SystemTab {
+  constructor(M) {
+    this.M = M; this.name = 'SISTEMA';
+    const w = M.world, city = w.mode === 'city';
+    const items = [
+      { label: 'REANUDAR', act: () => { this.res = 'close'; } },
+      { label: 'CONTROLES', act: () => M.push(new ControlsScreen()) },
+      { label: 'OPCIONES', act: () => M.push(new OptionsScreen()) },
+    ];
+    if (city) items.push({ label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[w.universe] = w.player.x; Game.saveGame(); Game.toMenu(); } });
+    else if (Game.save.stage === 0 || w.missionIdx === EXTRA_MISSION) items.push({ label: 'SALIR AL MENÚ PRINCIPAL', act: () => M.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) });
+    else items.push({ label: 'ABANDONAR CAPÍTULO', act: () => M.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[w.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) });
+    this.menu = new Menu(items);
+  }
+  update(dt) { const r = this.menu.update(dt); if (this.res) { const x = this.res; this.res = null; return x; } return r === 'back' ? null : r; }
+  draw(ctx, t) {
+    this.menu.draw(ctx, W / 2, 60, t, { lh: 18 });
+    const s = Game.save;
+    Font.draw(ctx, 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + '   CÁNONES ROTOS ' + canonCount() + '/' + CANON_ORDER.length, W / 2, 160, UI.dim, { align: 'center' });
+    const w = this.M.world, U = UNIVERSES[w.universe];
+    Font.draw(ctx, w.mode === 'mission' ? chapterLabel(w.missionIdx) + ': ' + MISSIONS[w.missionIdx].name : U.name + ' · ' + U.city, W / 2, 174, UI.gold, { align: 'center' });
+  }
+  hints() { return [L('JUMP') + ' ACEPTAR', L('DODGE') + ' VOLVER']; }
+}
+
+// ------------------------------------------------------------------ Menú principal
+class PsMenu {
+  constructor(world) {
+    this.world = world; this.t = 0; this.sub = null;
+    this.openDev = pressedDevice(['PAUSE']) || Game.p1Dev || 'kb';
+    if (!Game.coop) Game.p1Dev = this.openDev;
+    this.tabs = [new MapTab(this), new SkillsTab(this), new GadgetsTab(this), new SuitsTab(this), new RecordsTab(this), new CoopTab(this), new SystemTab(this)];
+    this.tab = 0; this.lock = 0.15;
+    Audio2.musicGain && (Audio2.musicGain.gain.value = Game.settings.music / 10 * 0.2);
+  }
+  push(s) { this.sub = new MenuStack(s); }
+  close() { Game.applySettings(); Game.saveGame(); return 'close'; }
+  update(dt) {
+    this.t += dt;
+    if (this.lock > 0) { this.lock -= dt; return null; }
+    if (this.sub) { const r = this.sub.update(dt); if (r === 'close') this.sub = null; return null; }
+    const tab = this.tabs[this.tab];
+    const prev = Input.pressed('SPECIAL') || (Input.keys.KeyQ && Input.pressed('SPECIAL'));
+    const next = Input.pressed('WEB') || Input.pressed('ALLY');
+    if (prev || next) { this.tab = (this.tab + (next ? 1 : this.tabs.length - 1)) % this.tabs.length; Audio2.sfx('menu'); return null; }
+    const tabTap = Input.tap && Input.tap.y < 22;
+    if (tabTap) { const i = Math.floor(Input.takeTap().x / (W / this.tabs.length)); if (this.tabs[i]) { this.tab = i; Audio2.sfx('menu'); } return null; }
+    const r = tab.update(dt);
+    if (r === 'close') return this.close();
+    if (Input.pressed('PAUSE') || (!(tab instanceof CoopTab) && !(tab instanceof SystemTab) && Input.back())) return this.close();
+    if (tab instanceof SystemTab && Input.back()) return this.close();
+    return null;
+  }
+  draw(ctx, t) {
+    psBackground(ctx, this.t);
+    // barra de pestañas
+    const tw = W / this.tabs.length;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, W, 20);
+    const short = { HABILIDADES: 'HABILID.', ARTILUGIOS: 'ARTILUG.', MULTIJUGADOR: 'MULTIJ.' };
+    this.tabs.forEach((tb, i) => {
+      const act = i === this.tab, x = i * tw;
+      if (act) { ctx.fillStyle = 'rgba(224,32,44,0.8)'; ctx.fillRect(x, 0, tw, 20); ctx.fillStyle = '#ffffff'; ctx.fillRect(x, 18, tw, 2); }
+      Font.draw(ctx, short[tb.name] || tb.name, x + tw / 2, 7, act ? '#ffffff' : '#8a8aa8', { align: 'center' });
+    });
+    const tab = this.tabs[this.tab];
+    tab.draw(ctx, this.t);
+    psHints(ctx, tab.hints().concat([(Input.lastDevice === 'pad' ? 'L1/R1' : 'Q/E') + ' PESTAÑAS']));
+    if (this.sub) this.sub.draw(ctx, t);
+  }
+}
+
+// Lobby de multijugador desde el menú principal (sin partida en curso)
+class CoopLobbyScreen {
+  constructor() { this.t = 0; this.M = { world: null, openDev: pressedDevice(['JUMP']) || 'kb' }; Game.p1Dev = this.M.openDev; this.tab = new CoopTab(this.M, true); this.lock = 0.2; }
+  update(dt) {
+    this.t += dt;
+    if (this.lock > 0) { this.lock -= dt; return null; }
+    this.tab.update(dt);
+    if (Input.pressed('PAUSE')) { Audio2.sfx('select'); return 'back'; }
+    return null;
+  }
+  draw(ctx) { psBackground(ctx, this.t); ctx.fillStyle = 'rgba(224,32,44,0.8)'; ctx.fillRect(0, 0, W, 20); Font.draw(ctx, 'MULTIJUGADOR', W / 2, 7, '#ffffff', { align: 'center' }); this.tab.draw(ctx, this.t); psHints(ctx, ['IZQ/DER CAMBIA TRAJE', L('PAUSE') + ' LISTO (LUEGO ELIGE CONTINUAR)']); }
+}
+
+</script>
+<script>
 // ---- js/world.js ----
 'use strict';
 // ---------------------------------------------------------------------------
@@ -6891,11 +8080,12 @@ class World {
     ENEMY_THEME = this.level.pals || 'thugs';
     const lv = this.level;
     const sx = opts.x !== undefined ? opts.x : (mode === 'city' ? 400 : 40);
+    this.players = [];
     this.player = new Player(sx, 0);
     this.player.y = lv.surfaceY(sx + 5, 0) - this.player.h;
     if (this.player.y > lv.groundY) this.player.y = lv.groundY - this.player.h;
     this.player.lastSafe = { x: this.player.x, y: this.player.y };
-    this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = [];
+    this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = []; this.fx = []; this.slowEnemiesT = 0; this.chalT = 1;
     this.particles = new Particles();
     this.cam = { x: clamp(this.player.cx - W / 2, 0, lv.width - W), y: clamp(this.player.cy - H * 0.55, 0, lv.height - H) };
     this.shakeAmt = 0; this.hitstopT = 0; this.slowT = 0; this.senseCd = 0;
@@ -6920,6 +8110,47 @@ class World {
     for (const s of lv.spawns) this.spawnEnemy(s.type, s.x, s.y || null);
     if (mode === 'city') this.setupCity(opts);
     else this.setupMission(opts);
+    this.setupPlayers();
+  }
+
+  // ---- multijugador local (hasta 4) ----
+  // world.player es el jugador "activo": el que se está actualizando, el más cercano
+  // al enemigo que se actualiza o, si no, el jugador 1.
+  get player() { return this._focus || this.players[0]; }
+  set player(p) { this.players[0] = p; }
+  get coop() { return this.players.length > 1; }
+  setupPlayers() {
+    const cfg = Game.coop && Game.coop.length > 1 ? Game.coop : null;
+    const p1 = this.players[0];
+    p1.idx = 0;
+    p1.input = cfg ? new PlayerInput(cfg[0].devs) : null;
+    if (cfg && this.missionIdx !== EXTRA_MISSION) p1.suitId = cfg[0].suit;
+    const keep = this.players.slice(1);
+    this.players.length = 1;
+    if (!cfg) return;
+    for (let i = 1; i < cfg.length; i++) {
+      const old = keep.find((q) => q.idx === i);
+      const np = old || new Player(p1.x + i * 12, p1.y);
+      np.idx = i; np.input = new PlayerInput(cfg[i].devs); np.suitId = cfg[i].suit;
+      if (!old) { np.z = p1.z; np.lastSafe = { x: p1.lastSafe.x, y: p1.lastSafe.y }; np.inv = 1; }
+      this.players.push(np);
+    }
+  }
+  alivePlayers() { return this.players.filter((q) => q.state !== 'dead'); }
+  nearestPlayer(x, y) {
+    let best = null, bd = 1e9;
+    for (const q of this.players) {
+      if (q.state === 'dead') continue;
+      const d = Math.abs(q.cx - x) + Math.abs(q.cy - y) * 0.5;
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best || this.players[0];
+  }
+  setCutscene(on) {
+    for (const q of this.players) {
+      if (on) { q.anchor = null; if (q.state !== 'dead') { q.state = 'cutscene'; q.attack = null; } }
+      else if (q.state === 'cutscene') q.state = 'normal';
+    }
   }
 
   get inputEnabled() { return !this.dialog && !this.flash && !this.choice && this.state === 'play' && !this.pause && this.lockInput <= 0; }
@@ -6980,11 +8211,10 @@ class World {
     this.tip = { text, t: -wait, dur };
   }
   startDialog(lines, cb) {
-    this.player.anchor = null;
-    if (this.player.state !== 'dead') { this.player.state = 'cutscene'; this.player.attack = null; }
+    this.setCutscene(true);
     this.dialog = new Dialog(lines, () => {
       this.dialog = null;
-      if (this.player.state === 'cutscene') this.player.state = 'normal';
+      this.setCutscene(false);
       this.lockInput = 0.15;
       if (cb) cb();
     });
@@ -7016,7 +8246,13 @@ class World {
   }
 
   playerHits(e, dmg, kx, ky, heavy) {
+    const P = this.player;
+    // poderes y habilidades que potencian el golpe
+    if (P.furyT > 0) dmg *= 1.5;
+    if (P.cloakT > 0) dmg *= 2;
+    if (P.counterT > 0) { dmg *= 2; ky = Math.min(ky, -280); P.counterT = 0; this.float('¡CONTRA!', e.cx, e.y - 10, '#80e0ff'); }
     if (!e.takeHit(dmg, kx, ky, heavy, this)) return;
+    if (P.shockT > 0 && !e.dead) { e.web(0.8, this); for (let i = 0; i < 6; i++) this.particles.spark(e.cx + rand(-6, 6), e.cy + rand(-8, 8), '#80e0ff', 1); }
     this.hitstop(heavy ? 0.07 : 0.035);
     this.shake(heavy ? 3 : 1.5);
     this.particles.hit(e.cx, e.cy, heavy);
@@ -7024,6 +8260,7 @@ class World {
     Input.rumble(heavy ? 0.5 : 0.2, heavy ? 0.6 : 0.4, heavy ? 90 : 50);
     this.player.gainFocus(heavy ? 10 : 6);
     this.combo.n++; this.combo.t = 2.2;
+    Progress.rec('maxCombo', this.combo.n, 'max');
     this.stats.hits++;
     if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
@@ -7038,6 +8275,27 @@ class World {
       }
     }
     this.hitObjects({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, src);
+  }
+
+  // Bola de red del jugador: habilidades de red eléctrica y de impacto
+  onWebHit(e, proj) {
+    if (Progress.has('i_electrica') && !e.dead) { e.takeHit(0.6, 0, 0, false, this); for (let i = 0; i < 5; i++) this.particles.spark(e.cx + rand(-6, 6), e.cy + rand(-8, 8), '#80e0ff', 1); }
+    if (Progress.has('i_impacto') && !e.dead && !e.isBoss) { e.vx = sign(proj.vx || 1) * 220; e.vy = -120; }
+  }
+  // Tirón de red: atrae al enemigo que tienes delante
+  yank(p) {
+    let best = null, bd = 170;
+    for (const e of this.enemies) {
+      if (e.dead || !e.hittable() || e.isBoss || Math.abs((e.z || 0) - p.z) > LANE + 4) continue;
+      const dx = (e.cx - p.cx) * p.facing;
+      if (dx > 10 && dx < bd && Math.abs(e.cy - p.cy) < 50) { bd = dx; best = e; }
+    }
+    if (!best) return false;
+    this.fx.push(new GBeam(p.cx, p.y + 8, best.cx, best.cy, '#ffffff'));
+    best.x = p.cx + p.facing * 16 - best.w / 2; best.vx = 0; best.web(1.4, this);
+    this.particles.burst(best.cx, best.cy, 8, '#ffffff', 60);
+    Audio2.sfx('thwip');
+    return true;
   }
 
   damagePlayer(dmg, srcX, srcZ) {
@@ -7067,6 +8325,8 @@ class World {
 
   perfectDodge(p) {
     this.slowT = 0.6;
+    Progress.rec('perfect', 1);
+    if (Progress.has('d_contra')) p.counterT = 2;
     this.float('¡ESQUIVA PERFECTA!', p.cx, p.y - 10, '#80e0ff');
     p.gainFocus(20);
     Audio2.sfx('sense');
@@ -7077,6 +8337,7 @@ class World {
     if (e.noReward) { this.particles.burst(e.cx, e.cy, 12, '#60ff90', 80); return; }
     this.stats.kos++;
     Game.save.stats.kos = (Game.save.stats.kos || 0) + 1;
+    Progress.addXP(e.type === 'brute' ? 25 : 12, this);
     const n = e.spec.tech || 1;
     for (let i = 0; i < n; i++) { const pk = new Pickup('tech', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
     if (Math.random() < 0.25) { const pk = new Pickup('health', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
@@ -7084,6 +8345,7 @@ class World {
 
   onBossKO(b) {
     this.bossDoneT = 1.8;
+    if (!b.escaped) { Progress.rec('bosses', 1); Progress.addXP(200, this); }
     this.slowT = 1.2;
     this.projs = this.projs.filter((p) => p.owner === 'p');
     for (const e of this.enemies) if (!e.dead && e !== b) { e.dead = true; e.koT = 0.6; e.noReward = true; }
@@ -7119,6 +8381,13 @@ class World {
 
   // ---------------- muerte y reaparición ----------------
   onPlayerDeath() {
+    // en multijugador, un compañero caído vuelve a los pocos segundos si queda alguien en pie
+    if (this.coop && this.alivePlayers().length) {
+      const q = this.player; q.reviveT = 5;
+      this.float('¡J' + (q.idx + 1) + ' CAÍDO! VUELVE EN 5 s', q.cx, q.y - 16, '#ff8080');
+      Audio2.sfx('fail');
+      return;
+    }
     this.state = 'dead'; this.deadT = 1.8;
     this.combo.n = 0;
     Audio2.music(null);
@@ -7152,8 +8421,11 @@ class World {
     const np = new Player(cp.x, 0);
     np.y = this.level.surfaceY(cp.x + 5, 0) - np.h;
     if (this.mode === 'city') np.y = p.lastSafe.y;
-    np.focus = p.focus; np.inv = 1.5; np.hurtT = 1.5;
-    this.player = np;
+    np.focus = p.focus; np.inv = 1.5; np.hurtT = 1.5; np.suitId = p.suitId;
+    const others = this.players.slice(1);
+    this.players = [np];
+    for (const q of others) { q.state = 'normal'; q.hp = q.maxHp; q.x = np.x + q.idx * 12; q.y = np.y; q.vx = q.vy = 0; q.inv = 1.5; q.reviveT = 0; q.stuckT = 0; this.players.push(q); }
+    this.setupPlayers();
     this.state = 'play';
     Audio2.music(this.mode === 'city' ? UNIVERSES[this.universe].music : this.missionMusic());
   }
@@ -7172,8 +8444,10 @@ class World {
     const a = this.arena;
     if (!a) return;
     // paredes invisibles
-    if (p.x < a.x1 + 2) { p.x = a.x1 + 2; if (p.vx < 0) p.vx = 0; if (p.state === 'swing' && p.anchor && p.anchor.x < a.x1) p.releaseSwing(); }
-    if (p.x + p.w > a.x2 - 2) { p.x = a.x2 - 2 - p.w; if (p.vx > 0) p.vx = 0; if (p.state === 'swing' && p.anchor && p.anchor.x > a.x2) p.releaseSwing(); }
+    for (const q of this.players) {
+      if (q.x < a.x1 + 2) { q.x = a.x1 + 2; if (q.vx < 0) q.vx = 0; if (q.state === 'swing' && q.anchor && q.anchor.x < a.x1) q.releaseSwing(); }
+      if (q.x + q.w > a.x2 - 2) { q.x = a.x2 - 2 - q.w; if (q.vx > 0) q.vx = 0; if (q.state === 'swing' && q.anchor && q.anchor.x > a.x2) q.releaseSwing(); }
+    }
     if (!a.boss) {
       const alive = this.enemies.filter((e) => e.arena === a && !e.dead).length;
       if (alive === 0) {
@@ -7320,9 +8594,7 @@ class World {
   // ---------------- eventos canónicos ----------------
   startCanon(id, cb) {
     const C = CANONS[id];
-    const p = this.player;
-    p.anchor = null; p.attack = null;
-    if (p.state !== 'dead') p.state = 'cutscene';
+    this.setCutscene(true);
     Audio2.music(null);
     if (!Game.save.seenCanonTip) { Game.save.seenCanonTip = true; }
     this.flash = new FlashSeq(C.flashes, () => {
@@ -7383,9 +8655,10 @@ class World {
     // coleccionables
     for (const tk of this.level.tokens) {
       if (Game.save.tokens.includes(tk.id)) continue;
-      if (Math.abs(p.cx - tk.x) < 9 && Math.abs(p.cy - tk.y) < 14) {
+      if (this.players.some((q) => Math.abs(q.cx - tk.x) < 9 && Math.abs(q.cy - tk.y) < 14)) {
         Game.save.tokens.push(tk.id);
         this.addTech(3, false);
+        Progress.addXP(40, this);
         this.float('FRAGMENTO ' + Game.save.tokens.length + '/' + STORY.fragments.length, tk.x, tk.y - 10, UI.gold);
         this.showTip('"' + STORY.fragments[tk.idx] + '"', 6);
         Audio2.sfx('coin');
@@ -7532,6 +8805,7 @@ class World {
     if (ok) {
       const reward = 4 + Game.save.stage;
       this.addTech(reward);
+      Progress.addXP(80, this);
       Game.save.stats.crimes = (Game.save.stats.crimes || 0) + 1;
       Audio2.sfx('win');
       if (civ) civ.say(msg);
@@ -7580,27 +8854,39 @@ class World {
     if (this.slowT > 0) { this.slowT -= dt; gdt = dt * 0.4; }
     this.stats.time += dt;
 
+    for (const q of this.players) { this._focus = q; q.update(gdt, this); }
+    this._focus = null;
+    this.updateCoop(dt);
     const p = this.player;
-    p.update(gdt, this);
-    for (const e of this.enemies) { this.emitterZ = e.z || 0; e.update(gdt, this); }
+    if (this.slowEnemiesT > 0) this.slowEnemiesT -= dt;
+    const edt = this.slowEnemiesT > 0 ? gdt * 0.35 : gdt;
+    for (const e of this.enemies) { this.emitterZ = e.z || 0; this._focus = this.nearestPlayer(e.cx, e.cy); e.update(edt, this); }
     this.emitterZ = 0;
     this.enemies = this.enemies.filter((e) => !e.remove);
-    for (const pr of this.projs) pr.update(gdt, this);
+    for (const pr of this.projs) { this._focus = pr.owner === 'e' ? this.nearestPlayer(pr.x, pr.y) : null; pr.update(pr.owner === 'e' ? edt : gdt, this); }
+    this._focus = null;
     this.projs = this.projs.filter((pr) => !pr.dead);
-    for (const pk of this.pickups) pk.update(gdt, this);
+    this.fx = this.fx.filter((f) => f.update(gdt, this));
+    // retos: se comprueban cada segundo
+    this.chalT -= dt;
+    if (this.chalT <= 0) { this.chalT = 1; Progress.checkChallenges(this); }
+    for (const pk of this.pickups) { this._focus = this.nearestPlayer(pk.x, pk.y); pk.update(gdt, this); }
+    this._focus = null;
     this.pickups = this.pickups.filter((pk) => !pk.dead);
     for (const c of this.civs) c.update(gdt, this);
     this.particles.update(gdt);
     this.updateFloats(gdt);
     // hormigueo arácnido
     if (this.senseCd > 0) this.senseCd -= dt;
-    if (p.state !== 'dead' && this.threatNear(p)) {
-      if (p.sense <= 0 && this.senseCd <= 0) { Audio2.sfx('sense'); this.senseCd = 0.5; }
-      p.sense = 0.25;
+    for (const q of this.players) {
+      if (q.state !== 'dead' && this.threatNear(q)) {
+        if (q.sense <= 0 && this.senseCd <= 0) { Audio2.sfx('sense'); this.senseCd = 0.5; }
+        q.sense = 0.25;
+      }
     }
     // Refuerzo multiversal (R3)
     if (this.allyCd > 0) { this.allyCd -= dt; Game.allyCd = this.allyCd; }
-    if (this.inputEnabled && Input.pressed('ALLY') && p.state !== 'dead') this.callAlly();
+    if (this.inputEnabled && this.players.some((q) => q.state !== 'dead' && (q.input || Input).pressed('ALLY'))) this.callAlly();
     if (this.ally) this.updateAlly(gdt);
     if (this.combo.t > 0) { this.combo.t -= dt; if (this.combo.t <= 0) this.combo.n = 0; }
     if (this.shakeAmt > 0) this.shakeAmt = Math.max(0, this.shakeAmt - dt * 20);
@@ -7648,13 +8934,38 @@ class World {
     this.updateCamera(dt);
   }
 
+  // Compañeros: reaparición y "correa" para que nadie se quede fuera de la pantalla
+  updateCoop(dt) {
+    if (!this.coop) return;
+    const lead = this.alivePlayers()[0];
+    for (const q of this.players) {
+      if (q.state === 'dead' && q.reviveT > 0) {
+        q.reviveT -= dt;
+        if (q.reviveT <= 0 && lead) {
+          q.state = 'normal'; q.hp = Math.ceil(q.maxHp / 2); q.x = lead.x; q.y = lead.y - 4; q.z = lead.z; q.vx = 0; q.vy = 0; q.inv = 2; q.hurtT = 2;
+          this.particles.burst(q.cx, q.cy, 16, '#60ffe0', 90);
+          this.float('¡J' + (q.idx + 1) + ' VUELVE!', q.cx, q.y - 12, '#80ff80');
+        }
+      }
+      if (!lead || q === lead || q.state === 'dead') continue;
+      if (Math.abs(q.cx - lead.cx) > W * 0.8 || Math.abs(q.cy - lead.cy) > H * 0.85) {
+        this.particles.burst(q.cx, q.cy, 10, '#60ffe0', 70);
+        q.x = lead.x - (q.idx) * 10; q.y = lead.y; q.z = lead.z; q.vx = 0; q.vy = 0; q.anchor = null;
+        if (['swing', 'wall', 'facade'].includes(q.state)) q.state = 'normal';
+        this.particles.burst(q.cx, q.cy, 10, '#60ffe0', 70);
+      }
+    }
+  }
+
   updateFloats(dt) {
     for (const f of this.floats) { f.life -= dt; f.y -= 18 * dt; }
     this.floats = this.floats.filter((f) => f.life > 0);
   }
 
   updateCamera(dt) {
-    const p = this.player, lv = this.level;
+    const lv = this.level;
+    const al = this.coop ? this.alivePlayers() : [];
+    const p = al.length ? { cx: al.reduce((s2, q) => s2 + q.cx, 0) / al.length, cy: al.reduce((s2, q) => s2 + q.cy, 0) / al.length, vx: al.reduce((s2, q) => s2 + q.vx, 0) / al.length, z: al.reduce((s2, q) => s2 + (q.z || 0), 0) / al.length } : this.player;
     let tx = p.cx - W / 2 + clamp(p.vx * 0.25, -50, 50);
     let ty = p.cy - (p.z || 0) * 0.5 - H * 0.55;
     const k = Math.min(1, dt * 6);
@@ -7676,7 +8987,7 @@ class World {
   openPause() {
     Voice.stop();
     Audio2.sfx('select');
-    this.pause = new PauseMenu(this);
+    this.pause = new PsMenu(this);
   }
 
   openGameOver() {
@@ -7744,7 +9055,7 @@ class World {
     for (const c of this.civs) ents.push({ z: c.z || 0, o: c, k: 0 });
     for (const pk of this.pickups) ents.push({ z: pk.z || 0, o: pk, k: 1 });
     for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
-    ents.push({ z: this.player.z || 0, o: this.player, k: 3 });
+    for (const q of this.players) ents.push({ z: q.z || 0, o: q, k: 3 });
     ents.sort((a, b) => b.z - a.z || a.k - b.k);
     for (const en of ents) {
       const o = en.o, zo = Math.round(en.z);
@@ -7756,6 +9067,8 @@ class World {
     }
     if (this.ally) this.drawAlly(ctx, cam, t);
     for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
+    for (const f of this.fx) f.draw(ctx, cam, t);
+    if (this.slowEnemiesT > 0) { ctx.fillStyle = 'rgba(80,120,255,0.08)'; ctx.fillRect(0, 0, W, H); }
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic
@@ -7843,7 +9156,7 @@ function defaultSave() {
     v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
     suits: START_SUITS.slice(), suit: 'bnd', ch7: true, tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
     universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
-    completed: false, started: false,
+    completed: false, started: false, xpInit: true, xp: 0, level: 1, skillPts: 0, skills: [], gadget: 'impacto', gadgetLvl: {}, power: null, records: {}, medals: {}, bestTimes: {},
   };
 }
 function defaultSettings() {
@@ -7989,10 +9302,10 @@ class ControlsScreen {
     }
     this.rects = [];
     this.rows.forEach((row, i) => {
-      const y = 52 + i * 11;
+      const y = 50 + i * 9;
       const sel = i === this.sel;
-      if (sel) { ctx.fillStyle = 'rgba(224,32,44,0.35)'; ctx.fillRect(20, y - 2, W - 40, 10); }
-      this.rects.push({ y: y - 2, h: 11 });
+      if (sel) { ctx.fillStyle = 'rgba(224,32,44,0.35)'; ctx.fillRect(20, y - 1, W - 40, 9); }
+      this.rects.push({ y: y - 1, h: 9 });
       const col = sel ? UI.gold : UI.paper;
       if (row === 'RESET') Font.draw(ctx, 'RESTABLECER CONTROLES', W / 2, y, col, { align: 'center' });
       else if (row === 'BACK') Font.draw(ctx, 'VOLVER', W / 2, y, col, { align: 'center' });
@@ -8012,160 +9325,10 @@ class ControlsScreen {
   }
 }
 
-class WorkshopScreen {
-  constructor(world) {
-    this.world = world;
-    const items = UPGRADES.map((u) => ({
-      label: () => {
-        const lvl = Game.save.upgrades[u.id];
-        return u.name + '  ' + '#'.repeat(lvl) + '-'.repeat(3 - lvl) + '  ' + (lvl >= 3 ? 'MÁX' : u.cost[lvl]);
-      },
-      act: () => this.buy(u),
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-    this.msg = ''; this.msgT = 0;
-  }
-  buy(u) {
-    const lvl = Game.save.upgrades[u.id];
-    if (lvl >= 3) { this.msg = 'Ya está al máximo.'; this.msgT = 2; return; }
-    const c = u.cost[lvl];
-    if (Game.save.tech < c) { this.msg = 'Te falta tecnología (' + (c - Game.save.tech) + ').'; this.msgT = 2; Audio2.sfx('back'); return; }
-    Game.save.tech -= c;
-    Game.save.upgrades[u.id]++;
-    if (this.world) this.world.player.refreshStats();
-    if (u.id === 'hp' && this.world) this.world.player.hp += 20;
-    Game.saveGame();
-    this.msg = '¡Mejora instalada!'; this.msgT = 2;
-    Audio2.sfx('heal');
-  }
-  update(dt) {
-    if (this.msgT > 0) this.msgT -= dt;
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'TALLER DE PETER');
-    drawTechIcon(ctx, W / 2 - 40, 31, t);
-    Font.draw(ctx, 'TECNOLOGÍA: ' + Game.save.tech, W / 2 - 30, 31, UI.gold);
-    this.menu.draw(ctx, W / 2, 52, t, { lh: 16 });
-    const u = UPGRADES[this.menu.sel];
-    if (u) Font.draw(ctx, u.desc, W / 2, 160, '#b0c0ff', { align: 'center' });
-    if (this.msgT > 0) Font.draw(ctx, this.msg, W / 2, 178, UI.gold, { align: 'center' });
-    Font.draw(ctx, 'Consigue tecnología derrotando enemigos,', W / 2, 192, UI.dim, { align: 'center' });
-    Font.draw(ctx, 'deteniendo crímenes y buscando piezas Stark.', W / 2, 202, UI.dim, { align: 'center' });
-  }
-}
 
-class SuitsScreen {
-  constructor() {
-    const items = SUITS.map((s) => ({
-      label: () => (Game.save.suits.includes(s.id) ? s.name : '???') + (Game.save.suit === s.id ? '  (PUESTO)' : ''),
-      act: () => {
-        if (Game.save.suits.includes(s.id)) { Game.save.suit = s.id; Game.saveGame(); Audio2.sfx('select'); }
-        else Audio2.sfx('back');
-      },
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-    this.menu.sel = Math.max(0, SUITS.findIndex((s) => s.id === Game.save.suit));
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'TRAJES');
-    this.menu.draw(ctx, 24, 44, t, { lh: 12, align: 'left' });
-    const s = SUITS[this.menu.sel];
-    if (s) {
-      ctx.fillStyle = '#1a1830'; ctx.fillRect(250, 36, 110, 130);
-      const unlocked = Game.save.suits.includes(s.id);
-      const pal = unlocked ? s.palObj : FLASH_PAL;
-      if (!unlocked) ctx.globalAlpha = 0.15;
-      Rig.draw(ctx, 305, 150, Math.sin(t) > 0 ? 1 : -1, Poses.idle(t), pal, { scale: 4 });
-      ctx.globalAlpha = 1;
-      const mi = MISSION_SUIT.indexOf(s.id);
-      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa ' + (mi === 0 ? 'el prólogo' : 'el capítulo ' + mi) + '.', 150);
-      lines.forEach((ln, i) => Font.draw(ctx, ln, 305, 176 + i * 10, UI.paper, { align: 'center' }));
-    }
-  }
-}
 
-class PauseRoot {
-  constructor(world) {
-    this.world = world;
-    const city = world.mode === 'city';
-    this.menu = new Menu([
-      { label: 'REANUDAR', act: () => { this.res = 'close'; } },
-      { label: 'TALLER', act: () => this.stack.push(new WorkshopScreen(world)) },
-      { label: 'TRAJES', act: () => this.stack.push(new SuitsScreen()) },
-      { label: 'VIAJAR ENTRE UNIVERSOS', disabled: () => !city, act: () => this.stack.push(new TravelScreen(world)) },
-      { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
-      { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
-      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.toMenu(); } }
-        : { label: 'ABANDONAR CAPÍTULO', act: () => this.stack.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[world.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) },
-    ]);
-    if ((Game.save.stage === 0 || world.missionIdx === EXTRA_MISSION) && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.res) { const x = this.res; this.res = null; return x; }
-    return r;
-  }
-  draw(ctx, t) {
-    ctx.fillStyle = 'rgba(8,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, 'PAUSA', W / 2, 16, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
-    this.menu.draw(ctx, W / 2, 52, t, { lh: 15 });
-    const s = Game.save;
-    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + '   CÁNONES ROTOS ' + canonCount() + '/' + CANON_ORDER.length;
-    Font.draw(ctx, info, W / 2, 176, UI.dim, { align: 'center' });
-    const U = UNIVERSES[this.world.universe];
-    if (this.world.mode === 'mission') Font.draw(ctx, chapterLabel(this.world.missionIdx) + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
-    else Font.draw(ctx, U.name + ' · ' + U.city, W / 2, 190, UI.gold, { align: 'center' });
-  }
-}
 
-class TravelScreen {
-  constructor(world) {
-    this.world = world;
-    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= STORY_DONE) || (u === 'n2099' && Game.save.stage >= 4));
-    const items = list.map((u) => ({
-      label: () => UNIVERSES[u].name + ' · ' + UNIVERSES[u].city + (u === world.universe ? '  (AQUÍ)' : ''),
-      disabled: () => u === world.universe,
-      act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.goCity({ universe: u }); },
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'VIAJAR ENTRE UNIVERSOS');
-    this.menu.draw(ctx, W / 2, 50, t, { lh: 18 });
-    Font.draw(ctx, 'Solo puedes volver a universos que ya visitaste.', W / 2, 190, UI.dim, { align: 'center' });
-  }
-}
 
-class PauseMenu {
-  constructor(world) {
-    const root = new PauseRoot(world);
-    this.stack = new MenuStack(root);
-    root.stack = this.stack;
-    Audio2.musicGain && (Audio2.musicGain.gain.value = Game.settings.music / 10 * 0.2);
-  }
-  update(dt) {
-    const r = this.stack.update(dt);
-    if (r === 'close') { Game.applySettings(); return 'close'; }
-    return null;
-  }
-  draw(ctx, t) { this.stack.draw(ctx, t); }
-}
 
 // ---------------------------------------------------------------------------
 // Escenas
@@ -8244,13 +9407,14 @@ class MenuScene {
         { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
         { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
         { label: () => 'CAPÍTULO EXTRA: ' + (Game.save.completed ? MISSIONS[EXTRA_MISSION].name.toUpperCase() : '???'), disabled: () => !Game.save.completed, act: () => Game.startMission(EXTRA_MISSION) },
+        { label: 'MULTIJUGADOR (1-4)', act: () => this.stack.push(new CoopLobbyScreen()) },
         { label: 'JUGAR EN 3D (NUEVO)', act: () => { Voice.stop(); location.href = 'spiderman3d.html'; } },
         { label: 'CRÉDITOS', act: () => Game.change(() => new CreditsScene(() => new MenuScene())) },
       ]),
       update(dt) { const r = this.menu.update(dt); return r === 'back' ? null : r; },
       draw: (ctx, t) => {
         drawLogo(ctx, t, 30);
-        root.menu.draw(ctx, W / 2, 92, t, { lh: 13 });
+        root.menu.draw(ctx, W / 2, 90, t, { lh: 12 });
         if (Game.save.started) {
           const s = Game.save;
           const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
@@ -8322,6 +9486,7 @@ class ResultsScene {
       Font.draw(ctx, a, 80, 64 + i * 13, UI.paper);
       Font.draw(ctx, b, W - 80, 64 + i * 13, UI.gold, { align: 'right' });
     });
+    if (s.record && this.t > 1.1 && Math.floor(this.t * 3) % 2) Font.draw(ctx, '¡NUEVO RÉCORD DE TIEMPO!', W / 2, 128, '#80ff80', { align: 'center', shadow: UI.ink });
     if (this.suit && this.t > 1.2) {
       UI.panel(ctx, 70, 134, W - 140, 44, 'rgba(40,10,14,0.9)');
       Font.draw(ctx, '¡NUEVO TRAJE DESBLOQUEADO!', W / 2 + 14, 142, UI.gold, { align: 'center' });
@@ -8428,7 +9593,7 @@ class PlayScene {
 // Objeto principal
 // ---------------------------------------------------------------------------
 const Game = {
-  canvas: null, ctx: null, scene: null, fade: null,
+  canvas: null, ctx: null, scene: null, fade: null, coop: null,
   settings: defaultSettings(), save: defaultSave(),
   acc: 0, last: 0, frame: 0, errors: [],
 
@@ -8438,6 +9603,7 @@ const Game = {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
+    Progress.ensure();
     CustomSong.load();
     Voice.init();
     Input.init(this.canvas);
@@ -8511,6 +9677,7 @@ const Game = {
 
   newGame() {
     this.save = defaultSave();
+    Progress.ensure();
     this.save.started = true;
     this.saveGame();
     this.change(() => new StoryScene(STORY.intro, () => this.missionScene(0)));
@@ -8538,6 +9705,8 @@ const Game = {
   },
 
   missionComplete(i, stats) {
+    Progress.addXP(300, null, true);
+    stats.record = Progress.bestTime(i, stats.time);
     this.save.tech += 15;
     const first = this.save.stage <= i;
     this.save.stage = Math.max(this.save.stage, i + 1);

@@ -76,11 +76,12 @@ class World {
     ENEMY_THEME = this.level.pals || 'thugs';
     const lv = this.level;
     const sx = opts.x !== undefined ? opts.x : (mode === 'city' ? 400 : 40);
+    this.players = [];
     this.player = new Player(sx, 0);
     this.player.y = lv.surfaceY(sx + 5, 0) - this.player.h;
     if (this.player.y > lv.groundY) this.player.y = lv.groundY - this.player.h;
     this.player.lastSafe = { x: this.player.x, y: this.player.y };
-    this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = [];
+    this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = []; this.fx = []; this.slowEnemiesT = 0; this.chalT = 1;
     this.particles = new Particles();
     this.cam = { x: clamp(this.player.cx - W / 2, 0, lv.width - W), y: clamp(this.player.cy - H * 0.55, 0, lv.height - H) };
     this.shakeAmt = 0; this.hitstopT = 0; this.slowT = 0; this.senseCd = 0;
@@ -105,6 +106,47 @@ class World {
     for (const s of lv.spawns) this.spawnEnemy(s.type, s.x, s.y || null);
     if (mode === 'city') this.setupCity(opts);
     else this.setupMission(opts);
+    this.setupPlayers();
+  }
+
+  // ---- multijugador local (hasta 4) ----
+  // world.player es el jugador "activo": el que se está actualizando, el más cercano
+  // al enemigo que se actualiza o, si no, el jugador 1.
+  get player() { return this._focus || this.players[0]; }
+  set player(p) { this.players[0] = p; }
+  get coop() { return this.players.length > 1; }
+  setupPlayers() {
+    const cfg = Game.coop && Game.coop.length > 1 ? Game.coop : null;
+    const p1 = this.players[0];
+    p1.idx = 0;
+    p1.input = cfg ? new PlayerInput(cfg[0].devs) : null;
+    if (cfg && this.missionIdx !== EXTRA_MISSION) p1.suitId = cfg[0].suit;
+    const keep = this.players.slice(1);
+    this.players.length = 1;
+    if (!cfg) return;
+    for (let i = 1; i < cfg.length; i++) {
+      const old = keep.find((q) => q.idx === i);
+      const np = old || new Player(p1.x + i * 12, p1.y);
+      np.idx = i; np.input = new PlayerInput(cfg[i].devs); np.suitId = cfg[i].suit;
+      if (!old) { np.z = p1.z; np.lastSafe = { x: p1.lastSafe.x, y: p1.lastSafe.y }; np.inv = 1; }
+      this.players.push(np);
+    }
+  }
+  alivePlayers() { return this.players.filter((q) => q.state !== 'dead'); }
+  nearestPlayer(x, y) {
+    let best = null, bd = 1e9;
+    for (const q of this.players) {
+      if (q.state === 'dead') continue;
+      const d = Math.abs(q.cx - x) + Math.abs(q.cy - y) * 0.5;
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best || this.players[0];
+  }
+  setCutscene(on) {
+    for (const q of this.players) {
+      if (on) { q.anchor = null; if (q.state !== 'dead') { q.state = 'cutscene'; q.attack = null; } }
+      else if (q.state === 'cutscene') q.state = 'normal';
+    }
   }
 
   get inputEnabled() { return !this.dialog && !this.flash && !this.choice && this.state === 'play' && !this.pause && this.lockInput <= 0; }
@@ -165,11 +207,10 @@ class World {
     this.tip = { text, t: -wait, dur };
   }
   startDialog(lines, cb) {
-    this.player.anchor = null;
-    if (this.player.state !== 'dead') { this.player.state = 'cutscene'; this.player.attack = null; }
+    this.setCutscene(true);
     this.dialog = new Dialog(lines, () => {
       this.dialog = null;
-      if (this.player.state === 'cutscene') this.player.state = 'normal';
+      this.setCutscene(false);
       this.lockInput = 0.15;
       if (cb) cb();
     });
@@ -201,7 +242,13 @@ class World {
   }
 
   playerHits(e, dmg, kx, ky, heavy) {
+    const P = this.player;
+    // poderes y habilidades que potencian el golpe
+    if (P.furyT > 0) dmg *= 1.5;
+    if (P.cloakT > 0) dmg *= 2;
+    if (P.counterT > 0) { dmg *= 2; ky = Math.min(ky, -280); P.counterT = 0; this.float('¡CONTRA!', e.cx, e.y - 10, '#80e0ff'); }
     if (!e.takeHit(dmg, kx, ky, heavy, this)) return;
+    if (P.shockT > 0 && !e.dead) { e.web(0.8, this); for (let i = 0; i < 6; i++) this.particles.spark(e.cx + rand(-6, 6), e.cy + rand(-8, 8), '#80e0ff', 1); }
     this.hitstop(heavy ? 0.07 : 0.035);
     this.shake(heavy ? 3 : 1.5);
     this.particles.hit(e.cx, e.cy, heavy);
@@ -209,6 +256,7 @@ class World {
     Input.rumble(heavy ? 0.5 : 0.2, heavy ? 0.6 : 0.4, heavy ? 90 : 50);
     this.player.gainFocus(heavy ? 10 : 6);
     this.combo.n++; this.combo.t = 2.2;
+    Progress.rec('maxCombo', this.combo.n, 'max');
     this.stats.hits++;
     if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
@@ -223,6 +271,27 @@ class World {
       }
     }
     this.hitObjects({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, src);
+  }
+
+  // Bola de red del jugador: habilidades de red eléctrica y de impacto
+  onWebHit(e, proj) {
+    if (Progress.has('i_electrica') && !e.dead) { e.takeHit(0.6, 0, 0, false, this); for (let i = 0; i < 5; i++) this.particles.spark(e.cx + rand(-6, 6), e.cy + rand(-8, 8), '#80e0ff', 1); }
+    if (Progress.has('i_impacto') && !e.dead && !e.isBoss) { e.vx = sign(proj.vx || 1) * 220; e.vy = -120; }
+  }
+  // Tirón de red: atrae al enemigo que tienes delante
+  yank(p) {
+    let best = null, bd = 170;
+    for (const e of this.enemies) {
+      if (e.dead || !e.hittable() || e.isBoss || Math.abs((e.z || 0) - p.z) > LANE + 4) continue;
+      const dx = (e.cx - p.cx) * p.facing;
+      if (dx > 10 && dx < bd && Math.abs(e.cy - p.cy) < 50) { bd = dx; best = e; }
+    }
+    if (!best) return false;
+    this.fx.push(new GBeam(p.cx, p.y + 8, best.cx, best.cy, '#ffffff'));
+    best.x = p.cx + p.facing * 16 - best.w / 2; best.vx = 0; best.web(1.4, this);
+    this.particles.burst(best.cx, best.cy, 8, '#ffffff', 60);
+    Audio2.sfx('thwip');
+    return true;
   }
 
   damagePlayer(dmg, srcX, srcZ) {
@@ -252,6 +321,8 @@ class World {
 
   perfectDodge(p) {
     this.slowT = 0.6;
+    Progress.rec('perfect', 1);
+    if (Progress.has('d_contra')) p.counterT = 2;
     this.float('¡ESQUIVA PERFECTA!', p.cx, p.y - 10, '#80e0ff');
     p.gainFocus(20);
     Audio2.sfx('sense');
@@ -262,6 +333,7 @@ class World {
     if (e.noReward) { this.particles.burst(e.cx, e.cy, 12, '#60ff90', 80); return; }
     this.stats.kos++;
     Game.save.stats.kos = (Game.save.stats.kos || 0) + 1;
+    Progress.addXP(e.type === 'brute' ? 25 : 12, this);
     const n = e.spec.tech || 1;
     for (let i = 0; i < n; i++) { const pk = new Pickup('tech', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
     if (Math.random() < 0.25) { const pk = new Pickup('health', e.cx, e.cy); pk.z = e.z || 0; this.pickups.push(pk); }
@@ -269,6 +341,7 @@ class World {
 
   onBossKO(b) {
     this.bossDoneT = 1.8;
+    if (!b.escaped) { Progress.rec('bosses', 1); Progress.addXP(200, this); }
     this.slowT = 1.2;
     this.projs = this.projs.filter((p) => p.owner === 'p');
     for (const e of this.enemies) if (!e.dead && e !== b) { e.dead = true; e.koT = 0.6; e.noReward = true; }
@@ -304,6 +377,13 @@ class World {
 
   // ---------------- muerte y reaparición ----------------
   onPlayerDeath() {
+    // en multijugador, un compañero caído vuelve a los pocos segundos si queda alguien en pie
+    if (this.coop && this.alivePlayers().length) {
+      const q = this.player; q.reviveT = 5;
+      this.float('¡J' + (q.idx + 1) + ' CAÍDO! VUELVE EN 5 s', q.cx, q.y - 16, '#ff8080');
+      Audio2.sfx('fail');
+      return;
+    }
     this.state = 'dead'; this.deadT = 1.8;
     this.combo.n = 0;
     Audio2.music(null);
@@ -337,8 +417,11 @@ class World {
     const np = new Player(cp.x, 0);
     np.y = this.level.surfaceY(cp.x + 5, 0) - np.h;
     if (this.mode === 'city') np.y = p.lastSafe.y;
-    np.focus = p.focus; np.inv = 1.5; np.hurtT = 1.5;
-    this.player = np;
+    np.focus = p.focus; np.inv = 1.5; np.hurtT = 1.5; np.suitId = p.suitId;
+    const others = this.players.slice(1);
+    this.players = [np];
+    for (const q of others) { q.state = 'normal'; q.hp = q.maxHp; q.x = np.x + q.idx * 12; q.y = np.y; q.vx = q.vy = 0; q.inv = 1.5; q.reviveT = 0; q.stuckT = 0; this.players.push(q); }
+    this.setupPlayers();
     this.state = 'play';
     Audio2.music(this.mode === 'city' ? UNIVERSES[this.universe].music : this.missionMusic());
   }
@@ -357,8 +440,10 @@ class World {
     const a = this.arena;
     if (!a) return;
     // paredes invisibles
-    if (p.x < a.x1 + 2) { p.x = a.x1 + 2; if (p.vx < 0) p.vx = 0; if (p.state === 'swing' && p.anchor && p.anchor.x < a.x1) p.releaseSwing(); }
-    if (p.x + p.w > a.x2 - 2) { p.x = a.x2 - 2 - p.w; if (p.vx > 0) p.vx = 0; if (p.state === 'swing' && p.anchor && p.anchor.x > a.x2) p.releaseSwing(); }
+    for (const q of this.players) {
+      if (q.x < a.x1 + 2) { q.x = a.x1 + 2; if (q.vx < 0) q.vx = 0; if (q.state === 'swing' && q.anchor && q.anchor.x < a.x1) q.releaseSwing(); }
+      if (q.x + q.w > a.x2 - 2) { q.x = a.x2 - 2 - q.w; if (q.vx > 0) q.vx = 0; if (q.state === 'swing' && q.anchor && q.anchor.x > a.x2) q.releaseSwing(); }
+    }
     if (!a.boss) {
       const alive = this.enemies.filter((e) => e.arena === a && !e.dead).length;
       if (alive === 0) {
@@ -505,9 +590,7 @@ class World {
   // ---------------- eventos canónicos ----------------
   startCanon(id, cb) {
     const C = CANONS[id];
-    const p = this.player;
-    p.anchor = null; p.attack = null;
-    if (p.state !== 'dead') p.state = 'cutscene';
+    this.setCutscene(true);
     Audio2.music(null);
     if (!Game.save.seenCanonTip) { Game.save.seenCanonTip = true; }
     this.flash = new FlashSeq(C.flashes, () => {
@@ -568,9 +651,10 @@ class World {
     // coleccionables
     for (const tk of this.level.tokens) {
       if (Game.save.tokens.includes(tk.id)) continue;
-      if (Math.abs(p.cx - tk.x) < 9 && Math.abs(p.cy - tk.y) < 14) {
+      if (this.players.some((q) => Math.abs(q.cx - tk.x) < 9 && Math.abs(q.cy - tk.y) < 14)) {
         Game.save.tokens.push(tk.id);
         this.addTech(3, false);
+        Progress.addXP(40, this);
         this.float('FRAGMENTO ' + Game.save.tokens.length + '/' + STORY.fragments.length, tk.x, tk.y - 10, UI.gold);
         this.showTip('"' + STORY.fragments[tk.idx] + '"', 6);
         Audio2.sfx('coin');
@@ -717,6 +801,7 @@ class World {
     if (ok) {
       const reward = 4 + Game.save.stage;
       this.addTech(reward);
+      Progress.addXP(80, this);
       Game.save.stats.crimes = (Game.save.stats.crimes || 0) + 1;
       Audio2.sfx('win');
       if (civ) civ.say(msg);
@@ -765,27 +850,39 @@ class World {
     if (this.slowT > 0) { this.slowT -= dt; gdt = dt * 0.4; }
     this.stats.time += dt;
 
+    for (const q of this.players) { this._focus = q; q.update(gdt, this); }
+    this._focus = null;
+    this.updateCoop(dt);
     const p = this.player;
-    p.update(gdt, this);
-    for (const e of this.enemies) { this.emitterZ = e.z || 0; e.update(gdt, this); }
+    if (this.slowEnemiesT > 0) this.slowEnemiesT -= dt;
+    const edt = this.slowEnemiesT > 0 ? gdt * 0.35 : gdt;
+    for (const e of this.enemies) { this.emitterZ = e.z || 0; this._focus = this.nearestPlayer(e.cx, e.cy); e.update(edt, this); }
     this.emitterZ = 0;
     this.enemies = this.enemies.filter((e) => !e.remove);
-    for (const pr of this.projs) pr.update(gdt, this);
+    for (const pr of this.projs) { this._focus = pr.owner === 'e' ? this.nearestPlayer(pr.x, pr.y) : null; pr.update(pr.owner === 'e' ? edt : gdt, this); }
+    this._focus = null;
     this.projs = this.projs.filter((pr) => !pr.dead);
-    for (const pk of this.pickups) pk.update(gdt, this);
+    this.fx = this.fx.filter((f) => f.update(gdt, this));
+    // retos: se comprueban cada segundo
+    this.chalT -= dt;
+    if (this.chalT <= 0) { this.chalT = 1; Progress.checkChallenges(this); }
+    for (const pk of this.pickups) { this._focus = this.nearestPlayer(pk.x, pk.y); pk.update(gdt, this); }
+    this._focus = null;
     this.pickups = this.pickups.filter((pk) => !pk.dead);
     for (const c of this.civs) c.update(gdt, this);
     this.particles.update(gdt);
     this.updateFloats(gdt);
     // hormigueo arácnido
     if (this.senseCd > 0) this.senseCd -= dt;
-    if (p.state !== 'dead' && this.threatNear(p)) {
-      if (p.sense <= 0 && this.senseCd <= 0) { Audio2.sfx('sense'); this.senseCd = 0.5; }
-      p.sense = 0.25;
+    for (const q of this.players) {
+      if (q.state !== 'dead' && this.threatNear(q)) {
+        if (q.sense <= 0 && this.senseCd <= 0) { Audio2.sfx('sense'); this.senseCd = 0.5; }
+        q.sense = 0.25;
+      }
     }
     // Refuerzo multiversal (R3)
     if (this.allyCd > 0) { this.allyCd -= dt; Game.allyCd = this.allyCd; }
-    if (this.inputEnabled && Input.pressed('ALLY') && p.state !== 'dead') this.callAlly();
+    if (this.inputEnabled && this.players.some((q) => q.state !== 'dead' && (q.input || Input).pressed('ALLY'))) this.callAlly();
     if (this.ally) this.updateAlly(gdt);
     if (this.combo.t > 0) { this.combo.t -= dt; if (this.combo.t <= 0) this.combo.n = 0; }
     if (this.shakeAmt > 0) this.shakeAmt = Math.max(0, this.shakeAmt - dt * 20);
@@ -833,13 +930,38 @@ class World {
     this.updateCamera(dt);
   }
 
+  // Compañeros: reaparición y "correa" para que nadie se quede fuera de la pantalla
+  updateCoop(dt) {
+    if (!this.coop) return;
+    const lead = this.alivePlayers()[0];
+    for (const q of this.players) {
+      if (q.state === 'dead' && q.reviveT > 0) {
+        q.reviveT -= dt;
+        if (q.reviveT <= 0 && lead) {
+          q.state = 'normal'; q.hp = Math.ceil(q.maxHp / 2); q.x = lead.x; q.y = lead.y - 4; q.z = lead.z; q.vx = 0; q.vy = 0; q.inv = 2; q.hurtT = 2;
+          this.particles.burst(q.cx, q.cy, 16, '#60ffe0', 90);
+          this.float('¡J' + (q.idx + 1) + ' VUELVE!', q.cx, q.y - 12, '#80ff80');
+        }
+      }
+      if (!lead || q === lead || q.state === 'dead') continue;
+      if (Math.abs(q.cx - lead.cx) > W * 0.8 || Math.abs(q.cy - lead.cy) > H * 0.85) {
+        this.particles.burst(q.cx, q.cy, 10, '#60ffe0', 70);
+        q.x = lead.x - (q.idx) * 10; q.y = lead.y; q.z = lead.z; q.vx = 0; q.vy = 0; q.anchor = null;
+        if (['swing', 'wall', 'facade'].includes(q.state)) q.state = 'normal';
+        this.particles.burst(q.cx, q.cy, 10, '#60ffe0', 70);
+      }
+    }
+  }
+
   updateFloats(dt) {
     for (const f of this.floats) { f.life -= dt; f.y -= 18 * dt; }
     this.floats = this.floats.filter((f) => f.life > 0);
   }
 
   updateCamera(dt) {
-    const p = this.player, lv = this.level;
+    const lv = this.level;
+    const al = this.coop ? this.alivePlayers() : [];
+    const p = al.length ? { cx: al.reduce((s2, q) => s2 + q.cx, 0) / al.length, cy: al.reduce((s2, q) => s2 + q.cy, 0) / al.length, vx: al.reduce((s2, q) => s2 + q.vx, 0) / al.length, z: al.reduce((s2, q) => s2 + (q.z || 0), 0) / al.length } : this.player;
     let tx = p.cx - W / 2 + clamp(p.vx * 0.25, -50, 50);
     let ty = p.cy - (p.z || 0) * 0.5 - H * 0.55;
     const k = Math.min(1, dt * 6);
@@ -861,7 +983,7 @@ class World {
   openPause() {
     Voice.stop();
     Audio2.sfx('select');
-    this.pause = new PauseMenu(this);
+    this.pause = new PsMenu(this);
   }
 
   openGameOver() {
@@ -929,7 +1051,7 @@ class World {
     for (const c of this.civs) ents.push({ z: c.z || 0, o: c, k: 0 });
     for (const pk of this.pickups) ents.push({ z: pk.z || 0, o: pk, k: 1 });
     for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
-    ents.push({ z: this.player.z || 0, o: this.player, k: 3 });
+    for (const q of this.players) ents.push({ z: q.z || 0, o: q, k: 3 });
     ents.sort((a, b) => b.z - a.z || a.k - b.k);
     for (const en of ents) {
       const o = en.o, zo = Math.round(en.z);
@@ -941,6 +1063,8 @@ class World {
     }
     if (this.ally) this.drawAlly(ctx, cam, t);
     for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
+    for (const f of this.fx) f.draw(ctx, cam, t);
+    if (this.slowEnemiesT > 0) { ctx.fillStyle = 'rgba(80,120,255,0.08)'; ctx.fillRect(0, 0, W, H); }
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic

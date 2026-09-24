@@ -17,7 +17,7 @@ function defaultSave() {
     v: SAVE_VERSION, stage: 0, tech: 0, upgrades: { hp: 0, dmg: 0, web: 0, swing: 0, focus: 0 },
     suits: START_SUITS.slice(), suit: 'bnd', ch7: true, tokens: [], stats: { crimes: 0, kos: 0 }, seenCityTip: false,
     universe: '616', cityPos: {}, canon: {}, visited: [], endings: [], lastChoice: null,
-    completed: false, started: false,
+    completed: false, started: false, xpInit: true, xp: 0, level: 1, skillPts: 0, skills: [], gadget: 'impacto', gadgetLvl: {}, power: null, records: {}, medals: {}, bestTimes: {},
   };
 }
 function defaultSettings() {
@@ -163,10 +163,10 @@ class ControlsScreen {
     }
     this.rects = [];
     this.rows.forEach((row, i) => {
-      const y = 52 + i * 11;
+      const y = 50 + i * 9;
       const sel = i === this.sel;
-      if (sel) { ctx.fillStyle = 'rgba(224,32,44,0.35)'; ctx.fillRect(20, y - 2, W - 40, 10); }
-      this.rects.push({ y: y - 2, h: 11 });
+      if (sel) { ctx.fillStyle = 'rgba(224,32,44,0.35)'; ctx.fillRect(20, y - 1, W - 40, 9); }
+      this.rects.push({ y: y - 1, h: 9 });
       const col = sel ? UI.gold : UI.paper;
       if (row === 'RESET') Font.draw(ctx, 'RESTABLECER CONTROLES', W / 2, y, col, { align: 'center' });
       else if (row === 'BACK') Font.draw(ctx, 'VOLVER', W / 2, y, col, { align: 'center' });
@@ -186,160 +186,10 @@ class ControlsScreen {
   }
 }
 
-class WorkshopScreen {
-  constructor(world) {
-    this.world = world;
-    const items = UPGRADES.map((u) => ({
-      label: () => {
-        const lvl = Game.save.upgrades[u.id];
-        return u.name + '  ' + '#'.repeat(lvl) + '-'.repeat(3 - lvl) + '  ' + (lvl >= 3 ? 'MÁX' : u.cost[lvl]);
-      },
-      act: () => this.buy(u),
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-    this.msg = ''; this.msgT = 0;
-  }
-  buy(u) {
-    const lvl = Game.save.upgrades[u.id];
-    if (lvl >= 3) { this.msg = 'Ya está al máximo.'; this.msgT = 2; return; }
-    const c = u.cost[lvl];
-    if (Game.save.tech < c) { this.msg = 'Te falta tecnología (' + (c - Game.save.tech) + ').'; this.msgT = 2; Audio2.sfx('back'); return; }
-    Game.save.tech -= c;
-    Game.save.upgrades[u.id]++;
-    if (this.world) this.world.player.refreshStats();
-    if (u.id === 'hp' && this.world) this.world.player.hp += 20;
-    Game.saveGame();
-    this.msg = '¡Mejora instalada!'; this.msgT = 2;
-    Audio2.sfx('heal');
-  }
-  update(dt) {
-    if (this.msgT > 0) this.msgT -= dt;
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'TALLER DE PETER');
-    drawTechIcon(ctx, W / 2 - 40, 31, t);
-    Font.draw(ctx, 'TECNOLOGÍA: ' + Game.save.tech, W / 2 - 30, 31, UI.gold);
-    this.menu.draw(ctx, W / 2, 52, t, { lh: 16 });
-    const u = UPGRADES[this.menu.sel];
-    if (u) Font.draw(ctx, u.desc, W / 2, 160, '#b0c0ff', { align: 'center' });
-    if (this.msgT > 0) Font.draw(ctx, this.msg, W / 2, 178, UI.gold, { align: 'center' });
-    Font.draw(ctx, 'Consigue tecnología derrotando enemigos,', W / 2, 192, UI.dim, { align: 'center' });
-    Font.draw(ctx, 'deteniendo crímenes y buscando piezas Stark.', W / 2, 202, UI.dim, { align: 'center' });
-  }
-}
 
-class SuitsScreen {
-  constructor() {
-    const items = SUITS.map((s) => ({
-      label: () => (Game.save.suits.includes(s.id) ? s.name : '???') + (Game.save.suit === s.id ? '  (PUESTO)' : ''),
-      act: () => {
-        if (Game.save.suits.includes(s.id)) { Game.save.suit = s.id; Game.saveGame(); Audio2.sfx('select'); }
-        else Audio2.sfx('back');
-      },
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-    this.menu.sel = Math.max(0, SUITS.findIndex((s) => s.id === Game.save.suit));
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'TRAJES');
-    this.menu.draw(ctx, 24, 44, t, { lh: 12, align: 'left' });
-    const s = SUITS[this.menu.sel];
-    if (s) {
-      ctx.fillStyle = '#1a1830'; ctx.fillRect(250, 36, 110, 130);
-      const unlocked = Game.save.suits.includes(s.id);
-      const pal = unlocked ? s.palObj : FLASH_PAL;
-      if (!unlocked) ctx.globalAlpha = 0.15;
-      Rig.draw(ctx, 305, 150, Math.sin(t) > 0 ? 1 : -1, Poses.idle(t), pal, { scale: 4 });
-      ctx.globalAlpha = 1;
-      const mi = MISSION_SUIT.indexOf(s.id);
-      const lines = Font.wrap(unlocked ? s.desc : 'Bloqueado: completa ' + (mi === 0 ? 'el prólogo' : 'el capítulo ' + mi) + '.', 150);
-      lines.forEach((ln, i) => Font.draw(ctx, ln, 305, 176 + i * 10, UI.paper, { align: 'center' }));
-    }
-  }
-}
 
-class PauseRoot {
-  constructor(world) {
-    this.world = world;
-    const city = world.mode === 'city';
-    this.menu = new Menu([
-      { label: 'REANUDAR', act: () => { this.res = 'close'; } },
-      { label: 'TALLER', act: () => this.stack.push(new WorkshopScreen(world)) },
-      { label: 'TRAJES', act: () => this.stack.push(new SuitsScreen()) },
-      { label: 'VIAJAR ENTRE UNIVERSOS', disabled: () => !city, act: () => this.stack.push(new TravelScreen(world)) },
-      { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
-      { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
-      city ? { label: 'GUARDAR Y SALIR AL MENÚ', act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.toMenu(); } }
-        : { label: 'ABANDONAR CAPÍTULO', act: () => this.stack.push(new ConfirmScreen('¿Abandonar el capítulo? Volverás a la ciudad.', () => { const m = MISSIONS[world.missionIdx]; Game.goCity({ universe: m.universe, x: m.markerX ? m.markerX - 100 : undefined }); })) },
-    ]);
-    if ((Game.save.stage === 0 || world.missionIdx === EXTRA_MISSION) && !city) this.menu.items[6] = { label: 'SALIR AL MENÚ PRINCIPAL', act: () => this.stack.push(new ConfirmScreen('¿Salir al menú? Perderás el progreso de este capítulo.', () => Game.toMenu())) };
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.res) { const x = this.res; this.res = null; return x; }
-    return r;
-  }
-  draw(ctx, t) {
-    ctx.fillStyle = 'rgba(8,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-    Font.draw(ctx, 'PAUSA', W / 2, 16, UI.paper, { align: 'center', scale: 3, shadow: UI.red });
-    this.menu.draw(ctx, W / 2, 52, t, { lh: 15 });
-    const s = Game.save;
-    const info = 'TECNOLOGÍA ' + s.tech + '   FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + '   CÁNONES ROTOS ' + canonCount() + '/' + CANON_ORDER.length;
-    Font.draw(ctx, info, W / 2, 176, UI.dim, { align: 'center' });
-    const U = UNIVERSES[this.world.universe];
-    if (this.world.mode === 'mission') Font.draw(ctx, chapterLabel(this.world.missionIdx) + ': ' + MISSIONS[this.world.missionIdx].name, W / 2, 190, UI.gold, { align: 'center' });
-    else Font.draw(ctx, U.name + ' · ' + U.city, W / 2, 190, UI.gold, { align: 'center' });
-  }
-}
 
-class TravelScreen {
-  constructor(world) {
-    this.world = world;
-    const list = UNIVERSE_ORDER.filter((u) => (Game.save.visited || []).includes(u) || (u === '616' && Game.save.stage >= STORY_DONE) || (u === 'n2099' && Game.save.stage >= 4));
-    const items = list.map((u) => ({
-      label: () => UNIVERSES[u].name + ' · ' + UNIVERSES[u].city + (u === world.universe ? '  (AQUÍ)' : ''),
-      disabled: () => u === world.universe,
-      act: () => { Game.save.cityPos[world.universe] = world.player.x; Game.saveGame(); Game.goCity({ universe: u }); },
-    }));
-    items.push({ label: 'VOLVER', act: () => { this.done = true; } });
-    this.menu = new Menu(items);
-  }
-  update(dt) {
-    const r = this.menu.update(dt);
-    if (this.done) { this.done = false; return 'back'; }
-    return r;
-  }
-  draw(ctx, t) {
-    drawScreenTitle(ctx, 'VIAJAR ENTRE UNIVERSOS');
-    this.menu.draw(ctx, W / 2, 50, t, { lh: 18 });
-    Font.draw(ctx, 'Solo puedes volver a universos que ya visitaste.', W / 2, 190, UI.dim, { align: 'center' });
-  }
-}
 
-class PauseMenu {
-  constructor(world) {
-    const root = new PauseRoot(world);
-    this.stack = new MenuStack(root);
-    root.stack = this.stack;
-    Audio2.musicGain && (Audio2.musicGain.gain.value = Game.settings.music / 10 * 0.2);
-  }
-  update(dt) {
-    const r = this.stack.update(dt);
-    if (r === 'close') { Game.applySettings(); return 'close'; }
-    return null;
-  }
-  draw(ctx, t) { this.stack.draw(ctx, t); }
-}
 
 // ---------------------------------------------------------------------------
 // Escenas
@@ -418,13 +268,14 @@ class MenuScene {
         { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
         { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
         { label: () => 'CAPÍTULO EXTRA: ' + (Game.save.completed ? MISSIONS[EXTRA_MISSION].name.toUpperCase() : '???'), disabled: () => !Game.save.completed, act: () => Game.startMission(EXTRA_MISSION) },
+        { label: 'MULTIJUGADOR (1-4)', act: () => this.stack.push(new CoopLobbyScreen()) },
         { label: 'JUGAR EN 3D (NUEVO)', act: () => { Voice.stop(); location.href = '3d/index.html'; } },
         { label: 'CRÉDITOS', act: () => Game.change(() => new CreditsScene(() => new MenuScene())) },
       ]),
       update(dt) { const r = this.menu.update(dt); return r === 'back' ? null : r; },
       draw: (ctx, t) => {
         drawLogo(ctx, t, 30);
-        root.menu.draw(ctx, W / 2, 92, t, { lh: 13 });
+        root.menu.draw(ctx, W / 2, 90, t, { lh: 12 });
         if (Game.save.started) {
           const s = Game.save;
           const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
@@ -496,6 +347,7 @@ class ResultsScene {
       Font.draw(ctx, a, 80, 64 + i * 13, UI.paper);
       Font.draw(ctx, b, W - 80, 64 + i * 13, UI.gold, { align: 'right' });
     });
+    if (s.record && this.t > 1.1 && Math.floor(this.t * 3) % 2) Font.draw(ctx, '¡NUEVO RÉCORD DE TIEMPO!', W / 2, 128, '#80ff80', { align: 'center', shadow: UI.ink });
     if (this.suit && this.t > 1.2) {
       UI.panel(ctx, 70, 134, W - 140, 44, 'rgba(40,10,14,0.9)');
       Font.draw(ctx, '¡NUEVO TRAJE DESBLOQUEADO!', W / 2 + 14, 142, UI.gold, { align: 'center' });
@@ -602,7 +454,7 @@ class PlayScene {
 // Objeto principal
 // ---------------------------------------------------------------------------
 const Game = {
-  canvas: null, ctx: null, scene: null, fade: null,
+  canvas: null, ctx: null, scene: null, fade: null, coop: null,
   settings: defaultSettings(), save: defaultSave(),
   acc: 0, last: 0, frame: 0, errors: [],
 
@@ -612,6 +464,7 @@ const Game = {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
     this.loadAll();
+    Progress.ensure();
     CustomSong.load();
     Voice.init();
     Input.init(this.canvas);
@@ -685,6 +538,7 @@ const Game = {
 
   newGame() {
     this.save = defaultSave();
+    Progress.ensure();
     this.save.started = true;
     this.saveGame();
     this.change(() => new StoryScene(STORY.intro, () => this.missionScene(0)));
@@ -712,6 +566,8 @@ const Game = {
   },
 
   missionComplete(i, stats) {
+    Progress.addXP(300, null, true);
+    stats.record = Progress.bestTime(i, stats.time);
     this.save.tech += 15;
     const first = this.save.stage <= i;
     this.save.stage = Math.max(this.save.stage, i + 1);

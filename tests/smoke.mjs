@@ -184,20 +184,25 @@ await sim(6);
 const hasPause = await page.evaluate(() => !!Game.scene.world.pause);
 console.log('pause open', hasPause);
 await shot('30_pause');
-for (let item = 1; item <= 5; item++) {
-  await page.evaluate((item) => { const p = Game.scene.world.pause; if (!p) { Game.scene.world.openPause(); } const root = Game.scene.world.pause.stack.stack[0]; root.menu.sel = item; }, item);
-  await page.evaluate(() => window.__press('Enter'));
-  await sim(8);
-  await shot(`31_pause_${item}`);
-  if (item === 1) { await page.evaluate(() => window.__press('Enter')); await sim(8); }
-  await page.evaluate(() => { const p = Game.scene.world.pause; if (p) while (p.stack.stack.length > 1) p.stack.stack.pop(); });
+for (let tab = 0; tab < 7; tab++) {
+  await page.evaluate((tab) => { const w = Game.scene.world; if (!w.pause) w.openPause(); w.pause.lock = 0; w.pause.tab = tab; }, tab);
   await sim(4);
+  // en cada pestaña: moverse y aceptar (aprender, equipar, fabricar...)
+  await page.evaluate(() => window.__press('ArrowDown')); await sim(3);
+  await page.evaluate(() => window.__press('ArrowRight')); await sim(3);
+  if (tab >= 1 && tab <= 3) { await page.evaluate(() => window.__press('Enter')); await sim(4); }
+  await shot(`31_pause_${tab}`);
+  const inf = await page.evaluate(() => { const w = Game.scene.world; return { open: !!w.pause, tab: w.pause && w.pause.tab, sub: !!(w.pause && w.pause.sub), err: Game.errors.length }; });
+  console.log('tab', tab, JSON.stringify(inf));
+  if (inf.sub) await page.evaluate(() => { Game.scene.world.pause.sub = null; });
 }
 await page.evaluate(() => { const w = Game.scene.world; w.pause = null; });
 await sim(10);
 await log('after pause');
-// viajar entre universos
-await page.evaluate(() => { const w = Game.scene.world; w.openPause(); const p = w.pause; p.stack.push(new TravelScreen(w)); const top = p.stack.top; top.menu.sel = 0; top.menu.items[0].act(); });
+// viajar entre universos desde el mapa
+await page.evaluate(() => { const w = Game.scene.world; w.openPause(); w.pause.lock = 0; w.pause.tab = 0; w.pause.tabs[0].sel = 0; });
+await sim(2);
+await page.evaluate(() => window.__press('Enter'));
 await sim(60, `if (i % 6 === 0) Input.keyLatch.Enter = true;`);
 console.log('travel ->', await page.evaluate(() => Game.scene.world && Game.scene.world.universe));
 

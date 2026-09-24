@@ -95,6 +95,16 @@ class Enemy {
       if (this.koT <= 0) this.remove = true;
       return;
     }
+    // Matriz de suspensión: flota indefenso
+    if (this.suspendT > 0) {
+      this.suspendT -= dt;
+      this.vx = approach(this.vx, 0, 300 * dt); this.vy = 0;
+      this.y = approach(this.y, this.suspY - 26 + Math.sin(this.anim * 3) * 2, 60 * dt);
+      this.x += this.vx * dt;
+      if (Math.floor(this.anim * 10) % 3 === 0) world.particles.spark(this.cx + rand(-6, 6), this.y + this.h, '#c080ff', 1);
+      if (this.suspendT <= 0) { this.state = 'air'; this.vy = 60; }
+      return;
+    }
     const p = world.player;
     const dx = p.cx - this.cx, dy = p.cy - this.cy, adx = Math.abs(dx);
     if (this.webbed > 0) {
@@ -1168,6 +1178,7 @@ class Proj {
         if (overlap(this.box(), e.hurtbox())) {
           e.web(world.player.webStun, world);
           if (!e.isBoss) e.takeHit(0.5, sign(this.vx) * 40, 0, false, world);
+          world.onWebHit(e, this);
           Audio2.sfx('webhit');
           world.stats.webs++;
           this.dead = true;

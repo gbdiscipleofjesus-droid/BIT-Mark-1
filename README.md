@@ -55,6 +55,16 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 | Refuerzo multiversal | T | R3 | R3 | R3 |
 | Menú | Esc | Options | Menú | + |
 
+## Estilo PlayStation (versión 2.5D)
+
+- **Menú de pausa con pestañas** (L1 / R1 o Q / E): MAPA, HABILIDADES, ARTILUGIOS, TRAJES, RÉCORDS, MULTIJUGADOR y SISTEMA.
+- **Mapa:** la ciudad entera con tu posición, la misión, los crímenes, los fragmentos y los jefes. Desde ahí viajas entre universos.
+- **Niveles y habilidades:** ganas experiencia derrotando enemigos, deteniendo crímenes, encontrando fragmentos y completando capítulos. Cada nivel da un punto para el árbol de 21 habilidades en tres ramas: Defensor (combate), Balanceador (movimiento, triple salto, planear con alas de telaraña) e Innovador (redes eléctricas y de impacto, artilugios).
+- **8 artilugios:** red de impacto, bomba de red, mina trampa, dron araña, onda de choque, matriz de suspensión, red eléctrica y red de rebote. Se desbloquean por nivel, tienen cargas que se recargan y se mejoran con tecnología.
+- **49 trajes:** 35 nuevos para fabricar con tecnología al subir de nivel (simbionte, Noir con sombrero, Spider-Punk con cresta, 2099 clásico con capa, armaduras, Ghost-Spider, Miles clásico, ropa interior, Hombre Bolsa…). Cada traje trae un **poder** (furia, explosión de red, Spider-Bro, camuflaje, brazos de hierro, barrera, puños eléctricos, terremoto, cámara lenta, onda negativa), y puedes combinar cualquier traje con cualquier poder desbloqueado.
+- **Récords y retos:** estadísticas, mejores tiempos por capítulo y 10 retos con medallas de bronce, plata y oro.
+- **Multijugador local de 1 a 4 jugadores:** cada amigo pulsa SALTAR en su propio mando, en la pestaña MULTIJUGADOR o en el menú principal. Cada uno elige su traje, la cámara sigue al grupo y los compañeros caídos vuelven a los 5 segundos. Si el jugador 1 usa mando, un amigo puede jugar con el teclado.
+
 ## Controles
 
 Todos los controles se pueden reasignar en **Controles** (teclado y mando).
@@ -67,9 +77,12 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 | Balancearse (mantener) | C / L | RB / RT |
 | Disparar red | V / I | Y |
 | Esquivar (adelante: rueda / mortal; atrás: voltereta / mortal girando; golpean un poco) | Shift / O | B |
-| Especial (mantener = curar) | B / U / Q | LB / LT |
+| Especial (mantener = curar) | B / U / Q | LB |
+| Usar artilugio | G / N | LT |
+| Cambiar de artilugio | T / M | Select / View / − |
+| Poder del traje | H / Y | L3 (hundir stick izquierdo) |
 | Refuerzo multiversal (otro Spider-Man te ayuda, recarga 90 s) | E / F | R3 (hundir stick derecho) |
-| Pausa | Esc / P | Start / Select |
+| Menú (pestañas con Q/E o L1/R1) | Esc / P | Start / Options / + |
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.
 - **Táctil:** en el móvil aparecen joystick y botones en pantalla.
@@ -125,6 +138,7 @@ node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
 node tests/dodge.mjs          # las 4 esquivas (tipo, dirección, invulnerabilidad y daño)
 node tests/powers.mjs         # cada villano usa sus poderes
+node tests/coop.mjs           # multijugador con 4 mandos, artilugios, poderes y habilidades
 node tests/game3d.mjs         # versión 3D: movimiento, balanceo, paredes, combate y capítulo 1
 node tests/voices.mjs         # diálogos hablados y recarga del refuerzo
 node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea

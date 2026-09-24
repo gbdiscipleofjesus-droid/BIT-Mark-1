@@ -178,6 +178,12 @@ const Sprite = {
             const eX = (v * r * facing) / eu - 0.35 / emb.unit, eY = (embU - u) / eu;
             if (inEmblem(emb, eX, eY)) color = this.ramp(pal.emblem)[Math.max(1, tone)];
           }
+          if (!color && pal.deco === 'armor' && !P.head) {
+            // placas de armadura: juntas oscuras y remaches brillantes
+            const pp = per * 1.5;
+            if (((u + pp * 0.5) % pp + pp) % pp < lw * 1.4) color = this.ramp(col)[Math.max(0, tone - 2)];
+            else if (Math.abs(v) < 0.12 && ((u % pp) + pp) % pp < lw * 2) color = this.ramp(col)[3];
+          }
           if (!color && webs && col === pal.head && !P.head) {
             const ring = ((u + per * 0.5 + (1 - nz) * 0.9 * U) % per + per) % per < lw;
             const arc = Math.asin(clamp(v, -1, 1)) * r;
@@ -269,6 +275,14 @@ const Sprite = {
       case 'spot':
         for (const sp of [[0.55, -0.08, 0.26], [0.08, 0.35, 0.16], [-0.4, -0.3, 0.2], [0.1, -0.5, 0.12]]) if (Math.hypot(fx - sp[0], fy - sp[1]) < sp[2]) return R4('#101010', 2);
         return 0;
+      case 'bag': {
+        // bolsa de papel con agujeros para los ojos y la boca
+        for (const e of [[0.58, -0.08], [0.12, -0.1]]) if (Math.hypot(fx - e[0], (fy - e[1]) * 1.2) < 0.13) return R4('#140a12', 2);
+        if (fx > 0.25 && fx < 0.75 && Math.abs(fy - 0.4) < 0.05) return R4('#140a12', 2);
+        if (fy < -0.78) return R4(pal.head, 0);
+        if (Math.floor((fx + 1) * 6) % 3 === 0 && Math.abs(fy) < 0.9) return R4(pal.head, Math.max(0, tone - 1));
+        return 0;
+      }
       case 'bowl':
         if (Math.abs(fx - 0.55) < 0.12 && Math.abs(fy + 0.05) < 0.1) return R4('#ffffff', 3);
         return R4('#4cd060', tone);
