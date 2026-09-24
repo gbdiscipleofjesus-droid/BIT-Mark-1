@@ -612,9 +612,9 @@ class Player {
         if (this.attack) pose = Poses[this.attack.def.pose]();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
-          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(this.runPhase); }
+          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(Math.floor(this.runPhase / (TAU / 8)) * (TAU / 8)); }
           else if (this.landT > 0) pose = Poses.crouch();
-          else pose = Poses.idle(t);
+          else pose = Poses.stance(t);
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
         else pose = this.vy < 0 ? Poses.jump() : Poses.fall();
     }

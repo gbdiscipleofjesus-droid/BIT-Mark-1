@@ -1,7 +1,7 @@
 'use strict';
 // ---------------------------------------------------------------------------
 // Sprites detallados: cada personaje se rasteriza píxel a píxel a resolución
-// fina (RES píxeles por píxel lógico). Las extremidades son cápsulas con volumen:
+// de sprite (SPR_D píxeles por píxel lógico, estilo retro). Las extremidades son cápsulas con volumen:
 // luz desde arriba a la izquierda en 4 tonos con tramado, contorno entre piezas,
 // telarañas que rodean el cuerpo, ojos de lente con borde grueso y emblema.
 // ---------------------------------------------------------------------------
@@ -56,8 +56,26 @@ const Sprite = {
     return r;
   },
 
+  // Caché de fotogramas: con las poses cuantizadas, cada fotograma se pinta una sola vez
+  cache: new Map(), palIds: new WeakMap(), nextPal: 1,
+  cached(pose, lp, facing, s, pal, opts) {
+    let pid = this.palIds.get(pal);
+    if (!pid) { pid = this.nextPal++; this.palIds.set(pal, pid); }
+    const anim = pal.deco === 'ironlegs' || pal.deco === 'burn' ? Math.floor(Date.now() / 200) % 4 : 0;
+    const key = pid + '|' + facing + '|' + s + '|' + (opts.bulk || 4) + '|' + anim + '|' + Q_KEYS.map((k) => pose[k]).join(',') + ',' + pose.rot + ',' + pose.hy;
+    let e = this.cache.get(key);
+    if (e) { this.cache.delete(key); this.cache.set(key, e); return e; }
+    const img = this.render(lp, facing, s, pal, opts);
+    const c = makeCanvas(img.w, img.h);
+    c.getContext('2d').drawImage(img.canvas, 0, 0, img.w, img.h, 0, 0, img.w, img.h);
+    e = { canvas: c, w: img.w, h: img.h, ox: img.ox, oy: img.oy };
+    this.cache.set(key, e);
+    if (this.cache.size > 900) this.cache.delete(this.cache.keys().next().value);
+    return e;
+  },
+
   render(lp, facing, s, pal, opts) {
-    const F = RES, U = s * F;
+    const F = SPR_D, U = s * F;
     const q = {};
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     for (const k in lp) {
@@ -95,28 +113,28 @@ const Sprite = {
     const shinCol = pal.trim ? cut(0.42, pal.leg, pal.boot) : cut(0.42, pal.leg, pal.boot);
     const armCol = pal.shoulder ? cut(0.36, pal.shoulder, pal.arm) : pal.arm;
     // --- pierna y brazo traseros ---
-    add(q.hip, q.k1, 1.62 * lb, 1.25 * lb, pal.leg, 1, { back: 1, bulge: 0.15, trimT: -1 });
-    add(q.k1, q.f1, 1.25 * lb, 0.9 * lb, shinCol, 1, { back: 1, bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
+    add(q.hip, q.k1, 1.75 * lb, 1.2 * lb, pal.leg, 1, { back: 1, bulge: 0.15, trimT: -1 });
+    add(q.k1, q.f1, 1.3 * lb, 0.8 * lb, shinCol, 1, { back: 1, bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
     add(q.f1, footOf(q.k1, q.f1), 0.95 * lb, 0.78 * lb, pal.boot, 1, { back: 1 });
     add(q.sh, q.e1, 1.38 * lb, 1.05 * lb, armCol, 2, { back: 1, bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e1, q.h1, 1.08 * lb, 0.85 * lb, pal.arm2, 2, { back: 1, bulge: 0.18 });
-    add(q.h1, q.h1, 1.05 * lb, 1.05 * lb, pal.hand, 2, { back: 1 });
+    add(q.e1, q.h1, 1.12 * lb, 0.75 * lb, pal.arm2, 2, { back: 1, bulge: 0.18 });
+    add(q.h1, q.h1, 1.25 * lb, 1.25 * lb, pal.hand, 2, { back: 1 });
     // --- torso: pelvis y pecho en V ---
-    add(q.hip, q.mid, 2.05 * bulk, 2.1 * bulk, pal.torsoLow, 3, { torso: 1 });
+    add(q.hip, q.mid, 2.15 * bulk, 2.2 * bulk, pal.torsoLow, 3, { torso: 1 });
     const chestTop = [q.sh[0] * 0.8 + q.neck[0] * 0.2, q.sh[1] * 0.8 + q.neck[1] * 0.2];
-    add(q.mid, chestTop, 2.15 * bulk, 2.85 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
+    add(q.mid, chestTop, 2.3 * bulk, 3.15 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
     add(q.sh, q.head, 1.0 * lb, 1.0 * lb, pal.head, 4, {});
     // --- capucha / cabeza ---
     const up = norm([q.head[0] - q.neck[0], q.head[1] - q.neck[1]]);
     if (pal.deco === 'hood' && !flat) add([q.head[0] - up[0] * 1.2 * U, q.head[1] - up[1] * 1.2 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.9, 2.9, shade(pal.torso, -0.12), 5, {});
     add([q.head[0] - up[0] * 0.35 * U, q.head[1] - up[1] * 0.35 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.35, 2.35, pal.head, 6, { head: 1 });
     // --- pierna y brazo delanteros ---
-    add(q.hip, q.k2, 1.62 * lb, 1.25 * lb, pal.leg, 7, { bulge: 0.15 });
-    add(q.k2, q.f2, 1.25 * lb, 0.9 * lb, shinCol, 7, { bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
+    add(q.hip, q.k2, 1.75 * lb, 1.2 * lb, pal.leg, 7, { bulge: 0.15 });
+    add(q.k2, q.f2, 1.3 * lb, 0.8 * lb, shinCol, 7, { bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
     add(q.f2, footOf(q.k2, q.f2), 0.95 * lb, 0.78 * lb, pal.boot, 7, {});
     add(q.sh, q.e2, 1.38 * lb, 1.05 * lb, armCol, 8, { bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e2, q.h2, 1.08 * lb, 0.85 * lb, pal.arm2, 8, { bulge: 0.18 });
-    add(q.h2, q.h2, 1.05 * lb, 1.05 * lb, pal.hand, 8, {});
+    add(q.e2, q.h2, 1.12 * lb, 0.75 * lb, pal.arm2, 8, { bulge: 0.18 });
+    add(q.h2, q.h2, 1.25 * lb, 1.25 * lb, pal.hand, 8, {});
 
     const ctxInfo = { q, U, up, facing, pal, flat, outline };
     for (const P of parts) this.raster(P, ctxInfo);
@@ -136,7 +154,7 @@ const Sprite = {
     const by0 = Math.max(0, Math.floor(Math.min(ay, ay + dy) - rm)), by1 = Math.min(S - 1, Math.ceil(Math.max(ay, ay + dy) + rm));
     const webs = pal.webs && !flat && L > 0;
     const webR = webs ? this.ramp(pal.webLine) : null;
-    const per = Math.max(4, 1.65 * U), lw = Math.max(1, U * 0.26);
+    const per = Math.max(5, 2.2 * U), lw = 1;
     const emb = P.chest && pal.emblem && !flat ? EMBLEMS[pal.emblemStyle || 'small'] : null;
     const eu = emb ? emb.unit * U * (P.r1 / (2.85 * U)) : 0;
     const embU = L * 0.55;
@@ -159,9 +177,11 @@ const Sprite = {
         let tone;
         if (flat) tone = 2;
         else {
-          const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2] + (((px + py) & 1) ? 0.05 : -0.05);
-          tone = li < 0.02 ? 0 : li < 0.4 ? 1 : li < 0.8 ? 2 : 3;
-          if (P.back) tone = Math.max(0, tone - 1);
+          // sombreado retro: bandas planas, sin degradados
+          const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
+          tone = li < 0.08 ? 0 : li < 0.42 ? 1 : li < 0.95 ? 2 : 3;
+          if (P.back) tone = Math.max(0, Math.min(tone, 2) - 1);
+          if (tone === 3 && !P.head) tone = 2; // sin brillo de plástico en brazos y piernas
         }
         const v = (ex * -uy + ey * ux) / r; // -1..1 a lo ancho
         const u = t * L;

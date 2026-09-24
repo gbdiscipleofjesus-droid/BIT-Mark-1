@@ -58,6 +58,8 @@ const BASE_POSE = { t: 4, h: 0, l1: -12, l2: 6, r1: 14, r2: -6, a1: -15, a2: -35
 function P(o) { return Object.assign({}, BASE_POSE, o); }
 const Poses = {
   idle(t) { const b = Math.sin(t * 3); return P({ hy: b > 0.6 ? 1 : 0, a2: -35 - b * 5, b2: -50 + b * 5 }); },
+  // la pose agachada clásica de Spider-Man (2 fotogramas de respiración)
+  stance(t) { const b = Math.floor(t * 2.5) % 2; return P({ t: 30, h: -25, l1: -30, l2: 100, r1: 70, r2: -125, a1: 30, a2: -90, b1: 70 + b * 8, b2: -40, hy: 6 + b }); },
   run(ph) {
     const s = Math.sin(ph), c = Math.cos(ph);
     return P({ t: 16, l1: -38 * s, l2: -40 - 30 * Math.max(0, -c), r1: 38 * s, r2: -40 - 30 * Math.max(0, c),
@@ -129,6 +131,7 @@ const Rig = {
   // contorno, telarañas en relieve, ojos de lente y emblema.
   draw(ctx, x, y, facing, pose, pal, opts = {}) {
     const s = opts.scale || 1;
+    pose = quantizePose(pose);
     const lp = this.compute(pose, s);
     const wp = {};
     for (const k in lp) wp[k] = [Math.round(x + facing * lp[k][0]), Math.round(y + lp[k][1])];
@@ -140,8 +143,8 @@ const Rig = {
       ctx.beginPath(); ctx.moveTo(wp.sh[0] + f * 2 * s, wp.sh[1] - 1 * s); ctx.lineTo(wp.sh[0] - f * 3 * s, wp.sh[1]);
       ctx.lineTo(wp.hip[0] - f * (9 + Math.sin(t) * 2) * s, wp.hip[1] + 6 * s); ctx.lineTo(wp.hip[0] - f * 2 * s, wp.hip[1] + 4 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    const img = Sprite.render(lp, facing, s, pal, opts);
-    ctx.drawImage(img.canvas, 0, 0, img.w, img.h, x - img.ox / RES, y - img.oy / RES, img.w / RES, img.h / RES);
+    const img = Sprite.cached(pose, lp, facing, s, pal, opts);
+    ctx.drawImage(img.canvas, 0, 0, img.w, img.h, Math.round(x * SPR_D - img.ox) / SPR_D, Math.round(y * SPR_D - img.oy) / SPR_D, img.w / SPR_D, img.h / SPR_D);
     if (pal.deco === 'noir' && pal.face !== 'flat') {
       // sombrero de ala (fedora)
       const hx = wp.head[0], hy = wp.head[1];
@@ -167,6 +170,15 @@ const Rig = {
     return wp;
   },
 };
+// Animación retro: los ángulos van a saltos (como fotogramas dibujados a mano)
+const Q_KEYS = ['t', 'h', 'l1', 'l2', 'r1', 'r2', 'a1', 'a2', 'b1', 'b2'];
+function quantizePose(p) {
+  const o = Object.assign({}, p);
+  for (const k of Q_KEYS) o[k] = Math.round((p[k] || 0) / 15) * 15;
+  o.rot = Math.round((p.rot || 0) / 30) * 30;
+  o.hy = Math.round(p.hy || 0);
+  return o;
+}
 function mixp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
 
 // ---------------- Retratos para diálogos (24x24) ----------------

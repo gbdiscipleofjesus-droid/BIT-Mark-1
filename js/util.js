@@ -7,7 +7,8 @@ const TAU = Math.PI * 2;
 const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
 const ALLY_CD = 90;     // segundos de recarga del refuerzo multiversal (R3)
 const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
-const RES = 3;          // píxeles reales por píxel lógico (sprites detallados)
+const RES = 4;          // píxeles reales por píxel lógico
+const SPR_D = 2;        // píxeles de sprite por píxel lógico (personajes en pixel art retro)
 function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }

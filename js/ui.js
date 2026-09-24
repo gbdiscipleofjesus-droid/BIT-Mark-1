@@ -219,7 +219,7 @@ function drawHUD(ctx, w, t) {
   // Artilugio y poder del traje
   {
     const g = GADGETS.find((x) => x.id === Gadgets.selected(p));
-    const gx = 4, gy = H - 26;
+    const gx = 4, gy = H - ((w.boss && !w.boss.dead && w.boss.state !== 'wait') ? 50 : 26);
     if (g && Progress.gadgetUnlocked(g) && !w.dialog) {
       UI.panel(ctx, gx, gy, 128, 22, 'rgba(12,10,24,0.7)');
       ctx.fillStyle = g.color; ctx.fillRect(gx + 3, gy + 3, 7, 7); ctx.fillStyle = UI.ink; ctx.fillRect(gx + 5, gy + 5, 3, 3);
