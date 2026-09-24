@@ -622,7 +622,7 @@ class Player {
     if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 6;
     // aterrizaje con peso: se hunde un poco
     if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
-    const SC = 1.2;
+    const SC = 1.35;
     const cork = this.state === 'dodge' && this.dodgeKind === 'corkscrew';
     if (cork) {
       const k = this.spinX || 1;

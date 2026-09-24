@@ -219,7 +219,8 @@ function drawHUD(ctx, w, t) {
   // Artilugio y poder del traje
   {
     const g = GADGETS.find((x) => x.id === Gadgets.selected(p));
-    const gx = 4, gy = H - ((w.boss && !w.boss.dead && w.boss.state !== 'wait') ? 50 : 26);
+    const bossOn = w.boss && !w.boss.dead && w.boss.state !== 'wait';
+    const gx = W - 133, gy = bossOn ? 30 : H - 26;
     if (g && Progress.gadgetUnlocked(g) && !w.dialog) {
       UI.panel(ctx, gx, gy, 128, 22, 'rgba(12,10,24,0.7)');
       ctx.fillStyle = g.color; ctx.fillRect(gx + 3, gy + 3, 7, 7); ctx.fillStyle = UI.ink; ctx.fillRect(gx + 5, gy + 5, 3, 3);
@@ -253,8 +254,9 @@ function drawHUD(ctx, w, t) {
   // Combo
   if (w.combo.n >= 3) {
     const s = 'x' + w.combo.n;
-    Font.draw(ctx, s, W - 8, 42, UI.gold, { align: 'right', scale: 2, shadow: UI.ink });
-    Font.draw(ctx, 'COMBO', W - 8, 60, UI.paper, { align: 'right', shadow: UI.ink });
+    const cy = w.boss && !w.boss.dead && w.boss.state !== 'wait' ? 26 : 0;
+    Font.draw(ctx, s, W - 8, 42 + cy, UI.gold, { align: 'right', scale: 2, shadow: UI.ink });
+    Font.draw(ctx, 'COMBO', W - 8, 60 + cy, UI.paper, { align: 'right', shadow: UI.ink });
   }
   // Minimapa de la ciudad
   if (w.mode === 'city') {

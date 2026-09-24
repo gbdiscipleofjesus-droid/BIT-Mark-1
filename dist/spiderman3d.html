@@ -85,7 +85,7 @@ const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
 const ALLY_CD = 90;     // segundos de recarga del refuerzo multiversal (R3)
 const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
 const RES = 4;          // píxeles reales por píxel lógico
-const SPR_D = 2;        // píxeles de sprite por píxel lógico (personajes en pixel art retro)
+const SPR_D = 1;        // píxeles de sprite por píxel lógico (1 = pixel art grueso, retro)
 function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -1528,7 +1528,7 @@ const Sprite = {
     add(q.e2, q.h2, 1.12 * lb, 0.75 * lb, pal.arm2, 8, { bulge: 0.18 });
     add(q.h2, q.h2, 1.25 * lb, 1.25 * lb, pal.hand, 8, {});
 
-    const ctxInfo = { q, U, up, facing, pal, flat, outline };
+    const ctxInfo = { q, U, up, facing, pal, flat, outline, lowres: U < 3 };
     for (const P of parts) this.raster(P, ctxInfo);
     this.silhouette(w, h, outline);
     this.ctx.putImageData(this.img, 0, 0, 0, 0, w, h);
@@ -1544,7 +1544,7 @@ const Sprite = {
     const rm = Math.max(P.r0, P.r1) + (P.bulge || 0) * U + 1.5;
     const bx0 = Math.max(0, Math.floor(Math.min(ax, ax + dx) - rm)), bx1 = Math.min(S - 1, Math.ceil(Math.max(ax, ax + dx) + rm));
     const by0 = Math.max(0, Math.floor(Math.min(ay, ay + dy) - rm)), by1 = Math.min(S - 1, Math.ceil(Math.max(ay, ay + dy) + rm));
-    const webs = pal.webs && !flat && L > 0;
+    const webs = pal.webs && !flat && L > 0 && !I.lowres;
     const webR = webs ? this.ramp(pal.webLine) : null;
     const per = Math.max(5, 2.2 * U), lw = 1;
     const emb = P.chest && pal.emblem && !flat ? EMBLEMS[pal.emblemStyle || 'small'] : null;
@@ -1571,7 +1571,7 @@ const Sprite = {
         else {
           // sombreado retro: bandas planas, sin degradados
           const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
-          tone = li < 0.08 ? 0 : li < 0.42 ? 1 : li < 0.95 ? 2 : 3;
+          tone = I.lowres ? (li < 0.3 ? 1 : 2) : li < 0.08 ? 0 : li < 0.42 ? 1 : li < 0.95 ? 2 : 3;
           if (P.back) tone = Math.max(0, Math.min(tone, 2) - 1);
           if (tone === 3 && !P.head) tone = 2; // sin brillo de plástico en brazos y piernas
         }
@@ -1637,9 +1637,9 @@ const Sprite = {
     };
     switch (pal.face) {
       case 'spider': {
-        const e = eyes(pal.eyeSize || 1, pal.eye, pal.outline);
+        const e = eyes((pal.eyeSize || 1) * (I.lowres ? 1.45 : 1), pal.eye, pal.outline);
         if (e) return e;
-        if (pal.webs) {
+        if (pal.webs && !I.lowres) {
           const cx0 = 0.34, cy0 = 0.05, rx = fx - cx0, ry = fy - cy0;
           const rr = Math.hypot(rx, ry) * R, ang = Math.atan2(ry, rx);
           const seg = TAU / 10, fr = ang / seg - Math.round(ang / seg);
