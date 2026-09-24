@@ -62,7 +62,7 @@ function buildingMaterial(o) {
             diffuseColor.rgb = mix(diffuseColor.rgb, glass, win);
             roughnessFactor = mix(roughnessFactor, 0.12, win);
             metalnessFactor = mix(metalnessFactor, 0.55, win);
-            totalEmissiveRadiance += win * step(1.0 - uLit, rnd) * uLitColor * (0.25 + rnd * 0.3);
+            totalEmissiveRadiance += win * step(1.0 - uLit, rnd) * uLitColor * (0.12 + rnd * 0.18);
             float shop = step(vWP.y, 4.0) * step(0.7, vWP.y) * step(0.1, f.x) * step(f.x, 0.9);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.1, 0.12, 0.15), shop);
             totalEmissiveRadiance += shop * uShop * (0.5 + h21(floor(cell.xx)) * 1.2);
@@ -161,6 +161,8 @@ const City = {
     this.traffic(scene, r);
     this.pedestrians(scene, r);
     this.parkTrees(scene, r);
+    this.details(scene, r);
+    this.skyline(scene, r);
   },
 
   addToGrid(b) {
@@ -295,7 +297,7 @@ const City = {
     const head = new THREE.BoxGeometry(0.4, 0.15, 0.7); head.translate(0, 6.8 + CURB, 1.5);
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     const dark = new THREE.MeshStandardMaterial({ color: 0x24282c, roughness: 0.6, metalness: 0.5 });
-    for (const [g, m] of [[pole, dark], [arm, dark], [head, new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffc060, emissiveIntensity: 1.2 })]]) {
+    for (const [g, m] of [[pole, dark], [arm, dark], [head, new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffc060, emissiveIntensity: 3.5 })]]) {
       const im = new THREE.InstancedMesh(g, m, lamps.length);
       lamps.forEach((l, n) => { q.setFromAxisAngle(up, l.a); mtx.compose(new THREE.Vector3(l.x, 0, l.z), q, one); im.setMatrixAt(n, mtx); });
       if (g === pole) im.castShadow = true;
@@ -382,6 +384,138 @@ const City = {
     this.pedBody.instanceMatrix.needsUpdate = true; this.pedHead.instanceMatrix.needsUpdate = true;
   },
 
+  // Detalle de calle al estilo Nueva York: escaleras de incendio, toldos,
+  // vallas publicitarias en azoteas, árboles en la acera y semáforos.
+  details(scene, r) {
+    const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), sc = new THREE.Vector3(), col = new THREE.Color();
+    const blockOf = (b) => this.blocks.find((k) => b.x0 >= k.x0 - 1 && b.x1 <= k.x1 + 1 && b.z0 >= k.z0 - 1 && b.z1 <= k.z1 + 1);
+    // caras que dan a la calle: [normal x, normal z]
+    const faces = (b) => {
+      const k = blockOf(b); if (!k || b.top) return [];
+      const out = [];
+      if (b.x0 - k.x0 < 3) out.push([-1, 0]); if (k.x1 - b.x1 < 3) out.push([1, 0]);
+      if (b.z0 - k.z0 < 3) out.push([0, -1]); if (k.z1 - b.z1 < 3) out.push([0, 1]);
+      return out;
+    };
+    // punto sobre la fachada: u a lo largo (0..1), y altura, off hacia fuera
+    const onFace = (b, f, u, y, off) => {
+      if (f[0]) return [f[0] > 0 ? b.x1 + off : b.x0 - off, y, lerp(b.z0, b.z1, u)];
+      return [lerp(b.x0, b.x1, u), y, f[1] > 0 ? b.z1 + off : b.z0 - off];
+    };
+    const yawOf = (f) => Math.atan2(f[0], f[1]);
+    const esc = [], rails = [], ladders = [], awn = [], signs = [];
+    for (const b of this.buildings) {
+      const F = faces(b);
+      for (const f of F) {
+        const len = f[0] ? b.z1 - b.z0 : b.x1 - b.x0;
+        // escaleras de incendio en ladrillo y piedra bajos
+        if ((b.style === 'brick' || b.style === 'stone') && b.h < 90 && len > 12) {
+          const cols = len > 26 ? [0.3, 0.7] : [0.5];
+          for (const u of cols) for (let y = 7.8; y < b.h - 3; y += 3.6) {
+            const p = onFace(b, f, u, y, 0.7);
+            esc.push({ p, a: yawOf(f) });
+            if (y + 3.6 < b.h - 3) ladders.push({ p: onFace(b, f, u + (y / 3.6 % 2 < 1 ? 0.04 : -0.04) * (22 / len), y + 1.8, 0.95), a: yawOf(f), s: (y / 3.6 % 2 < 1 ? 1 : -1) });
+          }
+        }
+        // toldos de las tiendas
+        if (b.style !== 'glass' && len > 8) {
+          const n = Math.floor(len / 9);
+          for (let k = 0; k < n; k++) if (r.chance(0.55)) awn.push({ p: onFace(b, f, (k + 0.5) / n, 3.9, 0.9), a: yawOf(f), c: r.pick(['#1e6a3a', '#a01a20', '#1a3a7a', '#d08a20', '#40404a', '#6a1a4a']) });
+        }
+      }
+      // valla publicitaria en la azotea
+      if (!b.landmark && !b.top && b.h > 20 && b.h < 80 && F.length && r.chance(0.18)) signs.push({ b, f: F[0], ad: r.int(0, 5) });
+    }
+    const metal = new THREE.MeshStandardMaterial({ color: 0x1c1e22, roughness: 0.55, metalness: 0.7 });
+    const put = (geo, mat, list, fn, shadow = true) => {
+      if (!list.length) return;
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((it, n) => { fn(it, n); im.setMatrixAt(n, mtx); });
+      im.castShadow = shadow; im.receiveShadow = true; scene.add(im); return im;
+    };
+    const plat = new THREE.BoxGeometry(4.2, 0.12, 1.3);
+    put(plat, metal, esc, (e) => { q.setFromAxisAngle(up, e.a); mtx.compose(v.set(...e.p), q, sc.set(1, 1, 1)); });
+    // barandillas: una barra frontal y dos laterales en una sola geometría
+    const rg = [new THREE.BoxGeometry(4.2, 0.06, 0.06).translate(0, 1.0, 0.62), new THREE.BoxGeometry(0.06, 1.0, 0.06).translate(-2.07, 0.5, 0.62), new THREE.BoxGeometry(0.06, 1.0, 0.06).translate(2.07, 0.5, 0.62),
+      new THREE.BoxGeometry(0.06, 1.0, 0.06).translate(0, 0.5, 0.62), new THREE.BoxGeometry(0.06, 0.06, 1.3).translate(-2.07, 1.0, 0), new THREE.BoxGeometry(0.06, 0.06, 1.3).translate(2.07, 1.0, 0)];
+    put(mergeGeos(rg), metal, esc, (e) => { q.setFromAxisAngle(up, e.a); mtx.compose(v.set(...e.p), q, sc.set(1, 1, 1)); }, false);
+    const lad = mergeGeos([new THREE.BoxGeometry(0.05, 4.4, 0.05).translate(-0.3, 0, 0), new THREE.BoxGeometry(0.05, 4.4, 0.05).translate(0.3, 0, 0)].concat([-1.6, -0.8, 0, 0.8, 1.6].map((y) => new THREE.BoxGeometry(0.6, 0.04, 0.04).translate(0, y, 0))));
+    const e3 = new THREE.Euler();
+    put(lad, metal, ladders, (l) => { e3.set(0, l.a, l.s * 0.62, 'YXZ'); q.setFromEuler(e3); mtx.compose(v.set(...l.p), q, sc.set(1, 1, 1)); }, false);
+    // toldos inclinados
+    const ag = new THREE.BoxGeometry(5.2, 0.08, 1.8); ag.rotateX(-0.35);
+    const awnM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+    const im = put(ag, awnM, awn, (a) => { q.setFromAxisAngle(up, a.a); mtx.compose(v.set(...a.p), q, sc.set(1, 1, 1)); });
+    if (im) { awn.forEach((a, n) => im.setColorAt(n, col.set(a.c))); im.instanceColor.needsUpdate = true; }
+    // vallas publicitarias (textura con anuncios del universo Marvel)
+    if (signs.length) {
+      const ads = [['DAILY BUGLE', '#f4f0e0', '#c01818', 'LA VERDAD SOBRE SPIDER-MAN'], ['OSCORP', '#0e3a2a', '#9af0b0', 'EL FUTURO ES VERDE'], ['STARK', '#1a1a22', '#f0c040', 'INDUSTRIES'],
+        ['DELMAR\'S', '#f0e0c0', '#2a5a2a', 'SÁNDWICH NÚMERO 5'], ['ROXXON', '#1a2a50', '#f0f0f0', 'ENERGÍA PARA TODOS'], ['F.E.A.S.T.', '#8a1a20', '#fff0e0', 'AYUDA A TU BARRIO']];
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 768;
+      const g = cv.getContext('2d');
+      ads.forEach((a, i) => {
+        const y = i * 128;
+        g.fillStyle = a[1]; g.fillRect(0, y, 512, 128);
+        g.fillStyle = a[2]; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = 'bold 64px sans-serif'; g.fillText(a[0], 256, y + 52, 480);
+        g.font = 'bold 24px sans-serif'; g.fillText(a[3], 256, y + 102, 480);
+        g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 6; g.strokeRect(3, y + 3, 506, 122);
+      });
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+      const board = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.35, roughness: 0.6 });
+      for (const sg of signs) {
+        const b = sg.b, f = sg.f;
+        const geo = new THREE.PlaneGeometry(12, 3);
+        const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (sg.ad + 1 - uv.getY(i)) / 6);
+        const m = new THREE.Mesh(geo, board);
+        const p = onFace(b, f, 0.5, b.h + 3.4, -2.5);
+        m.position.set(...p); m.rotation.y = yawOf(f); m.castShadow = true; scene.add(m);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(12.3, 3.3, 0.2), metal); back.position.set(...p); back.rotation.y = yawOf(f); back.translateZ(-0.12); scene.add(back);
+        for (const dx of [-4.5, 4.5]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 0.2), metal); leg.position.set(...p); leg.rotation.y = yawOf(f); leg.translateX(dx); leg.translateY(-2.4); leg.translateZ(-0.3); scene.add(leg); }
+      }
+    }
+    // árboles en la acera y semáforos en los cruces
+    const trees = [], lights = [];
+    for (const k of this.blocks) {
+      if (k.park) continue;
+      for (let t = 10; t < CITY.BLOCK - 6; t += 16) {
+        if (r.chance(0.5)) trees.push({ x: k.x0 + t, z: k.z0 + 1.6 }); if (r.chance(0.5)) trees.push({ x: k.x0 + t, z: k.z1 - 1.6 });
+        if (r.chance(0.5)) trees.push({ x: k.x0 + 1.6, z: k.z0 + t }); if (r.chance(0.5)) trees.push({ x: k.x1 - 1.6, z: k.z0 + t });
+      }
+      lights.push({ x: k.x0 + 0.6, z: k.z0 + 0.6, a: Math.PI * 1.25 }, { x: k.x1 - 0.6, z: k.z1 - 0.6, a: Math.PI * 0.25 });
+    }
+    const trunk = new THREE.CylinderGeometry(0.12, 0.18, 2.6, 5); trunk.translate(0, 1.3 + CURB, 0);
+    const crown = new THREE.IcosahedronGeometry(1.5, 1); crown.scale(1, 1.15, 1); crown.translate(0, 3.6 + CURB, 0);
+    put(trunk, new THREE.MeshStandardMaterial({ color: 0x3e2c1e, roughness: 0.9 }), trees, (t, n) => { const s = 0.85 + (n * 37 % 10) / 25; mtx.makeScale(s, s, s); mtx.setPosition(t.x, 0, t.z); });
+    const cim = put(crown, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true }), trees, (t, n) => { const s = 0.85 + (n * 37 % 10) / 25; mtx.makeScale(s, s, s); mtx.setPosition(t.x, 0, t.z); });
+    if (cim) { trees.forEach((t, n) => cim.setColorAt(n, col.set(['#3a6a2a', '#4a7a30', '#2e5a26', '#5a7a2a'][n % 4]))); cim.instanceColor.needsUpdate = true; }
+    const tpole = mergeGeos([new THREE.CylinderGeometry(0.1, 0.12, 5.5, 6).translate(0, 2.75 + CURB, 0), new THREE.BoxGeometry(0.1, 0.1, 4).translate(0, 5.4 + CURB, 2)]);
+    put(tpole, metal, lights, (l) => { q.setFromAxisAngle(up, l.a); mtx.compose(v.set(l.x, 0, l.z), q, sc.set(1, 1, 1)); });
+    const tbox = new THREE.BoxGeometry(0.4, 1.1, 0.35); tbox.translate(0, 4.9 + CURB, 3.6);
+    put(tbox, new THREE.MeshStandardMaterial({ color: 0x2a2a1a, roughness: 0.6 }), lights, (l) => { q.setFromAxisAngle(up, l.a); mtx.compose(v.set(l.x, 0, l.z), q, sc.set(1, 1, 1)); });
+    const bulb = new THREE.SphereGeometry(0.1, 6, 4); bulb.translate(0, 5.2 + CURB, 3.8);
+    const bim = put(bulb, new THREE.MeshBasicMaterial({ color: 0xffffff }), lights, (l) => { q.setFromAxisAngle(up, l.a); mtx.compose(v.set(l.x, 0, l.z), q, sc.set(1, 1, 1)); }, false);
+    if (bim) { lights.forEach((l, n) => bim.setColorAt(n, col.set(n % 3 ? '#40ff80' : '#ff3030').multiplyScalar(3))); bim.instanceColor.needsUpdate = true; }
+  },
+  // Horizonte lejano al otro lado del río (solo decorado)
+  skyline(scene, r) {
+    const box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0);
+    const mat = buildingMaterial({ glass: '#1a2230', sky: '#e8a078', lit: '#ffd080', winW: 3.0 });
+    const list = [];
+    for (let k = 0; k < 260; k++) {
+      const a = r.range(0, TAU), d = r.range(CITY.MAX + 260, CITY.MAX + 700);
+      const x = Math.sin(a) * d, z = Math.cos(a) * d;
+      const w = r.range(14, 40), h = r.range(20, 60) + (r.chance(0.2) ? r.range(60, 200) : 0);
+      list.push({ x, z, w, dd: r.range(14, 40), h });
+    }
+    const im = new THREE.InstancedMesh(box, mat, list.length);
+    const mtx = new THREE.Matrix4(), col = new THREE.Color();
+    list.forEach((b, n) => { mtx.makeScale(b.w, b.h, b.dd); mtx.setPosition(b.x, -1.5, b.z); im.setMatrixAt(n, mtx); im.setColorAt(n, col.set(['#6a5a58', '#5a6070', '#7a6a5a', '#50586a'][n % 4])); });
+    scene.add(im);
+    // orillas de tierra bajo el horizonte
+    const shore = new THREE.Mesh(new THREE.RingGeometry(CITY.MAX + 230, CITY.MAX + 760, 48, 1), new THREE.MeshStandardMaterial({ color: 0x4a4a48, roughness: 1 }));
+    shore.rotation.x = -Math.PI / 2; shore.position.y = -1.4; scene.add(shore);
+  },
   parkTrees(scene, r) {
     const trees = [];
     for (const b of this.parks) for (let k = 0; k < 40; k++) trees.push({ x: r.range(b.x0 + 3, b.x1 - 3), z: r.range(b.z0 + 3, b.z1 - 3), s: r.range(0.8, 1.4) });
@@ -395,6 +529,23 @@ const City = {
     }
   },
 };
+
+// une varias geometrías simples (posición, normal, uv) en una sola
+function mergeGeos(list) {
+  const pos = [], nrm = [], uv = [], ind = [];
+  let off = 0;
+  for (const g0 of list) {
+    const g = g0.index ? g0 : g0;
+    const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+    for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); nrm.push(N.getX(i), N.getY(i), N.getZ(i)); uv.push(U ? U.getX(i) : 0, U ? U.getY(i) : 0); }
+    if (g.index) for (let i = 0; i < g.index.count; i++) ind.push(g.index.getX(i) + off); else for (let i = 0; i < P.count; i++) ind.push(i + off);
+    off += P.count;
+  }
+  const o = new THREE.BufferGeometry();
+  o.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); o.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); o.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  o.setIndex(ind);
+  return o;
+}
 
 // ---- Cielo de atardecer con sol ----
 function makeSky(scene, sunDir) {

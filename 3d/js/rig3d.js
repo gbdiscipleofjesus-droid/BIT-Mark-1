@@ -248,24 +248,28 @@ class Rig3D {
     this.pal = pal;
     const s = o.scale || 1, bulk = o.bulk || 1;
     this.root = new THREE.Group();
-    this.body = new THREE.Group(); this.root.add(this.body); this.body.scale.setScalar(s);
+    this.body = new THREE.Group(); this.root.add(this.body);
     const T = suitTextures(pal, o.key || JSON.stringify(pal).slice(0, 400));
     const mat = (t, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ map: t.map, bumpMap: t.bump, bumpScale: 2.2, roughness: pal.face === 'visor' ? 0.45 : 0.62, metalness: pal.deco === 'ironlegs' ? 0.35 : 0.04 }, extra));
     const mesh = (geo, m, parent) => { const me = new THREE.Mesh(geo, m); me.castShadow = true; me.receiveShadow = true; parent.add(me); return me; };
     const J = this.j = {};
-    const grp = (name, parent, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); J[name] = g; return g; };
-    const hips = grp('hips', this.body, 0, 0.98, 0);
-    mesh(torsoGeo([[0.0005, -0.13], [0.08, -0.12], [0.132 * bulk, -0.07], [0.14 * bulk, -0.01], [0.135 * bulk, 0.06], [0.128 * bulk, 0.12]], 0.7), mat(T.pelvis), hips);
-    const spine = grp('spine', hips, 0, 0.1, 0);
-    this.torso = mesh(torsoGeo([[0.125 * bulk, 0], [0.13 * bulk, 0.07], [0.15 * bulk, 0.16], [0.175 * bulk, 0.24], [0.192 * bulk, 0.31], [0.2 * bulk, 0.37], [0.175 * bulk, 0.43], [0.11, 0.47], [0.055, 0.5], [0.0005, 0.505]], 0.64), mat(T.torso), spine);
-    // pectorales y trapecios para dar volumen
-    const pec = new THREE.SphereGeometry(0.09, 14, 10); pec.scale(1, 0.62, 0.55);
-    for (const sx of [-1, 1]) { const p = mesh(pec, mat(T.pec), spine); p.position.set(sx * 0.075 * bulk, 0.34, 0.07 * bulk); }
-    const trap = new THREE.SphereGeometry(0.075, 12, 8); trap.scale(1.2, 0.55, 0.8);
-    for (const sx of [-1, 1]) { const p = mesh(trap, mat(T.pec), spine); p.position.set(sx * 0.1 * bulk, 0.43, -0.02); }
-    const neck = grp('neck', spine, 0, 0.47, 0);
-    mesh(limbGeo(0.08, 0.052, 0.058, 0, 0.5, 10).rotateX(Math.PI).translate(0, 0, 0), mat(T.head), neck);
-    const head = grp('head', neck, 0, 0.1, 0.01);
+    // esqueleto (huesos reales) + cuerpo de una sola pieza con el traje en el shader
+    for (const [n, par, lp] of BONE_DEF) {
+      const bn = new THREE.Bone(); bn.name = n; bn.position.set(...lp);
+      const r = REST_ROT[n]; if (r) bn.rotation.set(...r);
+      (par ? J[par] : this.body).add(bn); J[n] = bn;
+    }
+    const info = buildBody(bulk);
+    const skinPal = Object.assign({}, pal, { arm2: pal.arm2 || pal.arm, hand: pal.hand || pal.arm2 || pal.arm, leg: pal.leg || pal.torsoLow || pal.torso, boot: pal.boot || pal.leg });
+    const skin = this.skin = new THREE.SkinnedMesh(info.geo, suitMaterial(skinPal, info, bulk));
+    skin.castShadow = true; skin.receiveShadow = true; skin.frustumCulled = false;
+    this.body.add(skin);
+    this.body.updateMatrixWorld(true);
+    skin.bind(new THREE.Skeleton(JOINTS.map((n) => J[n])), skin.matrixWorld);
+    for (const n of JOINTS) J[n].rotation.set(0, 0, 0);
+    this.body.scale.setScalar(s);
+    const hips = J.hips, spine = J.spine, neck = J.neck;
+    const head = J.head;
     const R = 0.118;
     const hg = new THREE.SphereGeometry(R, 28, 20); hg.scale(0.94, 1.12, 1.0);
     { // mandíbula: la parte baja de la cabeza se estrecha hacia la barbilla
@@ -295,30 +299,6 @@ class Rig3D {
     }
     if (pal.deco === 'hood') {
       const hood = mesh(new THREE.SphereGeometry(0.15, 16, 12, 0, TAU, 0, Math.PI * 0.62), mat(T.pelvis), head); hood.rotation.x = -0.5; hood.position.set(0, 0.01, -0.03);
-    }
-    // brazos
-    for (const [sx, L] of [[1, 'L'], [-1, 'R']]) {
-      const sh = grp('sh' + L, spine, sx * 0.205 * bulk, 0.4, -0.01);
-      const delt = new THREE.SphereGeometry(0.064 * Math.sqrt(bulk), 14, 10); delt.scale(1, 0.95, 1);
-      mesh(delt, mat(T.upperArm), sh);
-      mesh(limbGeo(0.28, 0.058 * Math.sqrt(bulk), 0.043 * Math.sqrt(bulk), 0.012 * bulk, 0.55), mat(T.upperArm), sh);
-      const el = grp('el' + L, sh, 0, -0.28, 0);
-      mesh(limbGeo(0.25, 0.047 * Math.sqrt(bulk), 0.033, 0.01 * bulk, 0.75), mat(T.foreArm), el);
-      const ha = grp('ha' + L, el, 0, -0.25, 0);
-      const hgeo = new THREE.SphereGeometry(0.05, 12, 10); hgeo.scale(0.8, 1.15, 0.95); hgeo.translate(0, -0.045, 0.004);
-      mesh(hgeo, mat(T.hand), ha);
-      const thumb = new THREE.CapsuleGeometry(0.014, 0.03, 3, 6); thumb.rotateZ(sx * 0.6); thumb.translate(sx * 0.03, -0.035, 0.02);
-      mesh(thumb, mat(T.hand), ha);
-    }
-    // piernas
-    for (const [sx, L] of [[1, 'L'], [-1, 'R']]) {
-      const th = grp('th' + L, hips, sx * 0.082 * bulk, -0.04, 0);
-      mesh(limbGeo(0.43, 0.092 * Math.sqrt(bulk), 0.058, 0.016 * bulk, 0.72), mat(T.thigh), th);
-      const kn = grp('kn' + L, th, 0, -0.43, 0);
-      mesh(limbGeo(0.42, 0.058, 0.04, 0.02, 0.72), mat(T.shin), kn);
-      const ft = grp('ft' + L, kn, 0, -0.42, 0);
-      const fgeo = new THREE.CapsuleGeometry(0.042, 0.15, 4, 10); fgeo.rotateX(Math.PI / 2); fgeo.scale(1, 0.72, 1); fgeo.translate(0, -0.035, 0.06);
-      mesh(fgeo, mat(T.foot), ft);
     }
     // patas mecánicas de la Iron Spider
     if (pal.deco === 'ironlegs') {

@@ -8,7 +8,7 @@ const Game = {
   settings: Object.assign({ music: 7, sfx: 8, voices: 8 }, Store.get('sm_settings', {}) || {}),
   save: Object.assign({ suits: START_SUITS.slice(), canon: {}, endings: [], stage: 0 }, Store.get('sm_save', {}) || {}),
 };
-const SAVE3 = Object.assign({ suit: 'bnd', ch1: false, crimes: 0, invertY: false, sens: 5 }, Store.get('sm_save3d', {}) || {});
+const SAVE3 = Object.assign({ suit: 'bnd', ch1: false, crimes: 0, invertY: false, sens: 5, fx: true }, Store.get('sm_save3d', {}) || {});
 const save3 = () => Store.set('sm_save3d', SAVE3);
 const $ = (id) => document.getElementById(id);
 
@@ -24,6 +24,8 @@ const Game3 = {
     R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
     R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.1;
     R.outputColorSpace = THREE.SRGBColorSpace;
+    this.post = new PostFX(R);
+    this.post.enabled = SAVE3.fx !== false;
     const S = this.scene = new THREE.Scene();
     S.fog = new THREE.Fog(0xe8a488, 160, 1300);
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 4000);
@@ -60,6 +62,7 @@ const Game3 = {
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
+    if (this.post) this.post.setSize(w, h);
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
   },
 
@@ -291,6 +294,7 @@ const Game3 = {
     // sombra del sol siguiendo al jugador
     this.sun.position.copy(h.pos).addScaledVector(this.sunDir, 150); this.sun.target.position.copy(h.pos);
     this.updateHud(dt);
+    this.updatePost(dt);
   },
   respawn() {
     const h = this.hero;
@@ -317,7 +321,8 @@ const Game3 = {
       this.camPitch += (-0.18 - this.camPitch) * Math.min(1, dt * 0.8);
     }
     const speed = h.vel.length();
-    const wantDist = h.state === 'swing' || (h.state === 'air' && speed > 12) ? 6.4 : h.state === 'wall' ? 5.2 : this.inCombat ? 5.6 : 4.3;
+    if (this.finCam > 0) this.finCam -= dt;
+    const wantDist = this.finCam > 0 ? 2.6 : h.state === 'swing' || (h.state === 'air' && speed > 12) ? 6.4 : h.state === 'wall' ? 5.2 : this.inCombat ? 5.6 : 4.3;
     this.camDist += (wantDist - this.camDist) * Math.min(1, dt * 3);
     const cam = this.camera;
     const tgt = h.pos.clone().add(new THREE.Vector3(0, 1.55, 0));
@@ -337,7 +342,17 @@ const Game3 = {
     cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
   },
 
-  render() { this.renderer.render(this.scene, this.camera); this.drawOverlay(); },
+  render() { this.post.render(this.scene, this.camera, this.time); this.drawOverlay(); },
+  // valores de la postproducción según lo que pasa en el juego
+  updatePost(dt) {
+    const h = this.hero, P = this.post;
+    const sp = h.vel.length();
+    const fast = (h.state === 'swing' || h.state === 'air' || h.state === 'zip') ? clamp((sp - 14) / 22, 0, 1) : 0;
+    P.speed += (fast - P.speed) * Math.min(1, dt * 4);
+    P.hit = Math.max(0, Math.max(P.hit - dt * 4, this.hitStop > 0 ? 1 : 0, this.shakeT > 0.15 ? 0.6 : 0));
+    P.slow += ((this.slowT > 0 ? 1 : 0) - P.slow) * Math.min(1, dt * 8);
+    P.danger += ((this.senseOn ? 0.6 + Math.sin(this.time * 12) * 0.4 : 0) - P.danger) * Math.min(1, dt * 10);
+  },
 
   // ------------------------------------------------------------------ interfaz
   objective(small, text) { $('objSmall').textContent = small; $('objText').textContent = text; },
@@ -393,10 +408,7 @@ const Game3 = {
   },
   updateHud(dt) {
     const h = this.hero;
-    $('hpBar').style.width = (h.hp / h.maxHp * 100) + '%';
-    $('focusBar').style.width = h.focus + '%';
     const threat = this.threatNear(h);
-    $('sense').style.opacity = threat ? 1 : 0;
     if (threat && !this.senseOn) Audio2.sfx('sense');
     this.senseOn = !!threat;
     const c = $('combo');
@@ -407,7 +419,7 @@ const Game3 = {
       this.hintDev = Input3.lastDevice; this.hintShown = true;
       const k = (a) => '<kbd>' + Input3.label(a) + '</kbd>';
       $('hint').innerHTML = (Input3.lastDevice === 'keys' ? '<kbd>WASD</kbd> mover · <kbd>RATÓN</kbd> cámara (clic para capturar)<br>' : '') +
-        k('JUMP') + 'saltar · ' + k('SWING') + 'balanceo (mantén en el aire) · ' + k('ZIP') + 'impulso<br>' + k('ATTACK') + 'golpe · ' + k('DODGE') + 'esquiva · ' + k('WEB') + 'red · ' + k('SPECIAL') + 'especial · ' + k('ALLY') + 'refuerzo · ' + k('PAUSE') + 'menú';
+        k('JUMP') + 'saltar · ' + k('SWING') + 'balanceo (mantén en el aire) · ' + k('ZIP') + 'impulso<br>' + k('ATTACK') + 'golpe · ' + k('DODGE') + 'esquiva · ' + k('WEB') + 'red · ' + k('SPECIAL') + 'especial/remate · ' + k('ALLY') + 'refuerzo · ' + k('PAUSE') + 'menú';
     }
     this.hintT = (this.hintT || 0) + dt;
     $('hint').style.opacity = this.hintT < 25 ? 1 : 0.35;
@@ -433,29 +445,73 @@ const Game3 = {
       an.title = Math.round(this.marker.distanceTo(this.hero.pos)) + ' m';
     } else an.style.display = 'none';
     this.drawMinimap();
+    this.drawSense();
     this.drawTouch();
   },
   drawMinimap() {
-    const cv = $('minimap'), g = cv.getContext('2d'), S = 140, h = this.hero, sc = 0.45;
+    const cv = $('minimap'), g = cv.getContext('2d'), S = cv.width, C = S / 2, RM = S * 0.36, h = this.hero, sc = 0.45;
     g.clearRect(0, 0, S, S);
-    g.save(); g.translate(S / 2, S / 2); g.rotate(this.camYaw - Math.PI);
-    g.fillStyle = 'rgba(40,40,52,0.9)'; g.fillRect(-S, -S, S * 2, S * 2);
-    g.fillStyle = '#9a96a8';
+    g.save(); g.beginPath(); g.arc(C, C, RM, 0, TAU); g.clip();
+    g.translate(C, C); g.rotate(this.camYaw - Math.PI);
+    g.fillStyle = 'rgba(28,30,40,0.92)'; g.fillRect(-S, -S, S * 2, S * 2);
     for (const b of City.near(h.pos.x, h.pos.z, 160)) {
       const x = (b.x0 - h.pos.x) * sc, z = (b.z0 - h.pos.z) * sc;
-      g.fillStyle = b.h > h.pos.y + 1 ? '#9a96a8' : '#5a5868';
+      g.fillStyle = b.h > h.pos.y + 1 ? '#8e8a9c' : '#4a4858';
       g.fillRect(-x - (b.x1 - b.x0) * sc, z, (b.x1 - b.x0) * sc, (b.z1 - b.z0) * sc);
     }
-    for (const e of this.enemies) if (!e.dead) { g.fillStyle = e.isBoss ? '#ff8020' : '#ff3040'; g.fillRect(-(e.pos.x - h.pos.x) * sc - 2, (e.pos.z - h.pos.z) * sc - 2, 4, 4); }
+    for (const e of this.enemies) if (!e.dead) { g.fillStyle = e.isBoss ? '#ff8020' : '#ff3040'; g.beginPath(); g.arc(-(e.pos.x - h.pos.x) * sc, (e.pos.z - h.pos.z) * sc, 2.6, 0, TAU); g.fill(); }
     if (this.marker) {
       let mx = -(this.marker.x - h.pos.x) * sc, mz = (this.marker.z - h.pos.z) * sc; const l = Math.hypot(mx, mz);
-      if (l > 62) { mx *= 62 / l; mz *= 62 / l; }
-      g.fillStyle = this.crime ? '#ff4040' : '#ffd060'; g.beginPath(); g.arc(mx, mz, 5, 0, TAU); g.fill();
+      if (l > RM - 6) { mx *= (RM - 6) / l; mz *= (RM - 6) / l; }
+      g.fillStyle = this.crime ? '#ff4040' : '#ffd060'; g.beginPath(); g.moveTo(mx, mz - 7); g.lineTo(mx + 5, mz); g.lineTo(mx, mz + 7); g.lineTo(mx - 5, mz); g.fill();
     }
     g.restore();
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2; g.beginPath(); g.arc(C, C, RM, 0, TAU); g.stroke();
     // jugador (flecha hacia donde mira)
-    g.save(); g.translate(S / 2, S / 2); g.rotate(-(h.yaw - this.camYaw));
-    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5); g.fill(); g.restore();
+    g.save(); g.translate(C, C); g.rotate(-(h.yaw - this.camYaw));
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(0, 2); g.lineTo(-5, 5); g.fill(); g.restore();
+    // salud y concentración en arcos alrededor del minimapa (como en PlayStation)
+    const a0 = Math.PI * 0.62, a1 = Math.PI * 1.92;
+    const arc = (r, w, from, to, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'butt'; g.beginPath(); g.arc(C, C, r, from, to); g.stroke(); };
+    arc(RM + 9, 7, a0, a1, 'rgba(0,0,0,0.55)');
+    const hp = clamp(h.hp / h.maxHp, 0, 1), hpc = hp < 0.3 ? (Math.sin(this.time * 10) > 0 ? '#ff3040' : '#b01020') : '#f02c3c';
+    if (hp > 0) arc(RM + 9, 5, a0, a0 + (a1 - a0) * hp, hpc);
+    // concentración: 4 segmentos
+    const segs = 4, gap = 0.035, span = (a1 - a0) / segs;
+    for (let k = 0; k < segs; k++) {
+      const s0 = a0 + k * span + gap, s1 = a0 + (k + 1) * span - gap;
+      arc(RM + 18, 5, s0, s1, 'rgba(0,0,0,0.5)');
+      const f = clamp(h.focus / 25 - k, 0, 1);
+      if (f > 0) arc(RM + 18, 4, s0, s0 + (s1 - s0) * f, f >= 1 ? (h.focus >= 100 ? '#ffe060' : '#60d8ff') : '#2a90c0');
+    }
+    g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+    if (h.focus >= 100) { g.fillStyle = '#ffe060'; g.fillText('REMATE', C, S - 4); }
+  },
+  // sentido arácnido: líneas zigzag alrededor de la cabeza
+  drawSense() {
+    let c = this.fxCv;
+    if (!c) { c = this.fxCv = document.createElement('canvas'); c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none'; $('hud').insertBefore(c, $('hud').firstChild); }
+    const w = window.innerWidth, hh = window.innerHeight;
+    if (c.width !== w || c.height !== hh) { c.width = w; c.height = hh; }
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, w, hh);
+    if (!this.senseOn || this.dialog) return;
+    const head = this.hero.pos.clone().add(new THREE.Vector3(0, 1.85, 0));
+    const dist = head.distanceTo(this.camera.position);
+    const v = head.project(this.camera); if (v.z > 1) return;
+    const x = (v.x + 1) / 2 * w, y = (1 - v.y) / 2 * hh, s = clamp(5 / dist, 0.5, 2) * (hh / 720);
+    const fl = Math.floor(this.time * 20);
+    g.save(); g.translate(x, y); g.lineJoin = 'miter'; g.lineCap = 'round';
+    g.shadowColor = '#ff9020'; g.shadowBlur = 10 * s;
+    for (let k = 0; k < 7; k++) {
+      const a = -Math.PI / 2 + (k - 3) * 0.42, r0 = 16 * s, L = (18 + ((fl + k) % 3) * 5) * s;
+      const ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca;
+      g.strokeStyle = k % 2 ? '#fff6c0' : '#ffd040'; g.lineWidth = 2.4 * s;
+      g.beginPath(); g.moveTo(ca * r0, sa * r0);
+      for (let j = 1; j <= 3; j++) { const rr = r0 + L * j / 3, z = (j % 2 ? 1 : -1) * 4 * s; g.lineTo(ca * rr + px * z, sa * rr + py * z); }
+      g.stroke();
+    }
+    g.restore();
   },
   drawTouch() {
     const on = Input3.lastDevice === 'touch';
@@ -484,6 +540,7 @@ const Game3 = {
       { label: () => 'TRAJE: ' + (SUITS.find((s) => s.id === this.hero.suitId) || SUITS[0]).name.toUpperCase(), act: () => this.nextSuit() },
       { label: () => 'CÁMARA: ' + (SAVE3.invertY ? 'INVERTIDA' : 'NORMAL'), act: () => { SAVE3.invertY = !SAVE3.invertY; save3(); } },
       { label: () => 'SENSIBILIDAD: ' + SAVE3.sens, act: () => { SAVE3.sens = SAVE3.sens % 10 + 1; save3(); } },
+      { label: () => 'EFECTOS DE IMAGEN: ' + (SAVE3.fx ? 'SÍ' : 'NO (más rápido)'), act: () => { SAVE3.fx = !SAVE3.fx; this.post.enabled = SAVE3.fx; save3(); } },
       { label: () => 'REPETIR CAPÍTULO 1', act: () => { SAVE3.ch1 = false; save3(); location.reload(); } },
       { label: () => 'IR A LA VERSIÓN 2.5D', act: () => { location.href = '../index.html'; } },
     ];

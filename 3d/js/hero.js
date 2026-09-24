@@ -124,7 +124,7 @@ class Hero {
     const w = inp ? this.wish(G.camYaw) : new THREE.Vector3();
     const P = (a) => inp && Input3.pressed(a), D = (a) => inp && Input3.isDown(a);
     this.st += dt;
-    for (const k of ['inv', 'comboT', 'flipT', 'landT', 'hurtT', 'webCd', 'dodgeCd']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    for (const k of ['inv', 'comboT', 'flipT', 'landT', 'hurtT', 'webCd', 'dodgeCd', 'trickT']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
     if (this.comboT <= 0) this.combo = 0;
     if (this.state === 'dead' || this.state === 'cutscene') { this.physicsIdle(dt); return; }
 
@@ -315,6 +315,8 @@ class Hero {
   startAttack(G, w) {
     const e = G.target(this, 7.5, w.length() > 0.3 ? w : null);
     const air = this.state === 'air';
+    // en el aire y sin enemigos cerca: acrobacia (como en PlayStation)
+    if (air && !e) { if (!(this.trickT > 0) && this.pos.y > 3) this.airTrick(G); return; }
     this.combo = this.comboT > 0 ? this.combo + 1 : 0;
     const seq = air ? ['airkick', 'airkick', 'airkick'] : ['jabR', 'jabL', 'kick', 'uppercut'];
     const kind = seq[this.combo % seq.length];
@@ -394,7 +396,29 @@ class Hero {
     e.web(G);
     Audio2.sfx('shoot');
   }
+  airTrick(G) {
+    this.trickN = ((this.trickN || 0) + 1) % 3;
+    this.trickT = 0.6; this.flipT = 0; this.tricks = (this.tricks || 0) + 1;
+    if (this.vel.y < 3) this.vel.y = 3;
+    this.gainFocus(4);
+    G.float(this.pos, ['¡TIRABUZÓN!', '¡ESPAGAT!', '¡MORTAL DOBLE!'][this.trickN]);
+    Audio2.sfx('whoosh');
+  }
+  // remate: con la concentración llena se acaba con un enemigo de un golpe
+  finisher(G, e) {
+    this.focus = 0; this.inv = 1.2;
+    const d = e.pos.clone().sub(this.pos); d.y = 0; const L = d.length() || 1;
+    this.pos.addScaledVector(d, Math.max(0, (L - 1.2) / L)); this.collide();
+    this.yaw = Math.atan2(d.x, d.z);
+    this.state = 'air'; this.onGround = false; this.vel.set(0, 7, 0); this.flipT = 0.55; this.attack = null;
+    e.takeHit(e.isBoss ? Math.round(e.maxHp * 0.12) : 999, d.normalize(), true, true, G);
+    G.slowT = 0.7; G.finCam = 1.1; G.shake(0.5); G.hitStop = 0.1;
+    G.float(e.pos, '¡REMATE!');
+    G.particles.burst(e.pos.clone().add(new THREE.Vector3(0, 1.2, 0)), 30, 0xffe080, 10);
+    Audio2.sfx('special');
+  }
   special(G) {
+    if (this.focus >= 100) { const e = G.target(this, 6, null); if (e) { this.finisher(G, e); return; } }
     this.focus -= 50; this.specialT = 0.7; this.inv = 0.7;
     G.shake(0.4); Audio2.sfx('special');
     for (const en of G.enemies) {
@@ -443,6 +467,13 @@ class Hero {
       case 'air':
         pose = this.attack ? this.attackPose() : this.vel.y > 1 ? P3.jump() : P3.fall(t);
         if (this.flipT > 0) { pose = P3.flip(); spinX(body, (1 - this.flipT / 0.55) * TAU); }
+        if (this.trickT > 0) {
+          const u = 1 - this.trickT / 0.6;
+          if (this.trickN === 0) { pose = P3.zip(); body.rotation.y = u * TAU * 2; }
+          else if (this.trickN === 1) { pose = { spine: [-0.2, 0, 0], thL: [-1.5, 0, 0.9], thR: [-1.5, 0, -0.9], knL: [0, 0, 0], knR: [0, 0, 0], shL: [0, 0, 2.6], shR: [0, 0, -2.6], elL: [0, 0, 0], elR: [0, 0, 0] }; body.rotation.y = Math.sin(u * Math.PI) * 0.6; }
+          else { pose = P3.flip(); spinX(body, u * TAU * 2); }
+          k = 1 - Math.exp(-dt * 30);
+        }
         break;
       case 'swing': {
         const A = this.anchor;

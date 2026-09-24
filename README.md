@@ -40,7 +40,12 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 - **Movimiento:** correr y hacer parkour, trepar por cualquier fachada (corre contra ella), balanceo con física de péndulo, impulso a azoteas y saltos de pared.
 - **Combate:** combos con lanzamiento al aire, esquiva con el sentido arácnido (cámara lenta si es perfecta), red para atrapar, golpe de telaraña, ataque especial y refuerzo multiversal.
 - **Capítulo 1 completo en 3D** (La grieta, con El Desconocido) y mundo libre con crímenes. Los demás capítulos llegarán poco a poco; mientras, siguen en la versión 2.5D.
-- Usa los **trajes** que desbloquees en la versión 2.5D, con modelos 3D detallados (telarañas en relieve, lentes y emblemas).
+- Usa los **trajes** que desbloquees en la versión 2.5D. El cuerpo es una sola pieza musculosa que se deforma con el esqueleto, y el traje (zonas de color, telarañas finas y emblema) se pinta píxel a píxel en la tarjeta gráfica.
+- **Imagen de consola:** resplandor de luces (bloom), gradación de color de atardecer, viñeta, líneas de velocidad y desenfoque radial al balancearse rápido, y cámara lenta azulada al esquivar perfecto. Se puede desactivar en el menú (EFECTOS DE IMAGEN) si el equipo va lento.
+- **Ciudad con más detalle:** escaleras de incendio, toldos, vallas publicitarias en las azoteas (Daily Bugle, Oscorp, Stark…), árboles en las aceras, semáforos y un horizonte lejano al otro lado del río.
+- **HUD al estilo PlayStation:** minimapa abajo a la izquierda con la salud y la concentración (4 segmentos) en arcos a su alrededor, objetivo arriba a la izquierda y el sentido arácnido como líneas alrededor de la cabeza.
+- **Acrobacias:** pulsa golpe en el aire sin enemigos cerca (tirabuzón, espagat, mortal doble); cargan concentración.
+- **Remates:** con la concentración llena, especial junto a un enemigo lo derrota de un golpe con cámara cercana.
 
 | Acción | Teclado y ratón | PlayStation | Xbox | Nintendo Pro |
 |---|---|---|---|---|
@@ -51,7 +56,7 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 | Red | Clic der. / F | △ | Y | X |
 | Balanceo (mantener) | Shift | R2 | RT | ZR |
 | Impulso / golpe de telaraña | E | L2 | LT | ZL |
-| Especial | R | L1 | LB | L |
+| Especial / remate (concentración llena) | R | L1 | LB | L |
 | Refuerzo multiversal | T | R3 | R3 | R3 |
 | Menú | Esc | Options | Menú | + |
 
