@@ -32,6 +32,29 @@ Una grieta se abre en el cielo de la Tierra-616 y un Spider-Man con el traje que
 - **Voces:** los diálogos se leen en voz alta con la voz en español del sistema, con un tono distinto para cada personaje. Se ajustan o apagan en Opciones → Voces.
 - **Música:** la de los créditos es original. En Opciones puedes cargar tu propia canción (MP3) para que suene en los créditos.
 
+## Versión 3D (nuevo)
+
+Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d.html` (o `3d/index.html` desde el código). Necesita un navegador con WebGL (Chrome, Edge, Safari o Firefox actualizados).
+
+- **Estilo PlayStation:** cámara en tercera persona detrás de Spider-Man, en una Nueva York 3D al atardecer con rascacielos, tráfico, peatones, parques y el río.
+- **Movimiento:** correr y hacer parkour, trepar por cualquier fachada (corre contra ella), balanceo con física de péndulo, impulso a azoteas y saltos de pared.
+- **Combate:** combos con lanzamiento al aire, esquiva con el sentido arácnido (cámara lenta si es perfecta), red para atrapar, golpe de telaraña, ataque especial y refuerzo multiversal.
+- **Capítulo 1 completo en 3D** (La grieta, con El Desconocido) y mundo libre con crímenes. Los demás capítulos llegarán poco a poco; mientras, siguen en la versión 2.5D.
+- Usa los **trajes** que desbloquees en la versión 2.5D, con modelos 3D detallados (telarañas en relieve, lentes y emblemas).
+
+| Acción | Teclado y ratón | PlayStation | Xbox | Nintendo Pro |
+|---|---|---|---|---|
+| Mover / cámara | WASD / ratón | Stick izq. / der. | Stick izq. / der. | Stick izq. / der. |
+| Saltar | Espacio | ✕ | A | B |
+| Golpe | Clic / J | □ | X | Y |
+| Esquivar | C | ○ | B | A |
+| Red | Clic der. / F | △ | Y | X |
+| Balanceo (mantener) | Shift | R2 | RT | ZR |
+| Impulso / golpe de telaraña | E | L2 | LT | ZL |
+| Especial | R | L1 | LB | L |
+| Refuerzo multiversal | T | R3 | R3 | R3 |
+| Menú | Esc | Options | Menú | + |
+
 ## Controles
 
 Todos los controles se pueden reasignar en **Controles** (teclado y mando).
@@ -102,6 +125,7 @@ node tests/combat.mjs         # un bot derrota a los 8 jefes jugando
 node tests/gamepad.mjs        # simula mandos Xbox, PlayStation, Switch y genérico
 node tests/dodge.mjs          # las 4 esquivas (tipo, dirección, invulnerabilidad y daño)
 node tests/powers.mjs         # cada villano usa sus poderes
+node tests/game3d.mjs         # versión 3D: movimiento, balanceo, paredes, combate y capítulo 1
 node tests/voices.mjs         # diálogos hablados y recarga del refuerzo
 node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso si el navegador lo bloquea
 node tests/rebind.mjs         # reasignación de teclado y mando

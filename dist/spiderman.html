@@ -8244,12 +8244,13 @@ class MenuScene {
         { label: 'CONTROLES', act: () => this.stack.push(new ControlsScreen()) },
         { label: 'OPCIONES', act: () => this.stack.push(new OptionsScreen()) },
         { label: () => 'CAPÍTULO EXTRA: ' + (Game.save.completed ? MISSIONS[EXTRA_MISSION].name.toUpperCase() : '???'), disabled: () => !Game.save.completed, act: () => Game.startMission(EXTRA_MISSION) },
+        { label: 'JUGAR EN 3D (NUEVO)', act: () => { Voice.stop(); location.href = 'spiderman3d.html'; } },
         { label: 'CRÉDITOS', act: () => Game.change(() => new CreditsScene(() => new MenuScene())) },
       ]),
       update(dt) { const r = this.menu.update(dt); return r === 'back' ? null : r; },
       draw: (ctx, t) => {
         drawLogo(ctx, t, 30);
-        root.menu.draw(ctx, W / 2, 96, t, { lh: 14 });
+        root.menu.draw(ctx, W / 2, 92, t, { lh: 13 });
         if (Game.save.started) {
           const s = Game.save;
           const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';

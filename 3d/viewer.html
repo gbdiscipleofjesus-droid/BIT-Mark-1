@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Visor de modelos</title>
+<style>html,body{margin:0;background:#222}canvas{display:block}</style></head><body>
+<script src="lib/three.min.js"></script>
+<script src="../js/util.js"></script><script src="../js/font.js"></script><script src="../js/gfx.js"></script><script src="../js/sprite.js"></script>
+<script src="js/rig3d.js"></script>
+<script>
+const Game = { settings: {}, save: {} }; const THUG_PAL = makePal({ torso: '#4a5a2a', leg: '#2a3450', hair: '#1a1a1a', face: 'human', head: '#d8a070', boot: '#1a1a1a' });
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color('#3a3450');
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 100);
+sc.add(new THREE.HemisphereLight(0xbfd8ff, 0x40302a, 1.3));
+const sun = new THREE.DirectionalLight(0xffe0c0, 2.6); sun.position.set(3, 5, 4); sun.castShadow = true; sc.add(sun);
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x505060 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; sc.add(fl);
+const q = new URLSearchParams(location.search);
+const ids = (q.get('suits') || 'bnd,avanzado,nwh,raimi').split(',');
+const poses = (q.get('poses') || 'idle').split(',');
+const rigs = ids.map((id, i) => { const s = SUITS.find((x) => x.id === id); const rg = new Rig3D(s ? s.palObj : THUG_PAL, { key: id }); rg.root.position.x = (i - (ids.length - 1) / 2) * 0.9; rg.snap(P3[poses[i % poses.length]] ? P3[poses[i % poses.length]](0.3, 1) : P3.idle(0)); sc.add(rg.root); return rg; });
+const ang = parseFloat(q.get('ang') || '0.35'), dd = parseFloat(q.get('dist') || '5'), ty = parseFloat(q.get('y') || '1');
+cam.position.set(Math.sin(ang) * dd, ty + 0.3, Math.cos(ang) * dd); cam.lookAt(0, ty, 0);
+r.render(sc, cam); window.done = true;
+</script></body></html>
