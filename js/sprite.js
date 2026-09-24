@@ -32,6 +32,29 @@ function inEmblem(E, ex, ey) {
   return false;
 }
 
+// Sombreado de 16 bits: las sombras tiran a morado/azul y las luces a amarillo
+function hueShade(hex, amt, hs) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let hh = 0, ss = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn; ss = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    hh = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60;
+  }
+  const toward = (from, to, k) => { let d = ((to - from + 540) % 360) - 180; return (from + d * k + 360) % 360; };
+  if (ss > 0.08) {
+    if (amt < 0) { hh = toward(hh, 255, 0.16 * hs); ss = Math.min(1, ss * 1.1); }
+    else { hh = toward(hh, 55, 0.1 * hs); ss *= 0.9; }
+  }
+  l = amt < 0 ? l * (1 + amt) : l + (1 - l) * amt;
+  const q = l < 0.5 ? l * (1 + ss) : l + ss - l * ss, p = 2 * l - q;
+  const f = (t) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  const hx = (v) => ('0' + Math.round(clamp(v, 0, 1) * 255).toString(16)).slice(-2);
+  const k = hh / 360;
+  return '#' + hx(f(k + 1 / 3)) + hx(f(k)) + hx(f(k - 1 / 3));
+}
+
 const Sprite = {
   size: 0, canvas: null, ctx: null, img: null, buf: null, grp: null, ramps: new Map(),
 
@@ -50,7 +73,7 @@ const Sprite = {
     if (!r) {
       const h = typeof hex === 'string' && hex[0] === '#' ? hex : '#808080';
       const px = (c) => { const n = parseInt(c.slice(1), 16); return ((255 << 24) | ((n & 255) << 16) | (n & 0xff00) | ((n >> 16) & 255)) >>> 0; };
-      r = [px(shade(h, -0.46)), px(shade(h, -0.22)), px(h), px(shade(h, 0.3))];
+      r = [px(hueShade(h, -0.5, 1)), px(hueShade(h, -0.26, 0.55)), px(h), px(hueShade(h, 0.32, 1))];
       this.ramps.set(hex, r);
     }
     return r;
@@ -113,30 +136,30 @@ const Sprite = {
     const shinCol = pal.trim ? cut(0.42, pal.leg, pal.boot) : cut(0.42, pal.leg, pal.boot);
     const armCol = pal.shoulder ? cut(0.36, pal.shoulder, pal.arm) : pal.arm;
     // --- pierna y brazo traseros ---
-    add(q.hip, q.k1, 1.75 * lb, 1.2 * lb, pal.leg, 1, { back: 1, bulge: 0.15, trimT: -1 });
-    add(q.k1, q.f1, 1.3 * lb, 0.8 * lb, shinCol, 1, { back: 1, bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
-    add(q.f1, footOf(q.k1, q.f1), 0.95 * lb, 0.78 * lb, pal.boot, 1, { back: 1 });
-    add(q.sh, q.e1, 1.38 * lb, 1.05 * lb, armCol, 2, { back: 1, bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e1, q.h1, 1.12 * lb, 0.75 * lb, pal.arm2, 2, { back: 1, bulge: 0.18 });
-    add(q.h1, q.h1, 1.25 * lb, 1.25 * lb, pal.hand, 2, { back: 1 });
+    add(q.hip, q.k1, 1.95 * lb, 1.3 * lb, pal.leg, 1, { back: 1, bulge: 0.3, trimT: -1 });
+    add(q.k1, q.f1, 1.35 * lb, 0.85 * lb, shinCol, 1, { back: 1, bulge: 0.42, trimT: pal.trim ? 0.42 : -1 });
+    add(q.f1, footOf(q.k1, q.f1), 1.0 * lb, 0.82 * lb, pal.boot, 1, { back: 1 });
+    add(q.sh, q.e1, 1.7 * lb, 1.2 * lb, armCol, 2, { back: 1, bulge: 0.4, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
+    add(q.e1, q.h1, 1.3 * lb, 0.85 * lb, pal.arm2, 2, { back: 1, bulge: 0.32 });
+    add(q.h1, q.h1, 1.45 * lb, 1.45 * lb, pal.hand, 2, { back: 1 });
     // --- torso: pelvis y pecho en V ---
-    add(q.hip, q.mid, 2.15 * bulk, 2.2 * bulk, pal.torsoLow, 3, { torso: 1 });
+    add(q.hip, q.mid, 2.2 * bulk, 2.1 * bulk, pal.torsoLow, 3, { torso: 1 });
     const chestTop = [q.sh[0] * 0.8 + q.neck[0] * 0.2, q.sh[1] * 0.8 + q.neck[1] * 0.2];
-    add(q.mid, chestTop, 2.3 * bulk, 3.15 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
-    add(q.sh, q.head, 1.0 * lb, 1.0 * lb, pal.head, 4, {});
+    add(q.mid, chestTop, 2.35 * bulk, 3.7 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
+    add(q.sh, q.head, 1.15 * lb, 1.1 * lb, pal.head, 4, {});
     // --- capucha / cabeza ---
     const up = norm([q.head[0] - q.neck[0], q.head[1] - q.neck[1]]);
     if (pal.deco === 'hood' && !flat) add([q.head[0] - up[0] * 1.2 * U, q.head[1] - up[1] * 1.2 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.9, 2.9, shade(pal.torso, -0.12), 5, {});
-    add([q.head[0] - up[0] * 0.35 * U, q.head[1] - up[1] * 0.35 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.35, 2.35, pal.head, 6, { head: 1 });
+    add([q.head[0] - up[0] * 0.35 * U, q.head[1] - up[1] * 0.35 * U], [q.head[0] + up[0] * 0.35 * U, q.head[1] + up[1] * 0.35 * U], 2.6, 2.6, pal.head, 6, { head: 1 });
     // --- pierna y brazo delanteros ---
-    add(q.hip, q.k2, 1.75 * lb, 1.2 * lb, pal.leg, 7, { bulge: 0.15 });
-    add(q.k2, q.f2, 1.3 * lb, 0.8 * lb, shinCol, 7, { bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
-    add(q.f2, footOf(q.k2, q.f2), 0.95 * lb, 0.78 * lb, pal.boot, 7, {});
-    add(q.sh, q.e2, 1.38 * lb, 1.05 * lb, armCol, 8, { bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e2, q.h2, 1.12 * lb, 0.75 * lb, pal.arm2, 8, { bulge: 0.18 });
-    add(q.h2, q.h2, 1.25 * lb, 1.25 * lb, pal.hand, 8, {});
+    add(q.hip, q.k2, 1.95 * lb, 1.3 * lb, pal.leg, 7, { bulge: 0.3 });
+    add(q.k2, q.f2, 1.35 * lb, 0.85 * lb, shinCol, 7, { bulge: 0.42, trimT: pal.trim ? 0.42 : -1 });
+    add(q.f2, footOf(q.k2, q.f2), 1.0 * lb, 0.82 * lb, pal.boot, 7, {});
+    add(q.sh, q.e2, 1.7 * lb, 1.2 * lb, armCol, 8, { bulge: 0.4, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
+    add(q.e2, q.h2, 1.3 * lb, 0.85 * lb, pal.arm2, 8, { bulge: 0.32 });
+    add(q.h2, q.h2, 1.45 * lb, 1.45 * lb, pal.hand, 8, {});
 
-    const ctxInfo = { q, U, up, facing, pal, flat, outline, lowres: U < 3 };
+    const ctxInfo = { q, U, up, facing, pal, flat, outline, lowres: U < 2 };
     for (const P of parts) this.raster(P, ctxInfo);
     this.silhouette(w, h, outline);
     this.ctx.putImageData(this.img, 0, 0, 0, 0, w, h);
@@ -179,9 +202,9 @@ const Sprite = {
         else {
           // sombreado retro: bandas planas, sin degradados
           const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
-          tone = I.lowres ? (li < 0.3 ? 1 : 2) : li < 0.08 ? 0 : li < 0.42 ? 1 : li < 0.95 ? 2 : 3;
+          tone = I.lowres ? (li < 0.3 ? 1 : 2) : li < 0.18 ? 0 : li < 0.5 ? 1 : li < 0.9 ? 2 : 3;
           if (P.back) tone = Math.max(0, Math.min(tone, 2) - 1);
-          if (tone === 3 && !P.head) tone = 2; // sin brillo de plástico en brazos y piernas
+          if (tone === 3 && !P.head && li < 0.95) tone = 2; // brillo solo en lo más abultado del músculo
         }
         const v = (ex * -uy + ey * ux) / r; // -1..1 a lo ancho
         const u = t * L;
@@ -233,7 +256,7 @@ const Sprite = {
     const fx = (ex * fwd[0] + ey * fwd[1]) / R, fy = -(ex * up[0] + ey * up[1]) / R; // fy +: abajo
     const R4 = (c, t) => this.ramp(c)[t];
     const eyes = (sc, fill, border) => {
-      const E = [[0.58, -0.04, 0.3, 0.24, -0.5], [0.02, -0.06, 0.34, 0.26, 0.4]];
+      const E = [[0.56, -0.06, 0.34, 0.27, -0.55], [0.0, -0.08, 0.38, 0.29, 0.45]];
       for (const e of E) {
         const rx = e[2] * sc, ry = e[3] * sc, c = Math.cos(e[4]), sn = Math.sin(e[4]);
         const lx = (fx - e[0]) * c + (fy - e[1]) * sn, ly = -(fx - e[0]) * sn + (fy - e[1]) * c;

@@ -9,7 +9,8 @@ const PHYS = {
 };
 const ATK = {
   punch1: { dur: 0.24, act: [0.04, 0.12], box: [6, -19, 16, 13], dmg: 1, kx: 70, ky: -40, pose: 'punch1', next: 'punch2' },
-  punch2: { dur: 0.24, act: [0.04, 0.12], box: [6, -19, 16, 13], dmg: 1, kx: 80, ky: -40, pose: 'punch2', next: 'kick' },
+  punch2: { dur: 0.24, act: [0.04, 0.12], box: [6, -19, 16, 13], dmg: 1, kx: 80, ky: -40, pose: 'punch2', next: 'punch3' },
+  punch3: { dur: 0.26, act: [0.04, 0.13], box: [4, -24, 17, 17], dmg: 1, kx: 90, ky: -60, pose: 'punch3', next: 'kick' },
   kick: { dur: 0.36, act: [0.08, 0.18], box: [4, -17, 21, 13], dmg: 2, kx: 240, ky: -160, pose: 'kick', heavy: true },
   uppercut: { dur: 0.38, act: [0.04, 0.16], box: [2, -32, 17, 30], dmg: 1.5, kx: 40, ky: -340, pose: 'uppercut', heavy: true },
   airkick: { dur: 0.3, act: [0.03, 0.2], box: [3, -15, 19, 15], dmg: 1.5, kx: 160, ky: -80, pose: 'airkick' },
@@ -65,7 +66,7 @@ class Player {
     const pr = (a) => !!(inp && inp.pressed(a));
     const ix = (R ? 1 : 0) - (L ? 1 : 0);
     this.anim += dt;
-    for (const k of ['inv', 'hurtT', 'dodgeCd', 'shootCd', 'grabCd', 'lockT', 'coyote', 'jumpBuf', 'flipT', 'comboT', 'dropTimer', 'landT', 'pendingWeb']) {
+    for (const k of ['inv', 'hurtT', 'dodgeCd', 'shootCd', 'grabCd', 'lockT', 'coyote', 'jumpBuf', 'flipT', 'comboT', 'dropTimer', 'landT', 'pendingWeb', 'throwT']) {
       if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
     }
     this.sense = Math.max(0, this.sense - dt);
@@ -108,7 +109,8 @@ class Player {
     }
 
     // ---- esquiva (disponible en casi todos los estados) ----
-    if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing', 'facade'].includes(this.state)) {
+    if (pr('DODGE') && this.dodgeCd <= 0 && ['normal', 'wall', 'swing', 'facade', 'grab'].includes(this.state)) {
+      if (this.grabE) this.releaseGrab(false);
       this.attack = null;
       const back = ix !== 0 && ix !== this.facing;
       const ground = this.onGround;
@@ -174,6 +176,7 @@ class Player {
       case 'wall': this.updWall(dt, world, ix, U, Dn, pr); break;
       case 'facade': this.updFacade(dt, world, ix, U, Dn, pr); break;
       case 'swing': this.updSwing(dt, world, ix, U, Dn, pr); break;
+      case 'grab': this.updGrab(dt, world, ix, pr); break;
       case 'dodge': {
         this.st -= dt;
         this.vy += GRAV * (this.dodgeKind === 'roll' ? 1 : 0.55) * dt;
@@ -301,6 +304,12 @@ class Player {
       } else this.tryAttach(world, ix);
     }
     if (this.pendingWeb > 0 && !this.onGround && (this.input || Input).isDown('WEB') && this.vy > -200) { this.pendingWeb = 0; this.tryAttach(world, ix); }
+    // agarre (como en Maximum Carnage): camina contra un matón para sujetarlo
+    if (this.onGround && !this.attack && ix && control && this.grabCd <= 0) {
+      const e = this.grabTarget(world, ix);
+      this.pushT = e ? (this.pushT || 0) + dt : 0;
+      if (e && this.pushT > 0.16) { this.startGrab(world, e); return; }
+    } else this.pushT = 0;
     // ataques
     if (pr('ATTACK')) {
       if (this.attack) this.queued = true;
@@ -539,6 +548,61 @@ class Player {
     }
   }
 
+  // ---------------- agarre y lanzamiento ----------------
+  grabTarget(world, ix) {
+    for (const e of world.enemies) {
+      if (e.dead || e.isBoss || e.fly || !e.onGround || e.grabbedBy || !e.hittable() || e.spec.armor || e.suspendT > 0) continue;
+      if (!['thug', 'gunner', 'zombie', 'bat', 'brute'].includes(e.type)) continue;
+      if (Math.abs((e.z || 0) - this.z) > 6 || sign(e.cx - this.cx) !== ix) continue;
+      if (Math.abs(e.cx - this.cx) < (this.w + e.w) / 2 + 3 && Math.abs(e.feet - this.feet) < 6) return e;
+    }
+    return null;
+  }
+  startGrab(world, e) {
+    this.state = 'grab'; this.grabE = e; this.grabT = 0; this.knees = 0; this.kneeT = 0; this.pushT = 0;
+    this.vx = 0; this.facing = sign(e.cx - this.cx) || this.facing;
+    e.grabbedBy = this; e.state = 'hurt'; e.t = 0.3; e.webbed = 0; e.releaseToken(world);
+    Audio2.sfx('dodge');
+  }
+  releaseGrab(shove) {
+    const e = this.grabE;
+    if (e) { e.grabbedBy = null; if (!e.dead) { e.state = 'chase'; if (shove) { e.vx = this.facing * 90; e.cd = 0.6; } } }
+    this.grabE = null; this.grabCd = 0.5;
+    if (this.state === 'grab') this.state = 'normal';
+  }
+  updGrab(dt, world, ix, pr) {
+    const e = this.grabE;
+    if (!e || e.dead || e.remove) { this.releaseGrab(false); return; }
+    this.grabT += dt;
+    if (this.kneeT > 0) this.kneeT -= dt;
+    this.vx = 0; this.vy = Math.min(this.vy + GRAV * dt, PHYS.maxFall);
+    world.level.move(this, dt);
+    // el matón queda sujeto delante
+    e.x = this.cx + this.facing * 8 - e.w / 2; e.y = this.feet - e.h; e.z = this.z; e.facing = -this.facing; e.vx = 0; e.vy = 0;
+    e.state = 'hurt'; e.t = 0.3;
+    const away = ix && ix !== this.facing;
+    if (pr('JUMP') || (pr('ATTACK') && (away || this.knees >= 2))) { this.throwGrab(world, away ? ix : this.facing); return; }
+    if (pr('ATTACK') && this.kneeT <= 0) {
+      this.knees++; this.kneeT = 0.14;
+      world.playerHits(e, 0.9 * this.dmgMul, 0, 0, false);
+      world.shake(1);
+      if (e.dead) { this.releaseGrab(false); return; }
+      e.state = 'hurt';
+    }
+    if (this.grabT > 1.8) this.releaseGrab(true);
+  }
+  throwGrab(world, dir) {
+    const e = this.grabE;
+    this.facing = dir; this.grabE = null; this.grabCd = 0.4;
+    this.state = 'normal'; this.throwT = 0.3; this.lockT = 0.25;
+    e.grabbedBy = null;
+    e.x = this.cx + dir * 6 - e.w / 2;
+    e.thrownT = 0.8; e.thrownHit = new Set([e]);
+    world.playerHits(e, 1.5 * this.dmgMul, dir * 330, -240, true);
+    Audio2.sfx('whoosh');
+    world.float('¡LANZAMIENTO!', this.cx, this.y - 10, '#ffe060');
+  }
+
   doSpin(world) {
     this.focus -= 50;
     this.state = 'special'; this.st = 0.55;
@@ -558,6 +622,7 @@ class Player {
   takeDamage(dmg, srcX, world) {
     if (this.inv > 0 || this.state === 'dodge' || this.state === 'dead' || this.state === 'cutscene') return false;
     if (this.cloakT > 0 || this.shieldT > 0) return false;
+    if (this.grabE) this.releaseGrab(false);
     this.hp -= Math.round(dmg * (this.armor || 1));
     this.inv = 1.0; this.hurtT = 1.0;
     this.anchor = null; this.attack = null;
@@ -599,6 +664,7 @@ class Player {
       case 'wall': pose = Poses.wall(this.vy !== 0 ? this.anim : 0); f = this.wallDir; dx = f * 2; break;
       case 'facade': pose = Poses.wall((this.vy !== 0 || this.vx !== 0) ? this.anim : 0); pose.t = 0; break;
       case 'charge': pose = Poses.heal(this.anim); break;
+      case 'grab': pose = this.kneeT > 0.05 ? Poses.knee() : Poses.grab(); break;
       case 'special': pose = Poses.special(0.55 - this.st); break;
       case 'swing': {
         const a = this.anchor;
@@ -610,16 +676,17 @@ class Player {
       }
       default:
         if (this.attack) pose = Poses[this.attack.def.pose]();
+        else if (this.throwT > 0) pose = Poses.toss();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
-          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(Math.floor(this.runPhase / (TAU / 8)) * (TAU / 8)); }
+          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.mcWalk(Math.floor(this.runPhase / (TAU / 8)) * (TAU / 8)); }
           else if (this.landT > 0) pose = Poses.crouch();
-          else pose = Poses.stance(t);
+          else pose = Poses.mcStance(t);
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
         else pose = this.vy < 0 ? Poses.jump() : Poses.fall();
     }
     // inclinación según la velocidad al correr
-    if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 6;
+    if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 4;
     // aterrizaje con peso: se hunde un poco
     if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
     const SC = 1.35;

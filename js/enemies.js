@@ -80,6 +80,7 @@ class Enemy {
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
+  get feet() { return this.y + this.h; }
   hurtbox() { return { x: this.x - 1, y: this.y, w: this.w + 2, h: this.h }; }
   hittable() { return !this.dead; }
   dmg() { return Math.round(this.spec.dmg * DIFF_DMG[Game.settings.difficulty]); }
@@ -94,6 +95,23 @@ class Enemy {
       world.level.move(this, dt);
       if (this.koT <= 0) this.remove = true;
       return;
+    }
+    // sujeto por Spider-Man: no hace nada (el jugador lo coloca)
+    if (this.grabbedBy) {
+      if (this.grabbedBy.state !== 'grab' || this.grabbedBy.grabE !== this) this.grabbedBy = null;
+      else return;
+    }
+    // lanzado: golpea a los que atraviesa
+    if (this.thrownT > 0) {
+      this.thrownT -= dt;
+      for (const o of world.enemies) {
+        if (o.dead || this.thrownHit.has(o) || !o.hittable() || Math.abs((o.z || 0) - (this.z || 0)) > LANE) continue;
+        if (overlap(this.hurtbox(), o.hurtbox())) {
+          this.thrownHit.add(o);
+          world.playerHits(o, 1.5, sign(this.vx) * 220, -220, true);
+          world.shake(2);
+        }
+      }
     }
     // Matriz de suspensión: flota indefenso
     if (this.suspendT > 0) {
@@ -309,7 +327,7 @@ class Enemy {
   draw(ctx, cam, t) {
     if (this.dead && this.koT < 0.5 && Math.floor(this.koT * 20) % 2) return;
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
-    if (x < -60 || x > W + 60 || y < -60 || y > H + 80) return;
+    if (x < -60 || x > VW + 60 || y < -60 || y > VH + 80) return;
     if (this.type === 'drone' || this.type === 'decoy' || this.type === 'ultron') { this.drawDrone(ctx, x, y - this.h, t); return; }
     let pose;
     if (this.dead) { pose = Poses.ko(); if (!this.onGround) pose.rot = -90 - ((this.anim * 900) % 360); }
@@ -1273,7 +1291,7 @@ class Proj {
         ctx.fillStyle = '#b0ffc0'; ctx.fillRect(x - 4, y - 4, 8, 8);
         // aviso en el suelo
         ctx.fillStyle = Math.floor(t * 10) % 2 ? '#50ff80' : '#208040';
-        { const gy = Math.round(this.warnY !== undefined ? this.warnY - cam.y : H - 20); ctx.fillRect(x - 8, gy, 16, 2); }
+        { const gy = Math.round(this.warnY !== undefined ? this.warnY - cam.y : VH - 20); ctx.fillRect(x - 8, gy, 16, 2); }
         break;
       default: break;
     }
@@ -1366,7 +1384,7 @@ class Particles {
   draw(ctx, cam) {
     for (const p of this.list) {
       const x = Math.round(p.x - cam.x), y = Math.round(p.y - cam.y);
-      if (x < -4 || x > W + 4 || y < -4 || y > H + 4) continue;
+      if (x < -4 || x > VW + 4 || y < -4 || y > VH + 4) continue;
       ctx.fillStyle = p.color;
       ctx.fillRect(x, y, p.size, p.size);
     }

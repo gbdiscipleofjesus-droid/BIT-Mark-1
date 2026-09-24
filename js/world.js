@@ -44,7 +44,7 @@ class Civilian {
   say(s) { this.bubble = s; this.bubbleT = 2.2; }
   draw(ctx, cam, t) {
     const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y);
-    if (x < -30 || x > W + 30 || y < -40 || y > H + 30) return;
+    if (x < -30 || x > VW + 30 || y < -40 || y > VH + 30) return;
     let pose, f = this.dir;
     switch (this.state) {
       case 'walk': pose = Poses.run(this.t * 5); pose.t = 2; pose.a1 *= 0.4; pose.b1 *= 0.4; break;
@@ -83,7 +83,7 @@ class World {
     this.player.lastSafe = { x: this.player.x, y: this.player.y };
     this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = []; this.fx = []; this.slowEnemiesT = 0; this.chalT = 1;
     this.particles = new Particles();
-    this.cam = { x: clamp(this.player.cx - W / 2, 0, lv.width - W), y: clamp(this.player.cy - H * 0.55, 0, lv.height - H) };
+    this.cam = { x: clamp(this.player.cx - VW / 2, 0, lv.width - VW), y: clamp(this.player.cy - VH * 0.66, 0, lv.height - VH) };
     this.shakeAmt = 0; this.hitstopT = 0; this.slowT = 0; this.senseCd = 0;
     this.dialog = null; this.pause = null; this.gameOver = null;
     this.state = 'play'; this.deadT = 0;
@@ -195,7 +195,7 @@ class World {
   shake(a) { if (Game.settings.shake) this.shakeAmt = Math.max(this.shakeAmt, a); }
   hitstop(t) { this.hitstopT = Math.max(this.hitstopT, t); }
   addProj(p) { if (p.z === undefined) p.z = this.emitterZ || 0; this.projs.push(p); }
-  onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + W + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + H + 10; }
+  onScreen(e) { return e.x + e.w > this.cam.x - 10 && e.x < this.cam.x + VW + 10 && e.y + e.h > this.cam.y - 20 && e.y < this.cam.y + VH + 10; }
   bubble(who, text) {
     this.radio = { who, text, t: 0, dur: Math.max(3.5, text.length * 0.07) };
     if (!this.dialog) Voice.speak(who, text);
@@ -247,6 +247,7 @@ class World {
     if (P.furyT > 0) dmg *= 1.5;
     if (P.cloakT > 0) dmg *= 2;
     if (P.counterT > 0) { dmg *= 2; ky = Math.min(ky, -280); P.counterT = 0; this.float('¡CONTRA!', e.cx, e.y - 10, '#80e0ff'); }
+    this.lastHitE = e; this.lastHitT = 3.5;
     if (!e.takeHit(dmg, kx, ky, heavy, this)) return;
     if (P.shockT > 0 && !e.dead) { e.web(0.8, this); for (let i = 0; i < 6; i++) this.particles.spark(e.cx + rand(-6, 6), e.cy + rand(-8, 8), '#80e0ff', 1); }
     this.hitstop(heavy ? 0.07 : 0.035);
@@ -557,7 +558,7 @@ class World {
       for (const e of this.enemies) {
         if (e.dead || !e.hittable() || !this.onScreen(e)) continue;
         const dmg = e.isBoss ? 6 * this.player.dmgMul : 4 * this.player.dmgMul;
-        this.playerHits(e, dmg, (e.cx > this.cam.x + W / 2 ? 1 : -1) * 160, e.isBoss ? -40 : -220, true);
+        this.playerHits(e, dmg, (e.cx > this.cam.x + VW / 2 ? 1 : -1) * 160, e.isBoss ? -40 : -220, true);
         if (!e.dead && !e.isBoss) e.web(2.5, this);
       }
       // detiene también el coche de una persecución
@@ -568,14 +569,14 @@ class World {
   drawAlly(ctx, cam, t) {
     const a = this.ally;
     const u = a.t / a.dur;
-    const x = a.dir > 0 ? -30 + u * (W + 60) : W + 30 - u * (W + 60);
-    const y = 60 + Math.sin(u * Math.PI) * 80;
+    const x = a.dir > 0 ? -30 + u * (VW + 60) : VW + 30 - u * (VW + 60);
+    const y = 30 + Math.sin(u * Math.PI) * 40;
     // portales de entrada y salida
-    const px = a.dir > 0 ? 16 : W - 16, qx = a.dir > 0 ? W - 16 : 16;
+    const px = a.dir > 0 ? 16 : VW - 16, qx = a.dir > 0 ? VW - 16 : 16;
     for (const [xx, vis] of [[px, u < 0.3], [qx, u > 0.7]]) {
       if (!vis) continue;
       const cols = ['#ffffff', '#60ffe0', '#ff40c0', '#ffe040'];
-      for (let i = 0; i < 40; i++) { ctx.fillStyle = cols[(i + Math.floor(t * 12)) % 4]; ctx.fillRect(Math.round(xx + Math.sin(i * 0.5 + t * 6) * 4), 40 + i * 2, 3, 2); }
+      for (let i = 0; i < 40; i++) { ctx.fillStyle = cols[(i + Math.floor(t * 12)) % 4]; ctx.fillRect(Math.round(xx + Math.sin(i * 0.5 + t * 6) * 4), 20 + i, 3, 1); }
     }
     const anchorX = x + a.dir * 30, anchorY = 0;
     ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
@@ -664,11 +665,11 @@ class World {
       }
     }
     // civiles ambientales
-    this.civs = this.civs.filter((c) => c.crime || (c.x > this.cam.x - 260 && c.x < this.cam.x + W + 260));
+    this.civs = this.civs.filter((c) => c.crime || (c.x > this.cam.x - 260 && c.x < this.cam.x + VW + 260));
     const amb = this.civs.filter((c) => !c.crime).length;
     if (amb < 7) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      const x = side < 0 ? this.cam.x - rand(20, 200) : this.cam.x + W + rand(20, 200);
+      const x = side < 0 ? this.cam.x - rand(20, 200) : this.cam.x + VW + rand(20, 200);
       if (x > 20 && x < this.level.width - 20 && this.level.surfaceY(x, 0) >= this.level.groundY) {
         const c = new Civilian(x, this.level.groundY);
         c.dir = -side; c.z = rand(0, DEPTH_MAX);
@@ -900,6 +901,7 @@ class World {
     this.updateArenas(dt);
     if (this.mode === 'city') this.updateCity(dt);
     for (const pp of this.pops) pp.t += dt;
+    if (this.lastHitT > 0) this.lastHitT -= dt;
     this.pops = this.pops.filter((pp) => pp.t < 0.5);
 
     // jefe derrotado
@@ -944,7 +946,7 @@ class World {
         }
       }
       if (!lead || q === lead || q.state === 'dead') continue;
-      if (Math.abs(q.cx - lead.cx) > W * 0.8 || Math.abs(q.cy - lead.cy) > H * 0.85) {
+      if (Math.abs(q.cx - lead.cx) > VW * 0.85 || Math.abs(q.cy - lead.cy) > VH * 0.9) {
         this.particles.burst(q.cx, q.cy, 10, '#60ffe0', 70);
         q.x = lead.x - (q.idx) * 10; q.y = lead.y; q.z = lead.z; q.vx = 0; q.vy = 0; q.anchor = null;
         if (['swing', 'wall', 'facade'].includes(q.state)) q.state = 'normal';
@@ -962,21 +964,21 @@ class World {
     const lv = this.level;
     const al = this.coop ? this.alivePlayers() : [];
     const p = al.length ? { cx: al.reduce((s2, q) => s2 + q.cx, 0) / al.length, cy: al.reduce((s2, q) => s2 + q.cy, 0) / al.length, vx: al.reduce((s2, q) => s2 + q.vx, 0) / al.length, z: al.reduce((s2, q) => s2 + (q.z || 0), 0) / al.length } : this.player;
-    let tx = p.cx - W / 2 + clamp(p.vx * 0.25, -50, 50);
-    let ty = p.cy - (p.z || 0) * 0.5 - H * 0.55;
+    let tx = p.cx - VW / 2 + clamp(p.vx * 0.2, -30, 30);
+    let ty = p.cy - (p.z || 0) * 0.5 - VH * 0.66;
     const k = Math.min(1, dt * 6);
-    let minX = 0, maxX = lv.width - W;
+    let minX = 0, maxX = lv.width - VW;
     if (this.arena) {
       const a = this.arena;
-      if (a.x2 - a.x1 <= W) { minX = maxX = (a.x1 + a.x2) / 2 - W / 2; }
-      else { minX = Math.max(minX, a.x1); maxX = Math.min(maxX, a.x2 - W); }
+      if (a.x2 - a.x1 <= VW) { minX = maxX = (a.x1 + a.x2) / 2 - VW / 2; }
+      else { minX = Math.max(minX, a.x1); maxX = Math.min(maxX, a.x2 - VW); }
     }
     tx = clamp(tx, minX, maxX);
-    ty = clamp(ty, 0, lv.height - H);
+    ty = clamp(ty, 0, lv.height - VH);
     this.cam.x += (tx - this.cam.x) * k;
     this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 5);
-    this.cam.x = clamp(this.cam.x, 0, lv.width - W);
-    this.cam.y = clamp(this.cam.y, 0, lv.height - H);
+    this.cam.x = clamp(this.cam.x, 0, lv.width - VW);
+    this.cam.y = clamp(this.cam.y, 0, lv.height - VH);
   }
 
   // ---------------- menús ----------------
@@ -1006,19 +1008,17 @@ class World {
     const sh = this.shakeAmt;
     const cam = { x: Math.round(this.cam.x + (sh ? rand(-sh, sh) : 0)), y: Math.round(this.cam.y + (sh ? rand(-sh, sh) : 0)) };
     const lv = this.level;
-    if (lv.indoor) {
-      ctx.fillStyle = '#12141a'; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#1a1d24';
-      for (let x = -(cam.x * 0.5 % 60); x < W; x += 60) ctx.fillRect(Math.round(x), 0, 30, H);
-      ctx.fillStyle = '#20242c';
-      for (let x = -(cam.x * 0.5 % 120); x < W; x += 120) ctx.fillRect(Math.round(x) + 10, 60, 50, 30);
-    } else Scenery.drawBackground(ctx, lv.sky, cam.x, cam.y, lv.height, lv.landmark);
+    // el fondo lejano se dibuja a resolución de pantalla; el mundo, con zoom
+    if (lv.indoor) Scenery.drawIndoor(ctx, cam.x * ZOOM, cam.y * ZOOM);
+    else Scenery.drawBackground(ctx, lv.sky, cam.x * ZOOM, cam.y * ZOOM, lv.height * ZOOM, lv.landmark);
+    ctx.setTransform(RES * ZOOM, 0, 0, RES * ZOOM, 0, 0);
+    FacadeRow.draw(ctx, lv, cam);
     if (this.boss && this.boss.drawIllusion) this.boss.drawIllusion(ctx, cam, t, this.boss.arena);
     lv.draw(ctx, cam.x, cam.y, t);
     // faro de misión
     if (this.markerX) {
       const mx = Math.round(this.markerX - cam.x);
-      if (mx > -30 && mx < W + 30) {
+      if (mx > -30 && mx < VW + 30) {
         ctx.fillStyle = 'rgba(80,200,255,' + (0.18 + Math.sin(t * 4) * 0.06) + ')';
         ctx.fillRect(mx - 8, 0, 16, Math.round(lv.groundY - cam.y));
         ctx.fillStyle = 'rgba(160,230,255,0.35)';
@@ -1033,7 +1033,7 @@ class World {
       for (const tk of lv.tokens) {
         if (Game.save.tokens.includes(tk.id)) continue;
         const x = Math.round(tk.x - cam.x), y = Math.round(tk.y - cam.y + Math.sin(t * 3 + tk.idx) * 2);
-        if (x < -10 || x > W + 10 || y < -10 || y > H + 10) continue;
+        if (x < -10 || x > VW + 10 || y < -10 || y > VH + 10) continue;
         ctx.fillStyle = 'rgba(255,220,80,0.25)'; ctx.fillRect(x - 6, y - 6, 12, 12);
         ctx.fillStyle = UI.ink; ctx.fillRect(x - 4, y - 4, 9, 9);
         ctx.fillStyle = Math.floor(t * 4 + tk.idx) % 2 ? '#80ffe8' : '#ff60c0'; ctx.fillRect(x - 3, y - 3, 7, 7);
@@ -1072,6 +1072,8 @@ class World {
       const s2 = pp.t < 0.1 ? 2 : 1;
       Font.draw(ctx, pp.text, Math.round(pp.x - cam.x), Math.round(pp.y - cam.y - pp.t * 20), pp.c, { align: 'center', scale: s2, outline: '#000000' });
     }
+    // vuelta a coordenadas de pantalla para los efectos y la interfaz
+    ctx.setTransform(RES, 0, 0, RES, 0, 0);
     // tinte del universo
     if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     if (lv.comic) {
@@ -1089,7 +1091,7 @@ class World {
     }
     // indicador de crimen fuera de pantalla
     if (this.crime) {
-      const cx = this.crime.x - cam.x;
+      const cx = (this.crime.x - cam.x) * ZOOM;
       if (cx < 0 || cx > W) {
         const left = cx < 0;
         const ax = left ? 6 : W - 14;
@@ -1103,7 +1105,7 @@ class World {
       }
     }
     if (this.markerX) {
-      const mx = this.markerX - cam.x;
+      const mx = (this.markerX - cam.x) * ZOOM;
       if (mx < 0 || mx > W) {
         const left = mx < 0;
         const ax = left ? 6 : W - 14, ay = 120;

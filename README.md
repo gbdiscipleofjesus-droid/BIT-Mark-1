@@ -60,6 +60,16 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 | Refuerzo multiversal | T | R3 | R3 | R3 |
 | Menú | Esc | Options | Menú | + |
 
+## Aspecto de 16 bits (versión 2.5D)
+
+La versión 2.5D imita el aspecto y el manejo de los beat 'em up de Spider-Man de 16 bits (*Maximum Carnage* / *Separation Anxiety*). Los gráficos son originales, no copiados del juego:
+
+- **Cámara cercana:** los personajes ocupan una cuarta parte de la pantalla y se dibujan al doble de detalle, con sombreado de 16 bits (sombras moradas, brillos cálidos, contorno negro y telarañas).
+- **Calles con fachadas detalladas** detrás de la acera: ladrillo, ventanas con alféizar, escaleras de incendio, tiendas con toldo, persianas con grafitis, callejones y depósitos de agua.
+- **Movimientos:** guardia medio agachado con los puños arriba, caminar encorvado y combo de 4 golpes (directo, directo, gancho y patada). **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás.
+- **HUD como el original:** cara, nombre, vida larga y cartuchos de red arriba a la izquierda; nombre y vida del enemigo al que golpeas arriba a la derecha.
+- **Diálogos de cómic:** viñeta con el retrato, bocadillo blanco y recuadros amarillos para la narración.
+
 ## Estilo PlayStation (versión 2.5D)
 
 - **Menú de pausa con pestañas** (L1 / R1 o Q / E): MAPA, HABILIDADES, ARTILUGIOS, TRAJES, RÉCORDS, MULTIJUGADOR y SISTEMA.

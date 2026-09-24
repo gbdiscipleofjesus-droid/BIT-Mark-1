@@ -76,7 +76,7 @@ class MapTab {
     if (w.markerX) { ctx.fillStyle = Math.floor(t * 4) % 2 ? '#60e0ff' : '#2080c0'; ctx.fillRect(Math.round(sx(w.markerX)), my, 2, mh); Font.draw(ctx, 'MISIÓN', sx(w.markerX), my + mh + 2, '#60e0ff', { align: 'center' }); }
     if (w.crime) { ctx.fillStyle = Math.floor(t * 6) % 2 ? '#ff3030' : '#ffffff'; ctx.fillRect(Math.round(sx(w.crime.x)) - 2, sy(lv.groundY) - 6, 5, 5); Font.draw(ctx, '!', sx(w.crime.x), sy(lv.groundY) - 14, '#ff4040', { align: 'center' }); }
     // vista de la cámara y jugadores
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.strokeRect(Math.round(sx(w.cam.x)) + 0.5, Math.round(sy(w.cam.y)) + 0.5, W / lv.width * mw, H / lv.height * mh);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.strokeRect(Math.round(sx(w.cam.x)) + 0.5, Math.round(sy(w.cam.y)) + 0.5, VW / lv.width * mw, VH / lv.height * mh);
     w.players.forEach((q, i) => {
       if (q.state === 'dead') return;
       ctx.fillStyle = COOP_COLS[i]; const px = Math.round(sx(q.cx)), py = Math.round(sy(q.cy));
