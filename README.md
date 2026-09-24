@@ -69,6 +69,7 @@ La versión 2.5D imita el aspecto y el manejo de los beat 'em up de Spider-Man d
 - **Movimientos:** guardia medio agachado con los puños arriba, caminar encorvado y combo de 4 golpes (directo, directo, gancho y patada). **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás.
 - **HUD como el original:** cara, nombre, vida larga y cartuchos de red arriba a la izquierda; nombre y vida del enemigo al que golpeas arriba a la derecha.
 - **Diálogos de cómic:** viñeta con el retrato, bocadillo blanco y recuadros amarillos para la narración.
+- **Personajes en alta definición:** los sprites se pintan a medio píxel de pantalla y un 20 % más grandes, con degradado suave, luz de contorno y detalles: Venom con la araña blanca envolvente, ojos dentados, boca con colmillos y lengua, garras y brillo azulado; matones con cremallera, cinturón, suelas, gorras, pañuelos, cadenas, gafas, bates y pistolas dibujados con detalle; jefes con alas de plumas, cola segmentada, cuernos, hombreras y guanteletes. En monitores grandes el juego usa más resolución (hasta 4K).
 
 ## Estilo PlayStation (versión 2.5D)
 

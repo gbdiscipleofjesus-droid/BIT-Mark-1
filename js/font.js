@@ -34,7 +34,7 @@ const FONT_MARKS = {
 };
 
 const Font = {
-  cache: new Map(),
+  cache: new Map(), textCache: new Map(),
   missing: new Set(), // caracteres sin glifo (para pruebas)
   CW: 6, // ancho de celda
   LH: 10, // alto de línea (incluye espacio para acentos)
@@ -87,6 +87,21 @@ const Font = {
     if (opts.align === 'center') px = x - Math.floor(w / 2);
     else if (opts.align === 'right') px = x - w;
     px = Math.round(px); const py = Math.round(y);
+    // el texto con contorno se pinta una vez en un lienzo aparte y se reutiliza (9 pasadas por letra)
+    if (opts.outline && s.length > 1) {
+      const key = s + '|' + color + '|' + opts.outline + '|' + scale;
+      let c = this.textCache.get(key);
+      if (!c) {
+        c = makeCanvas(w + scale * 2, 9 * scale + scale * 2);
+        const g = c.getContext('2d');
+        for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) this._draw(g, s, scale + ox * scale, 2 * scale + scale + oy * scale, opts.outline, scale);
+        this._draw(g, s, scale, 3 * scale, color, scale);
+        this.textCache.set(key, c);
+        if (this.textCache.size > 300) this.textCache.delete(this.textCache.keys().next().value);
+      }
+      ctx.drawImage(c, px - scale, py - 3 * scale);
+      return w;
+    }
     if (opts.shadow) this._draw(ctx, s, px + scale, py + scale, opts.shadow, scale);
     if (opts.outline) {
       for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {

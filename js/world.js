@@ -1012,6 +1012,7 @@ class World {
     if (lv.indoor) Scenery.drawIndoor(ctx, cam.x * ZOOM, cam.y * ZOOM);
     else Scenery.drawBackground(ctx, lv.sky, cam.x * ZOOM, cam.y * ZOOM, lv.height * ZOOM, lv.landmark);
     ctx.setTransform(RES * ZOOM, 0, 0, RES * ZOOM, 0, 0);
+    Rig.ws = 1.2;
     FacadeRow.draw(ctx, lv, cam);
     if (this.boss && this.boss.drawIllusion) this.boss.drawIllusion(ctx, cam, t, this.boss.arena);
     lv.draw(ctx, cam.x, cam.y, t);
@@ -1074,6 +1075,7 @@ class World {
     }
     // vuelta a coordenadas de pantalla para los efectos y la interfaz
     ctx.setTransform(RES, 0, 0, RES, 0, 0);
+    Rig.ws = 1;
     // tinte del universo
     if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     if (lv.comic) {

@@ -740,14 +740,16 @@ class Player {
     }
     // hormigueo arácnido
     if (this.sense > 0) {
-      ctx.fillStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#ffe040';
+      // sentido arácnido: líneas en zigzag alrededor de la cabeza
       const hx = wp.head[0], hy = wp.head[1];
-      for (const s of [-1, 1]) {
-        const bx = hx + s * 5;
-        for (let i = 0; i < 3; i++) {
-          ctx.fillRect(bx + s * i * 2, hy - 6 - i * 2, 1, 2);
-          ctx.fillRect(bx + s * i * 2 + s, hy - 8 - i * 2, 1, 2);
-        }
+      ctx.lineWidth = 0.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#ffe040';
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i - 2) * 0.5, r0 = 4.5, L = 3.5 + (Math.floor(t * 12) + i) % 2;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        ctx.beginPath(); ctx.moveTo(hx + ca * r0, hy + sa * r0);
+        for (let j = 1; j <= 3; j++) { const rr = r0 + L * j / 3, z = (j % 2 ? 0.8 : -0.8); ctx.lineTo(hx + ca * rr - sa * z, hy + sa * rr + ca * z); }
+        ctx.stroke();
       }
     }
     if (this.state === 'charge' && this.holdT > 0.15) {

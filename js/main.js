@@ -648,6 +648,7 @@ const Game = {
   render() {
     const ctx = this.ctx;
     ctx.setTransform(RES, 0, 0, RES, 0, 0);
+    Sprite.budget = 2;
     ctx.imageSmoothingEnabled = false;
     this.scene.draw(ctx);
     drawPadToast(ctx);

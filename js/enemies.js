@@ -373,46 +373,68 @@ class Enemy {
   // Detalles de ropa de los matones (gorras, gafas, cadenas, pañuelos)
   drawOutfit(ctx, wp, t, sc) {
     if (this.dead || this.pal === FLASH_PAL || this.flash > 0) return;
-    const [hx, hy] = wp.head, f = this.facing, v = this.id % 4;
-    const hs = Math.max(5, Math.round(5 * sc));
-    const top = hy - Math.floor(hs / 2);
+    const [hx, hy] = wp.head, f = this.facing, v = this.id % 4, k = sc * Rig.ws;
+    const R = 2.35 * k; // radio de la cabeza
+    const P = (pts, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const q of pts.slice(1)) ctx.lineTo(q[0], q[1]); ctx.closePath(); ctx.fill(); };
+    const cap = (col) => {
+      ctx.fillStyle = '#0a0a0c'; ctx.beginPath(); ctx.arc(hx, hy - 0.2 * k, R + 0.3 * k, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy - 0.2 * k, R, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = shade(col, 0.3); ctx.beginPath(); ctx.arc(hx - f * 0.6 * k, hy - 0.9 * k, R * 0.45, Math.PI, TAU); ctx.fill();
+      P([[hx + f * 0.8 * k, hy - 0.5 * k], [hx + f * (R + 2.2 * k), hy - 0.2 * k], [hx + f * (R + 2 * k), hy + 0.35 * k], [hx + f * 0.8 * k, hy + 0.1 * k]], shade(col, -0.25)); // visera
+    };
+    const shades = () => {
+      ctx.fillStyle = '#08080a'; ctx.beginPath(); ctx.roundRect(hx + (f > 0 ? 0.2 * k : -2.3 * k), hy - 0.55 * k, 2.1 * k, 0.8 * k, 0.3 * k); ctx.fill();
+      ctx.fillStyle = 'rgba(160,200,255,0.8)'; ctx.fillRect(hx + f * 1.3 * k - 0.2 * k, hy - 0.45 * k, 0.4 * k, 0.2 * k);
+    };
     if (this.type === 'thug' || this.type === 'bat') {
-      if (v === 0) { ctx.fillStyle = shade(this.pal.torso, -0.35); ctx.fillRect(hx - 3, top - 1, 6, 2); ctx.fillRect(hx + f * 2, top, f * 3, 1); } // gorra
-      else if (v === 1) { ctx.fillStyle = '#101010'; ctx.fillRect(hx + (f > 0 ? 0 : -2), top + 2, 3, 1); } // gafas de sol
-      else if (v === 2) { ctx.fillStyle = '#c02030'; ctx.fillRect(hx - 2, top + 3, 5, 2); } // pañuelo
-      else { ctx.fillStyle = '#e0c040'; ctx.fillRect(wp.neck[0] - 1, wp.neck[1] + 1, 3, 1); } // cadena
-    } else if (this.type === 'gunner') {
-      ctx.fillStyle = '#101010'; ctx.fillRect(hx + (f > 0 ? 0 : -2), top + 2, 3, 1);
-    } else if (this.type === 'brute') {
-      ctx.fillStyle = '#20242c'; ctx.fillRect(hx - 3, top - 1, 7, 2);
-      ctx.fillStyle = shade(this.pal.torso, 0.25); ctx.fillRect(wp.sh[0] - 3, wp.sh[1] - 1, 7, 2);
+      if (v === 0) cap(shade(this.pal.torso, -0.35));
+      else if (v === 1) shades();
+      else if (v === 2) { // pañuelo con estampado
+        P([[hx - f * 1.6 * k, hy + 0.3 * k], [hx + f * (R + 0.2 * k), hy + 0.1 * k], [hx + f * (R - 0.2 * k), hy + 1.7 * k], [hx + f * 0.3 * k, hy + 2.3 * k], [hx - f * 1.4 * k, hy + 1.3 * k]], '#b01828');
+        ctx.fillStyle = '#f0e0d0'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(hx + f * (i * 0.7 - 0.6) * k, hy + (0.9 + (i % 2) * 0.5) * k, 0.15 * k, 0, TAU); ctx.fill(); }
+      } else { // cadena de oro
+        for (let i = 0; i < 7; i++) {
+          const a = Math.PI * (0.15 + i / 8);
+          ctx.fillStyle = i % 2 ? '#fff0a0' : '#d8a830';
+          ctx.beginPath(); ctx.arc(wp.neck[0] + Math.cos(a) * 1.6 * k * f, wp.neck[1] + 0.6 * k + Math.sin(a) * 1.4 * k, 0.28 * k, 0, TAU); ctx.fill();
+        }
+      }
+    } else if (this.type === 'gunner') shades();
+    else if (this.type === 'brute') {
+      cap('#20242c');
     } else if (this.type === 'chitauri') {
-      ctx.fillStyle = '#c060ff'; ctx.fillRect(hx - 2, top + 2, 5, 1);
-      if (Math.floor(t * 4) % 2) { ctx.fillStyle = '#e0a0ff'; ctx.fillRect(wp.mid[0], wp.mid[1], 1, 1); }
+      DX.glow(ctx, hx + f * 1.2 * k, hy - 0.2 * k, 1.5 * k, '192,96,255', 0.9);
+      if (Math.floor(t * 4) % 2) DX.glow(ctx, wp.mid[0], wp.mid[1], 1.2 * k, '224,160,255', 0.8);
     } else if (this.type === 'zombie') {
-      ctx.fillStyle = '#5a1a14'; ctx.fillRect(wp.mid[0] - 1, wp.mid[1], 2, 2);
+      ctx.fillStyle = '#5a1a14'; for (const [dx, dy, r] of [[0, 0, 0.7], [0.8, 1.4, 0.4], [-0.5, 2.2, 0.5]]) { ctx.beginPath(); ctx.arc(wp.mid[0] + dx * k, wp.mid[1] + dy * k, r * k, 0, TAU); ctx.fill(); }
     }
   }
 
   drawWeapon(ctx, wp, t) {
     const [hx, hy] = wp.h2;
-    const f = this.facing;
+    const f = this.facing, k = this.scale * 1.12 * Rig.ws;
     if (this.spec.weapon === 'bat') {
-      ctx.fillStyle = '#8a5a2a';
       const up = this.state === 'windup';
-      if (up) thickLine(ctx, hx, hy, hx - f * 6, hy - 10, 2);
-      else thickLine(ctx, hx, hy, hx + f * 11, hy - 2, 2);
+      const ex = up ? hx - f * 6 * k : hx + f * 11 * k, ey = up ? hy - 10 * k : hy - 2 * k;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1a0e06'; ctx.lineWidth = 2.1 * k; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
+      const g = ctx.createLinearGradient(hx, hy, ex, ey); g.addColorStop(0, '#6a4020'); g.addColorStop(1, '#c08a50');
+      ctx.strokeStyle = g; ctx.lineWidth = 1.5 * k; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,190,0.5)'; ctx.lineWidth = 0.3 * k; ctx.beginPath(); ctx.moveTo(hx + (ex - hx) * 0.3, hy + (ey - hy) * 0.3 - 0.4 * k); ctx.lineTo(ex, ey - 0.4 * k); ctx.stroke();
+      ctx.strokeStyle = '#202020'; ctx.lineWidth = 1.2 * k; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + (ex - hx) * 0.2, hy + (ey - hy) * 0.2); ctx.stroke(); // cinta del mango
     } else if (this.spec.weapon === 'gun') {
-      ctx.fillStyle = '#202020'; ctx.fillRect(f > 0 ? hx : hx - 5, hy - 1, 6, 2);
-      if (this.state === 'attack' && this.t > 0.12) { ctx.fillStyle = '#ffe060'; ctx.fillRect(f > 0 ? hx + 6 : hx - 8, hy - 2, 3, 3); }
+      ctx.save(); ctx.translate(hx, hy); ctx.scale(f * k, k);
+      ctx.fillStyle = '#0a0a0c'; ctx.beginPath(); ctx.roundRect(-0.6, -1.3, 6.4, 1.6, 0.3); ctx.fill(); ctx.fillRect(-0.4, -0.2, 1.4, 2.2);
+      ctx.fillStyle = '#4a4e58'; ctx.fillRect(-0.3, -1.05, 5.8, 0.6); ctx.fillStyle = '#8a92a0'; ctx.fillRect(0.2, -1.0, 4.6, 0.18);
+      ctx.restore();
+      if (this.state === 'attack' && this.t > 0.12) DX.glow(ctx, hx + f * 7 * k, hy - 0.5 * k, 3 * k, '255,224,96', 1);
     } else if (this.spec.weapon === 'alien') {
-      ctx.fillStyle = '#6a4a8a'; ctx.fillRect(f > 0 ? hx - 1 : hx - 7, hy - 2, 8, 3);
-      ctx.fillStyle = this.state === 'windup' ? (Math.floor(t * 20) % 2 ? '#ffffff' : '#e080ff') : '#c060ff';
-      ctx.fillRect(f > 0 ? hx + 6 : hx - 8, hy - 1, 2, 2);
+      ctx.fillStyle = '#6a4a8a'; ctx.beginPath(); ctx.roundRect(f > 0 ? hx - 1 : hx - 7 * k, hy - 1.5 * k, 8 * k, 3 * k, 1 * k); ctx.fill();
+      DX.glow(ctx, hx + f * 7 * k, hy, 2 * k, this.state === 'windup' ? '255,255,255' : '192,96,255', 0.9);
     }
     if (this.state === 'windup' && this.spec.kind === 'ranged' && this.spec.proj === 'bullet') {
       ctx.fillStyle = 'rgba(255,40,40,0.5)';
-      ctx.fillRect(f > 0 ? hx + 6 : hx - 66, hy, 60, 1);
+      ctx.fillRect(f > 0 ? hx + 6 : hx - 66, hy, 60, 0.5);
     }
   }
 
@@ -665,10 +687,9 @@ class Shocker extends Boss {
     }
     const glow = this.state.endsWith('WU') && Math.floor(t * 20) % 2;
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
-    for (const h of [wp.h1, wp.h2]) {
-      ctx.fillStyle = '#3a4a60'; ctx.fillRect(h[0] - 3, h[1] - 3, 6, 6);
-      ctx.fillStyle = glow ? '#ffffff' : '#60c0ff'; ctx.fillRect(h[0] - 1, h[1] - 1, 3, 3);
-    }
+    const k = this.scale * Rig.ws;
+    DX.gauntlet(ctx, wp.e1, wp.h1, k, glow, this.type === 'electro' ? '#ffe040' : '#60c0ff');
+    DX.gauntlet(ctx, wp.e2, wp.h2, k, glow, this.type === 'electro' ? '#ffe040' : '#60c0ff');
     this.drawStun(ctx, wp.head[0], wp.head[1] - 8, t);
   }
 }
@@ -691,8 +712,9 @@ class ExoBrute extends Boss {
   }
   aiExtra() { return false; }
   drawExtra(ctx, wp) {
-    ctx.fillStyle = '#7a808c'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 5);
-    ctx.fillStyle = '#e09020'; ctx.fillRect(wp.sh[0] - 5, wp.sh[1] - 3, 10, 1);
+    const k = this.scale * Rig.ws;
+    DX.pauldron(ctx, wp.sh[0] - this.facing * 0.4 * k, wp.sh[1] + 2.2 * k, k * 0.85, this.facing, '#7a808c', '#e09020');
+    DX.glow(ctx, wp.mid[0] + this.facing * 1.2 * k, wp.mid[1], 1.6 * k, '255,120,40', 0.8);
   }
   ai(dt, world) {
     const p = world.player, adx = Math.abs(p.cx - this.cx);
@@ -871,22 +893,8 @@ class Vulture extends Boss {
     else if (this.state === 'swoop') { pose = Poses.dive(); }
     else pose = Poses.fall();
     const flap = this.state === 'stunned' || this.dead ? 0.3 : Math.sin(t * (this.state === 'swoop' ? 4 : 10));
-    const drawWings = (c, wp, f) => {
-      const [sx, sy] = wp.sh;
-      for (const side of [-1, 1]) {
-        const tipX = sx - f * 6 + side * 34, tipY = sy - 10 + flap * 12 * side * side;
-        c.fillStyle = '#2a2e34';
-        c.beginPath(); c.moveTo(sx, sy); c.lineTo(tipX, tipY); c.lineTo(tipX - side * 4, tipY + 8); c.lineTo(sx + side * 4, sy + 10); c.closePath(); c.fill();
-        c.fillStyle = '#6a7482';
-        for (let i = 1; i < 6; i++) {
-          const u = i / 6;
-          const px = sx + (tipX - sx) * u, py = sy + (tipY - sy) * u;
-          c.fillRect(Math.round(px), Math.round(py), 2, 5 + i);
-        }
-        c.fillStyle = '#50ff60';
-        c.fillRect(Math.round(tipX) - 1, Math.round(tipY), 2, 2);
-      }
-    };
+    const neon = this.type === 'vulture2099';
+    const drawWings = (c, wp, f, s) => DX.wings(c, wp.sh[0], wp.sh[1], f, s, flap, neon);
     Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: drawWings });
     if (this.state === 'swoopWU' && Math.floor(t * 16) % 2) { ctx.fillStyle = '#ff4040'; ctx.fillRect(x - 1, y - 34, 2, 4); }
     this.drawStun(ctx, x, y - 30, t);
@@ -1114,18 +1122,14 @@ class Scorpion extends Boss {
       case 'roar': pose = Poses.cheer(t); break;
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 8) : Poses.idle(t);
     }
-    if (this.phase >= 2 && !this.dead) {
-      ctx.fillStyle = 'rgba(100,255,140,' + (0.12 + Math.sin(t * 8) * 0.06) + ')';
-      ctx.fillRect(x - 16, y - 44, 32, 46);
-    }
+    if (this.phase >= 2 && !this.dead) DX.glow(ctx, x, y - 20 * this.scale, 26 * this.scale, '100,255,140', 0.25 + Math.sin(t * 8) * 0.08);
     const self = this;
     const tail = (c, wp, f, s) => {
       const hip = wp.hip;
       const ext = self.tailExt;
       const sweep = self.state === 'sweep' || self.state === 'sweepWU';
-      const n = 9;
-      let px = hip[0], py = hip[1];
-      for (let i = 1; i <= n; i++) {
+      const n = 12, pts = [];
+      for (let i = 0; i <= n; i++) {
         const u = i / n;
         let tx, ty;
         if (sweep) { tx = hip[0] - f * (u * 30) * Math.cos(t * 20); ty = hip[1] + u * 12; }
@@ -1135,12 +1139,9 @@ class Scorpion extends Boss {
           tx = hip[0] + curlX * (1 - ext) + stabX * ext;
           ty = hip[1] + curlY * (1 - ext) + stabY * ext;
         }
-        c.fillStyle = '#08140a'; c.fillRect(Math.round(tx) - 2, Math.round(ty) - 2, 5, 5);
-        c.fillStyle = i === n ? '#e0e0a0' : (i % 2 ? '#2e7a3a' : '#1a4a22'); c.fillRect(Math.round(tx) - 1, Math.round(ty) - 1, 3, 3);
-        px = tx; py = ty;
+        pts.push([tx, ty]);
       }
-      c.fillStyle = self.phase === 2 ? '#90ff90' : '#e0e0a0';
-      c.fillRect(Math.round(px) + f * 2, Math.round(py), 3, 2);
+      DX.tail(c, pts, s, f, self.phase === 2 ? '#90ff90' : '#e8e0a0');
     };
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: tail });
     if (this.state === 'stabWU' || this.state === 'sweepWU') {
@@ -1443,15 +1444,16 @@ class Sandman extends ExoBrute {
     if (['punch', 'punchWU', 'stormWU', 'shardsWU', 'sandwaveWU'].includes(this.state)) {
       for (const h of [wp.h1, wp.h2]) {
         const r = this.state === 'punch' ? 7 : 5;
-        ctx.fillStyle = '#a07840'; ctx.fillRect(h[0] - r, h[1] - r, r * 2, r * 2);
-        ctx.fillStyle = '#d8b070'; ctx.fillRect(h[0] - r + 1, h[1] - r + 1, r * 2 - 3, r * 2 - 3);
+        DX.sandFist(ctx, h[0], h[1], r, t);
       }
     }
-    if (this.inv > 0 && !this.dead) { ctx.fillStyle = 'rgba(216,176,112,0.5)'; ctx.fillRect(wp.hip[0] - 10, wp.head[1] - 6, 20, wp.f2[1] - wp.head[1] + 8); }
-    ctx.fillStyle = '#2a4a1a';
-    for (let i = 0; i < 3; i++) ctx.fillRect(wp.mid[0] - 4, wp.mid[1] - 6 + i * 4, 9, 1);
-    ctx.fillStyle = 'rgba(210,180,120,0.7)';
-    for (let i = 0; i < 4; i++) ctx.fillRect(Math.round(wp.hip[0] + Math.sin(t * 7 + i) * 10), Math.round(wp.hip[1] + 8 + (i * 5 + t * 30) % 14), 2, 2);
+    if (this.inv > 0 && !this.dead) DX.glow(ctx, wp.mid[0], wp.mid[1], 22 * this.scale, '216,176,112', 0.45);
+    // arena que cae de las piernas: granos redondos
+    for (let i = 0; i < 14; i++) {
+      const gx = wp.hip[0] + Math.sin(t * 7 + i * 1.3) * 9, gy = wp.hip[1] + 6 + (i * 3.7 + t * 30) % 22;
+      ctx.fillStyle = i % 3 ? 'rgba(220,186,120,0.85)' : 'rgba(160,120,64,0.85)';
+      ctx.beginPath(); ctx.arc(gx, gy, 0.35 + (i % 3) * 0.2, 0, TAU); ctx.fill();
+    }
   }
 }
 
@@ -1461,7 +1463,7 @@ class Venom extends ExoBrute {
     this.type = 'venom'; this.name = 'VENOM';
     this.hp = this.maxHp = Math.ceil(70 * DIFF_HP[Game.settings.difficulty]);
     this.scale = 1.6; this.w = 16; this.h = 36;
-    this.pal = makePal({ head: '#101018', hair: '#101018', torso: '#101018', arm: '#101018', leg: '#101018', boot: '#101018', face: 'venom', eye: '#ffffff', emblem: '#f0f0f0', emblemStyle: 'long', outline: '#000000' });
+    this.pal = makePal({ head: '#101018', hair: '#101018', torso: '#101018', arm: '#101018', leg: '#101018', boot: '#101018', face: 'venom', eye: '#ffffff', emblem: '#f0f0f0', emblemStyle: 'venom', outline: '#000000', headScale: 1.22 });
     this.summoned = true;
   }
   chooseAttack(adx) {
@@ -1507,25 +1509,43 @@ class Venom extends ExoBrute {
     return true;
   }
   drawExtra(ctx, wp, t) {
-    // tentáculos del simbionte
-    ctx.fillStyle = '#101018';
-    for (let i = 0; i < 4; i++) {
-      const bx = wp.sh[0] - this.facing * 4, by = wp.sh[1] + i * 3;
-      let px = bx, py = by;
-      for (let k = 1; k <= 5; k++) {
-        const nx = bx - this.facing * k * 3, ny = by + Math.sin(t * 6 + i * 1.7 + k * 0.8) * (2 + k);
-        thickLine(ctx, px, py, nx, ny, k < 3 ? 2 : 1); px = nx; py = ny;
+    const f = this.facing, k = this.scale * Rig.ws;
+    // emblema de araña blanco que envuelve el torso (dibujado encima, como en el cómic)
+    if (!this.dead && this.flash <= 0) drawSymbioteSpider(ctx, wp.mid[0] + f * 0.6 * k, wp.mid[1] - 1.6 * k, 1.05 * k, f);
+    // garras blancas
+    if (!this.dead) for (const h of [wp.h1, wp.h2]) {
+      ctx.fillStyle = '#f0f0f4';
+      for (let c = -1; c <= 1; c++) {
+        ctx.beginPath(); ctx.moveTo(h[0] + f * 0.6 * k, h[1] + c * 0.7 * k); ctx.lineTo(h[0] + f * 2.4 * k, h[1] + c * 0.9 * k + 0.9 * k); ctx.lineTo(h[0] + f * 0.6 * k, h[1] + c * 0.7 * k + 0.45 * k); ctx.fill();
       }
     }
-    ctx.fillStyle = '#e8e8f0';
-    const [x, y] = wp.mid;
-    ctx.fillRect(x - 1, y - 8, 3, 12); ctx.fillRect(x - 6, y - 7, 5, 2); ctx.fillRect(x + 2, y - 7, 5, 2); ctx.fillRect(x - 6, y - 1, 5, 2); ctx.fillRect(x + 2, y - 1, 5, 2);
     if (this.state === 'whip' || this.state === 'whipWU' || this.state === 'grab' || this.state === 'grabWU') {
-      const [hx, hy] = wp.h2, f = this.facing;
+      const [hx, hy] = wp.h2;
       const len = this.state === 'whip' ? 76 : this.state === 'grab' ? 118 * (1 - this.t / 0.3) : 12;
-      ctx.fillStyle = '#000000'; thickLine(ctx, hx, hy, hx + f * len, hy + Math.sin(t * 30) * 3, 4);
-      ctx.fillStyle = '#3a3a4a'; thickLine(ctx, hx, hy - 1, hx + f * len, hy - 1 + Math.sin(t * 30) * 3, 1);
+      ctx.strokeStyle = '#000000'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(hx + f * len * 0.5, hy - 6 + Math.sin(t * 30) * 4, hx + f * len, hy + Math.sin(t * 30) * 3); ctx.stroke();
+      ctx.strokeStyle = '#3a4668'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(hx, hy - 0.8); ctx.quadraticCurveTo(hx + f * len * 0.5, hy - 6.8 + Math.sin(t * 30) * 4, hx + f * len, hy - 0.8 + Math.sin(t * 30) * 3); ctx.stroke();
     }
+  }
+}
+
+// Araña blanca del simbionte (cuerpo, cabeza y 8 patas curvas con sombreado)
+function drawSymbioteSpider(ctx, x, y, s, f) {
+  const leg = (sx, a, b, c, w) => {
+    ctx.beginPath(); ctx.moveTo(x + sx * a[0] * s, y + a[1] * s);
+    ctx.quadraticCurveTo(x + sx * b[0] * s, y + b[1] * s, x + sx * c[0] * s, y + c[1] * s);
+    ctx.lineWidth = w * s; ctx.stroke();
+  };
+  const LEGS = [[[0.6, -1.4], [2.2, -3.3], [3.6, -2.2]], [[0.9, -0.5], [3.0, -1.2], [4.0, 0.9]], [[0.9, 0.6], [2.7, 1.4], [3.2, 3.9]], [[0.6, 1.5], [1.7, 3.1], [1.9, 5.3]]];
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const pass of [0, 1, 2]) {
+    ctx.strokeStyle = ctx.fillStyle = pass === 0 ? '#000000' : pass === 1 ? '#f2f2f6' : '#b8bccc';
+    const grow = pass === 0 ? 0.5 : pass === 2 ? -0.35 : 0;
+    for (const sx of [-1, 1]) for (const L of LEGS) leg(sx, L[0], L[1], L[2], Math.max(0.2, 1.25 + grow * 1.6));
+    const blob = (cx, cy, rx, ry) => { ctx.beginPath(); ctx.ellipse(x + cx * s, y + cy * s, Math.max(0.1, rx + grow) * s, Math.max(0.1, ry + grow) * s, 0, 0, TAU); ctx.fill(); };
+    if (pass === 2) { blob(0.35 * f, -1.5, 0.35, 0.9); blob(0.35 * f, 1.4, 0.3, 1.2); continue; }   // sombra interior
+    blob(0, -2.6, 0.75, 0.7); blob(0, -1.1, 1.15, 1.25); blob(0, 1.3, 0.95, 1.9);
   }
 }
 
@@ -1575,10 +1595,10 @@ class Rino extends ExoBrute {
     return true;
   }
   drawExtra(ctx, wp) {
-    const [hx, hy] = wp.head, f = this.facing;
-    ctx.fillStyle = '#e8e8d8';
-    ctx.fillRect(hx + f * 5 - 1, hy - 4, 3, 5); ctx.fillRect(hx + f * 7 - 1, hy - 7, 2, 4);
-    ctx.fillStyle = '#8a8a92'; ctx.fillRect(wp.sh[0] - 6, wp.sh[1] - 3, 12, 5);
+    const [hx, hy] = wp.head, f = this.facing, k = this.scale * Rig.ws;
+    DX.horn(ctx, hx + f * 2.2 * k, hy + 0.2 * k, f, 2.6 * k, '#ece6d2');
+    DX.horn(ctx, hx + f * 1.2 * k, hy - 1.4 * k, f, 1.3 * k, '#d8d2bc');
+    DX.pauldron(ctx, wp.sh[0] - f * 0.4 * k, wp.sh[1] + 2.2 * k, k * 0.85, f, '#8a8a92', '#5a5a62');
   }
 }
 
@@ -1642,18 +1662,13 @@ class Electro extends Shocker {
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
-    ctx.fillStyle = 'rgba(80,170,255,' + (0.12 + Math.sin(t * 20) * 0.06) + ')';
-    ctx.fillRect(x - 14, y - 34, 28, 36);
+    DX.glow(ctx, x, y - 18 * this.scale, 24 * this.scale, '80,170,255', 0.28 + Math.sin(t * 20) * 0.08);
     if (this.fieldT > 0) {
       ctx.strokeStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#80e0ff'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(x, y - 14, 40 + Math.sin(t * 30) * 2, 0, TAU); ctx.stroke();
     }
     super.draw(ctx, cam, t);
-    if (Math.floor(t * 15) % 3 === 0) {
-      ctx.fillStyle = '#c0f0ff';
-      let px = x, py = y - 30;
-      for (let i = 0; i < 5; i++) { const nx = px + rand(-6, 6), ny = py - 4; thickLine(ctx, px, py, nx, ny, 1); px = nx; py = ny; }
-    }
+    if (Math.floor(t * 15) % 3 === 0) DX.bolt(ctx, x, y - 30 * this.scale, x + rand(-10, 10), y - 50 * this.scale, 5);
   }
 }
 
@@ -1746,8 +1761,11 @@ class Mancha extends Boss {
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 8) : Poses.idle(t);
     }
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
-    ctx.fillStyle = '#101010';
-    ctx.fillRect(wp.mid[0] - 2, wp.mid[1] - 3, 3, 3); ctx.fillRect(wp.k2[0] - 1, wp.k2[1] - 1, 2, 2); ctx.fillRect(wp.e1[0] - 1, wp.e1[1], 2, 2);
+    const k = this.scale * Rig.ws;
+    ctx.fillStyle = '#08080a';
+    for (const [pt, rx, ry, dx, dy] of [[wp.mid, 1.5, 1.9, -0.3, -0.6], [wp.mid, 0.9, 0.7, 1.1, 1.6], [wp.k2, 1.0, 1.2, 0, 0], [wp.e1, 0.8, 0.9, 0, 0.4], [wp.hip, 1.1, 0.8, 0.5, 0.4], [wp.f1, 0.7, 0.6, 0, -1.4]]) {
+      ctx.beginPath(); ctx.ellipse(pt[0] + dx * k, pt[1] + dy * k, rx * k, ry * k, 0.4, 0, TAU); ctx.fill();
+    }
     this.drawStun(ctx, wp.head[0], wp.head[1] - 9, t);
   }
 }
@@ -2069,8 +2087,7 @@ class DoomBot extends Electro {
   }
   draw(ctx, cam, t) {
     const x = Math.round(this.cx - cam.x), y = Math.round(this.y + this.h - cam.y);
-    ctx.fillStyle = 'rgba(64,255,96,' + (0.1 + Math.sin(t * 8) * 0.04) + ')';
-    ctx.fillRect(x - 14, y - 38, 28, 40);
+    DX.glow(ctx, x, y - 20 * this.scale, 24 * this.scale, '64,255,96', 0.22 + Math.sin(t * 8) * 0.06);
     if (this.fieldT > 0) {
       ctx.strokeStyle = Math.floor(t * 20) % 2 ? '#ffffff' : '#40ff60'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(x, y - 14, 40 + Math.sin(t * 30) * 2, 0, TAU); ctx.stroke();
@@ -2089,7 +2106,7 @@ class DoomBot extends Electro {
       c.beginPath(); c.moveTo(wp.sh[0] - f * 2, wp.sh[1] - 2); c.lineTo(wp.sh[0] - f * 12, wp.hip[1] + 10 + Math.sin(t * 5) * 2); c.lineTo(wp.sh[0] + f * 2, wp.hip[1] + 8); c.fill();
     };
     const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
-    if (this.state.endsWith('WU') && Math.floor(t * 20) % 2) for (const h of [wp.h1, wp.h2]) { ctx.fillStyle = '#40ff60'; ctx.fillRect(h[0] - 1, h[1] - 1, 3, 3); }
+    if (this.state.endsWith('WU') && Math.floor(t * 20) % 2) for (const h of [wp.h1, wp.h2]) DX.glow(ctx, h[0], h[1], 4, '64,255,96', 0.9);
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
   }
 }

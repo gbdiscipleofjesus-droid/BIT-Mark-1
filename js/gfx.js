@@ -141,8 +141,9 @@ const Rig = {
   // Dibuja un personaje. x,y = pies (centro). Devuelve los puntos en coordenadas de mundo.
   // El cuerpo se rasteriza píxel a píxel a resolución fina (RES): volumen con luz,
   // contorno, telarañas en relieve, ojos de lente y emblema.
+  ws: 1, // escala extra de los personajes dentro del mundo
   draw(ctx, x, y, facing, pose, pal, opts = {}) {
-    const s = opts.scale || 1;
+    const s = (opts.scale || 1) * this.ws;
     pose = quantizePose(pose);
     const lp = this.compute(pose, s);
     const wp = {};
@@ -922,6 +923,120 @@ const FlashArt = {
         }
         break;
       default: R('#000000', 0, 0, W, H);
+    }
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Detalles vectoriales de alta definición para jefes y villanos
+// (se dibujan con el zoom del mundo: medio píxel de pantalla de precisión)
+// ---------------------------------------------------------------------------
+const DX = {
+  glow(ctx, x, y, r, rgb, a) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(' + rgb + ',' + clamp(a, 0, 1) + ')'); g.addColorStop(1, 'rgba(' + rgb + ',0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  },
+  // guantelete metálico sobre el antebrazo con núcleo luminoso
+  gauntlet(ctx, e, h, k, glow, core) {
+    const dx = h[0] - e[0], dy = h[1] - e[1], L = Math.hypot(dx, dy) || 1, a = Math.atan2(dy, dx);
+    ctx.save(); ctx.translate(e[0] + dx * 0.35, e[1] + dy * 0.35); ctx.rotate(a);
+    const w = L * 0.85, hh = 1.9 * k;
+    ctx.fillStyle = '#0c0e14'; ctx.beginPath(); ctx.roundRect(-0.2 * k, -hh / 2 - 0.3 * k, w + 0.4 * k, hh + 0.6 * k, 0.6 * k); ctx.fill();
+    const g = ctx.createLinearGradient(0, -hh / 2, 0, hh / 2);
+    g.addColorStop(0, '#8a9ab4'); g.addColorStop(0.45, '#4a5a74'); g.addColorStop(1, '#232a38');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0, -hh / 2, w, hh, 0.5 * k); ctx.fill();
+    ctx.fillStyle = '#c8d4e8'; for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.arc(w * i / 4, -hh * 0.3, 0.16 * k, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#1a202c'; ctx.fillRect(w * 0.1, hh * 0.15, w * 0.8, 0.12 * k);
+    ctx.restore();
+    DX.glow(ctx, h[0], h[1], (glow ? 4.5 : 3) * k, glow ? '255,255,255' : '96,192,255', glow ? 0.95 : 0.7);
+    ctx.fillStyle = glow ? '#ffffff' : core; ctx.beginPath(); ctx.arc(h[0], h[1], 0.75 * k, 0, TAU); ctx.fill();
+  },
+  // hombrera de armadura con remaches y franja
+  pauldron(ctx, x, y, k, f, col, stripe) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#08090c'; ctx.beginPath(); ctx.ellipse(0, 0, 3.4 * k, 2.4 * k, -0.2 * f, Math.PI, TAU); ctx.lineTo(3.4 * k, 0.8 * k); ctx.lineTo(-3.4 * k, 0.8 * k); ctx.fill();
+    const g = ctx.createLinearGradient(-f * 3 * k, -2 * k, f * 3 * k, 1 * k);
+    g.addColorStop(0, shade(col, 0.35)); g.addColorStop(0.5, col); g.addColorStop(1, shade(col, -0.45));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 3 * k, 2 * k, -0.2 * f, Math.PI, TAU); ctx.lineTo(3 * k, 0.5 * k); ctx.lineTo(-3 * k, 0.5 * k); ctx.fill();
+    ctx.fillStyle = stripe; ctx.fillRect(-3 * k, -0.1 * k, 6 * k, 0.45 * k);
+    ctx.fillStyle = '#e0e4ec'; for (const rx of [-2, 0, 2]) { ctx.beginPath(); ctx.arc(rx * k, -0.9 * k, 0.2 * k, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  },
+  // cuerno curvo con sombreado
+  horn(ctx, x, y, f, s, col) {
+    ctx.fillStyle = '#16140e';
+    ctx.beginPath(); ctx.moveTo(x - f * 0.2 * s, y + 0.55 * s); ctx.quadraticCurveTo(x + f * 0.9 * s, y + 0.4 * s, x + f * 1.25 * s, y - 1.25 * s); ctx.quadraticCurveTo(x + f * 0.5 * s, y - 0.5 * s, x - f * 0.25 * s, y - 0.6 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(x - f * 0.05 * s, y + 0.38 * s); ctx.quadraticCurveTo(x + f * 0.8 * s, y + 0.25 * s, x + f * 1.1 * s, y - 1.05 * s); ctx.quadraticCurveTo(x + f * 0.45 * s, y - 0.4 * s, x - f * 0.1 * s, y - 0.42 * s); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(80,70,50,0.6)'; ctx.lineWidth = 0.12 * s;
+    for (let i = 1; i < 4; i++) { const u = i / 4; ctx.beginPath(); ctx.moveTo(x + f * u * 0.7 * s, y + (0.35 - u * 0.5) * s); ctx.lineTo(x + f * (u * 0.7 + 0.12) * s, y - (0.3 + u * 0.4) * s); ctx.stroke(); }
+  },
+  // cola segmentada del Escorpión con aguijón
+  tail(ctx, pts, s, f, sting) {
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], r = (2.1 - i * 0.09) * s;
+      ctx.fillStyle = '#060e08'; ctx.beginPath(); ctx.arc(x1, y1, r + 0.35 * s, 0, TAU); ctx.fill();
+      const g = ctx.createRadialGradient(x1 - r * 0.4, y1 - r * 0.4, 0, x1, y1, r);
+      g.addColorStop(0, i % 2 ? '#6ad07a' : '#4aa058'); g.addColorStop(1, i % 2 ? '#1e5a28' : '#12401c');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x1, y1, r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.15 * s; ctx.beginPath(); ctx.arc(x1, y1, r * 0.7, Math.atan2(y1 - y0, x1 - x0) - 1.2, Math.atan2(y1 - y0, x1 - x0) + 1.2); ctx.stroke();
+    }
+    const [ex, ey] = pts[pts.length - 1], [px, py] = pts[pts.length - 2], a = Math.atan2(ey - py, ex - px);
+    ctx.save(); ctx.translate(ex, ey); ctx.rotate(a);
+    ctx.fillStyle = '#0a0a06'; ctx.beginPath(); ctx.moveTo(-0.5 * s, -1.4 * s); ctx.quadraticCurveTo(3.4 * s, -1.2 * s, 4.4 * s, 0.9 * s); ctx.quadraticCurveTo(2.2 * s, 0.1 * s, -0.5 * s, 1.4 * s); ctx.fill();
+    ctx.fillStyle = sting; ctx.beginPath(); ctx.moveTo(-0.2 * s, -1 * s); ctx.quadraticCurveTo(3.1 * s, -0.9 * s, 4 * s, 0.7 * s); ctx.quadraticCurveTo(2 * s, 0.1 * s, -0.2 * s, 1 * s); ctx.fill();
+    ctx.restore();
+  },
+  // alas metálicas con plumas (o de neón en 2099)
+  wings(ctx, sx, sy, f, s, flap, neon) {
+    for (const side of [-1, 1]) {
+      const tipX = sx - f * 5 * s + side * 30 * s, tipY = sy - 9 * s + flap * 10 * s * side * side;
+      const n = 10;
+      for (let i = n; i >= 1; i--) {
+        const u = i / n;
+        const bx = sx + (tipX - sx) * u, by = sy + (tipY - sy) * u;
+        const len = (7 + u * 9) * s, wd = (1.6 + u * 0.8) * s;
+        // pluma larga en forma de hoja, inclinada hacia atrás
+        const ex = bx - f * len * 0.35 + side * len * 0.12, ey = by + len;
+        const nx = (ey - by) / len, ny = -(ex - bx) / len;
+        ctx.fillStyle = '#05070a';
+        ctx.beginPath(); ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo((bx + ex) / 2 + nx * (wd + 0.5 * s), (by + ey) / 2 + ny * (wd + 0.5 * s), ex, ey);
+        ctx.quadraticCurveTo((bx + ex) / 2 - nx * (wd + 0.5 * s), (by + ey) / 2 - ny * (wd + 0.5 * s), bx, by); ctx.fill();
+        const g = ctx.createLinearGradient(bx, by, ex, ey);
+        g.addColorStop(0, neon ? '#343e4c' : '#a2aebe'); g.addColorStop(1, neon ? '#10161e' : '#46505e');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo((bx + ex) / 2 + nx * wd, (by + ey) / 2 + ny * wd, ex, ey);
+        ctx.quadraticCurveTo((bx + ex) / 2 - nx * wd, (by + ey) / 2 - ny * wd, bx, by); ctx.fill();
+        ctx.strokeStyle = neon ? 'rgba(64,255,96,0.85)' : 'rgba(20,24,30,0.7)'; ctx.lineWidth = 0.22 * s;
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+      }
+      // hueso del ala
+      ctx.strokeStyle = '#05070a'; ctx.lineWidth = 1.6 * s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(tipX, tipY); ctx.stroke();
+      ctx.strokeStyle = neon ? '#40ff60' : '#b8c2d0'; ctx.lineWidth = 0.8 * s;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(tipX, tipY); ctx.stroke();
+      DX.glow(ctx, tipX, tipY, 2.2 * s, '80,255,96', 0.8);
+    }
+  },
+  sandFist(ctx, x, y, r, t) {
+    ctx.fillStyle = '#5a4020'; ctx.beginPath(); ctx.arc(x, y, r + 0.6, 0, TAU); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.4, 0, x, y, r);
+    g.addColorStop(0, '#f0d49a'); g.addColorStop(0.6, '#c89a58'); g.addColorStop(1, '#8a6430');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(90,60,24,0.6)';
+    for (let i = 0; i < 12; i++) { const a = i * 2.4 + t * 3, rr = (i % 4) / 4 * r * 0.8; ctx.fillRect(x + Math.cos(a) * rr, y + Math.sin(a) * rr, 0.5, 0.5); }
+  },
+  // rayo con brillo
+  bolt(ctx, x0, y0, x1, y1, n) {
+    const pts = [[x0, y0]];
+    for (let i = 1; i < n; i++) { const u = i / n; pts.push([x0 + (x1 - x0) * u + rand(-3, 3), y0 + (y1 - y0) * u + rand(-2, 2)]); }
+    pts.push([x1, y1]);
+    for (const [w, c] of [[2.2, 'rgba(90,180,255,0.35)'], [1, '#a8e8ff'], [0.4, '#ffffff']]) {
+      ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.stroke();
     }
   },
 };

@@ -7,10 +7,16 @@ const TAU = Math.PI * 2;
 const DEPTH_MAX = 28;   // profundidad de la calle (estilo Maximum Carnage)
 const ALLY_CD = 90;     // segundos de recarga del refuerzo multiversal (R3)
 const LANE = 9;         // diferencia de profundidad máxima para que un golpe conecte
-const RES = 4;          // píxeles reales por píxel lógico
+// píxeles reales por píxel lógico: se adapta a la pantalla (hasta 8 en monitores 4K)
+const RES = (() => {
+  try {
+    const sw = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
+    return Math.max(4, Math.min(8, Math.ceil(sw / W)));
+  } catch (e) { return 4; }
+})();
 const ZOOM = 2;         // cámara cercana, personajes grandes (como Maximum Carnage en SNES)
 const VW = W / ZOOM, VH = H / ZOOM; // tamaño de la vista en unidades de mundo
-const SPR_D = 2;        // píxeles de sprite por unidad de mundo (= 1 píxel de pantalla)
+const SPR_D = 4;        // píxeles de sprite por unidad de mundo (alta definición: medio píxel de pantalla)
 function onStreet(e) { return !!(e.onGround && e.groundObj && e.groundObj.kind === 'ground'); }
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
