@@ -32,7 +32,7 @@ pio run
 
 
 
-## Two known gaps, deliberately left as TODOs
+## Three known gaps, deliberately left as TODOs
 
 Both are marked `TODO` at the call site rather than guessed at, per this
 project's "don't fabricate an API you haven't verified" rule:
@@ -49,6 +49,12 @@ project's "don't fabricate an API you haven't verified" rule:
   lives behind the board's IO expander (EXIO1), which also needs
   `ESP32_IO_Expander` wired in for a real reset pulse. Untested against
   this specific board's schematic.
+- **`bit_motion.cpp`**: joint routing, name lookup and angle clamping
+  are real; the actual write to a PCA9685 servo driver in `begin()`/
+  `setJointAngle()` is a TODO because this sandbox has no PlatformIO
+  registry access to verify a real driver library version against (see
+  `platformio.ini`'s comment). Also entirely unbuilt hardware — no
+  servos/PCA9685 have been wired to the board yet.
 
 ## Building
 
@@ -85,6 +91,13 @@ before confirming the board boots and the basics work in isolation:
 11. Only after all of the above: connect a battery, and only once its
     model/voltage/polarity/connector are verified against real specs —
     never on a visual guess.
+12. Motion (once servos/PCA9685 are physically wired in — see
+    `bit_motion.h`): with the robot propped so no joint can hit
+    anything or pinch, send one `pose` message at a time from the Hub
+    and confirm each of the 10 joints moves the expected direction
+    before trusting more than one at once. `bit_motion::begin()`'s
+    PCA9685 init is still a TODO — this step can't happen until that's
+    wired in against a real, verified driver library version.
 
 ## Layout
 
@@ -99,6 +112,7 @@ firmware/
     bit_audio.h          I2S mic capture + speaker playback
     bit_display.h        LVGL face
     bit_touch.h           CST816 touch driver
+    bit_motion.h          10-servo joint routing (PCA9685 write still TODO)
     lv_conf.h             Trimmed LVGL 8.4 config
     secrets.example.h    Copy to secrets.h (gitignored) and fill in
   src/
@@ -108,4 +122,5 @@ firmware/
     bit_audio.cpp
     bit_display.cpp
     bit_touch.cpp
+    bit_motion.cpp
 ```

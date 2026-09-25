@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <WebSocketsClient.h>  // links2004/WebSockets @ 2.7.3 (pinned in platformio.ini)
 
+#include <cstdlib>
 #include <cstring>
 
 namespace bit_websocket {
@@ -11,6 +12,7 @@ namespace {
 WebSocketsClient g_ws;
 bool g_connected = false;
 StateCallback g_state_cb = nullptr;
+PoseCallback g_pose_cb = nullptr;
 
 // The Hub protocol (docs/PROTOCOL.md) is deliberately just two tiny,
 // fixed-shape JSON messages: {"type":"state","value":"..."} and
@@ -42,6 +44,26 @@ bool extract_string_field(const char* json, const char* key, char* out, size_t o
   return true;
 }
 
+// Same hand-rolled-parser discipline as extract_string_field above: the
+// pose message adds exactly one flat numeric field, still well short of
+// "the protocol grew beyond flat fields," so this stays consistent with
+// that comment's own threshold for switching to a real JSON library.
+bool extract_number_field(const char* json, const char* key, float* out) {
+  char needle[32];
+  snprintf(needle, sizeof(needle), "\"%s\"", key);
+  const char* key_pos = strstr(json, needle);
+  if (key_pos == nullptr) return false;
+
+  const char* colon = strchr(key_pos, ':');
+  if (colon == nullptr) return false;
+
+  char* end = nullptr;
+  float value = strtof(colon + 1, &end);
+  if (end == colon + 1) return false;  // no digits parsed at all
+  *out = value;
+  return true;
+}
+
 BitVoiceState parse_hub_state(const char* value) {
   if (strcmp(value, "WAITING_WAKE_WORD") == 0) return BitVoiceState::WAITING_WAKE_WORD;
   if (strcmp(value, "LISTENING") == 0) return BitVoiceState::LISTENING;
@@ -69,6 +91,13 @@ void handle_text_message(const uint8_t* payload, size_t length) {
     }
   } else if (strcmp(type, "pong") == 0) {
     // Heartbeat acknowledged — nothing to do.
+  } else if (strcmp(type, "pose") == 0) {
+    char joint[32];
+    float angle_deg = 0.0f;
+    if (g_pose_cb != nullptr && extract_string_field(buf, "joint", joint, sizeof(joint)) &&
+        extract_number_field(buf, "angle_deg", &angle_deg)) {
+      g_pose_cb(joint, angle_deg);
+    }
   }
 }
 
@@ -114,5 +143,7 @@ bool sendAudio(const uint8_t* pcm, size_t length) {
 }
 
 void onHubState(StateCallback callback) { g_state_cb = callback; }
+
+void onHubPose(PoseCallback callback) { g_pose_cb = callback; }
 
 }  // namespace bit_websocket

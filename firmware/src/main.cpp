@@ -6,6 +6,7 @@
 
 #include "bit_audio.h"
 #include "bit_display.h"
+#include "bit_motion.h"
 #include "bit_state.h"
 #include "bit_touch.h"
 #include "bit_websocket.h"
@@ -30,6 +31,18 @@ void set_voice_state(BitVoiceState state) {
 // PROCESSING (docs/PROTOCOL.md) — BIT never decides those on its own.
 void on_hub_state(BitVoiceState state) { set_voice_state(state); }
 
+// {"type":"pose",...} from the Hub — see docs/PROTOCOL.md and
+// bit_motion.h. Unknown joint names are logged and dropped rather than
+// guessed at.
+void on_hub_pose(const char* joint, float angle_deg) {
+  bit_motion::Joint j;
+  if (!bit_motion::jointFromName(joint, &j)) {
+    Serial.printf("[motion] unknown joint from Hub: %s\n", joint);
+    return;
+  }
+  bit_motion::setJointAngle(j, angle_deg);
+}
+
 bool g_ws_started = false;
 bool g_was_wifi_connected = false;
 bool g_was_ws_connected = false;
@@ -43,7 +56,9 @@ void setup() {
   bit_display::begin();
   bit_touch::begin();
   bit_audio::begin();
+  bit_motion::begin();
   bit_websocket::onHubState(on_hub_state);
+  bit_websocket::onHubPose(on_hub_pose);
 
   bit_wifi::begin(kWifiSsid, kWifiPassword);
 }

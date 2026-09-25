@@ -50,6 +50,21 @@ it as a byte stream to feed the speaker's I2S buffer.
 // (see that directory's README). Only honored while WAITING_WAKE_WORD;
 // ignored otherwise so it can't interrupt an in-progress turn.
 {"type": "force_listen"}
+
+// Hub -> BIT: move one joint to an angle in degrees (0-180, clamped
+// firmware-side — see firmware/include/bit_motion.h). One joint per
+// message, sent as many times as needed for a full pose; keeps each
+// command independently droppable/retryable instead of an all-or-
+// nothing multi-joint payload. `joint` is one of: left_shoulder,
+// right_shoulder, left_elbow, right_elbow, left_hip, right_hip,
+// left_knee, right_knee, left_toe, right_toe.
+//
+// NOT YET SENT BY ANY HUB CODE — bit_motion.cpp's actual PCA9685 write
+// is still a TODO (no hardware to verify the driver library against
+// yet), and nothing in bit_hub/backend decides when BIT should move.
+// This message shape exists so firmware can parse it now and the
+// behavior/personality work later doesn't also need a protocol change.
+{"type": "pose", "joint": "left_shoulder", "angle_deg": 90}
 ```
 
 The Hub pushes a `state` message immediately on connect and again on

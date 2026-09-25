@@ -29,4 +29,12 @@ bool sendAudio(const uint8_t* pcm, size_t length);
 using StateCallback = void (*)(BitVoiceState);
 void onHubState(StateCallback callback);
 
+// Registered once from main.cpp. Called whenever the Hub pushes a
+// {"type":"pose","joint":"...","angle_deg":...} message (see
+// docs/PROTOCOL.md). `joint` is the raw wire name — the caller resolves
+// it via bit_motion::jointFromName, this layer doesn't know about
+// bit_motion's Joint enum.
+using PoseCallback = void (*)(const char* joint, float angle_deg);
+void onHubPose(PoseCallback callback);
+
 }  // namespace bit_websocket

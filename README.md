@@ -27,6 +27,7 @@ See `docs/PROTOCOL.md` for the exact wire protocol between the two.
 | 6 | BIT Hub / OmniBot | Software done |
 | 7 | Wake word + natural listening | **In progress** — see below |
 | 8 | Gemini Live | **Verified working end-to-end** (see below) — real wake word still pending from Phase 7 |
+| — | Motion (10 servos: shoulders/elbows/hips/knees/toes) | **Scaffolded, not hardware-verified** — see below |
 | 9-17 | Vision, personality, memory, tools, reactions, offline, release | Not started |
 
 "Software done" never means "hardware verified" — the Waveshare board
@@ -96,6 +97,35 @@ calling") — picked over `-translate-`, `-extended-thinking`,
 `-transcribe-`, and Robotics-ER variants, which are for different jobs.
 No default is hardcoded in code; `GEMINI_LIVE_MODEL` must still be set
 explicitly per `bit_hub/.env.example`.
+
+### Motion — scaffolded 2026-09-25, not hardware-verified
+
+Wasn't part of the original 17-phase plan; added because the robot is
+meant to move (10 servos: shoulders, elbows, hips, knees, toes — both
+sides). What exists now, built without any hardware in hand:
+
+- Hardware choice: a PCA9685 PWM driver board on the existing IMU/RTC
+  I2C bus (`firmware/include/pins.h`) instead of claiming new GPIOs —
+  every native pin on this board is already spoken for by
+  display/touch/TF/IMU/RTC/mic/speaker.
+- `firmware/include/bit_motion.h` / `.cpp`: joint routing, name lookup,
+  0-180° clamping, local angle state — all real and testable.
+- `docs/PROTOCOL.md`: `{"type":"pose","joint":"...","angle_deg":...}`,
+  Hub -> BIT, one joint per message.
+- `bit_websocket.cpp` parses it and calls into `bit_motion`; wired up in
+  `main.cpp`.
+
+What's deliberately still a TODO, not guessed at:
+- The actual PCA9685 write in `bit_motion::begin()`/`setJointAngle()` —
+  no PlatformIO registry access from this sandbox to verify a real
+  servo-driver library version against (see `platformio.ini`'s comment;
+  same discipline that caught the earlier fabricated `espressif32`
+  version pin — don't repeat that mistake here).
+- Per-joint mechanical safe ranges — 0-180° is the generic hobby-servo
+  bound, not this robot's real limits.
+- Nothing in `bit_hub/backend` sends `pose` messages yet — no behavior
+  layer exists to decide *when* BIT should move (that's personality
+  work, phase 9+).
 
 ## Repo layout
 

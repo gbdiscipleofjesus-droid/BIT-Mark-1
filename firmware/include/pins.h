@@ -56,4 +56,16 @@ constexpr int SPK_DIN = 47;
 constexpr int SPK_LRCK = 38;
 constexpr int SPK_BCK = 48;
 
+// --- Motion (10x servo, via PCA9685 PWM driver over I2C) ---
+// Every native GPIO on this board is already claimed by display/touch/
+// TF/IMU/RTC/mic/speaker above (verified against Waveshare's own docs -
+// see this file's header). Rather than guess at an unclaimed pin without
+// a real board to check against, motion reuses the existing IMU/RTC I2C
+// bus (2 wires, no new GPIO) and talks to a PCA9685 servo driver board
+// at its default address. Confirm no address collision with the IMU
+// (QMI8658) or RTC (PCF85063) on real hardware before trusting this.
+constexpr int SERVO_SCL = IMU_SCL;
+constexpr int SERVO_SDA = IMU_SDA;
+constexpr uint8_t SERVO_PCA9685_ADDR = 0x40;  // PCA9685 default; verify no clash with IMU/RTC addrs on real hardware.
+
 }  // namespace bit_pins
