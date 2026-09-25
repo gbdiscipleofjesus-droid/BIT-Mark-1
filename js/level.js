@@ -528,18 +528,13 @@ function drawDecor(ctx, d, cx, cy, t, lv) {
       break;
     }
     case 'lamp':
-      ctx.fillStyle = '#2a2e36'; ctx.fillRect(sx, sy - 34, 2, 34); ctx.fillRect(sx, sy - 34, 8, 2);
-      ctx.fillStyle = lv.night ? '#fff0a0' : '#d0d0c0'; ctx.fillRect(sx + 6, sy - 32, 3, 2);
-      if (lv.night) { ctx.fillStyle = 'rgba(255,240,160,0.08)'; ctx.fillRect(sx - 4, sy - 30, 20, 30); }
+      Art.lamp(ctx, sx, sy, lv.night);
       break;
     case 'hydrant':
-      ctx.fillStyle = '#c02020'; ctx.fillRect(sx, sy - 7, 5, 7); ctx.fillRect(sx - 1, sy - 5, 7, 2); ctx.fillRect(sx + 1, sy - 9, 3, 2);
+      Art.hydrant(ctx, sx, sy);
       break;
     case 'car': {
-      ctx.fillStyle = d.color || '#c0a020'; ctx.fillRect(sx, sy - 10, 34, 7); ctx.fillRect(sx + 6, sy - 15, 20, 6);
-      ctx.fillStyle = '#9ad0f0'; ctx.fillRect(sx + 8, sy - 14, 7, 4); ctx.fillRect(sx + 17, sy - 14, 7, 4);
-      ctx.fillStyle = '#141414'; ctx.fillRect(sx + 4, sy - 4, 7, 4); ctx.fillRect(sx + 23, sy - 4, 7, 4);
-      if (d.taxi) { ctx.fillStyle = '#141414'; ctx.fillRect(sx + 1, sy - 8, 32, 1); ctx.fillStyle = '#fff'; ctx.fillRect(sx + 13, sy - 17, 6, 2); }
+      Art.car(ctx, sx, sy, d.color, d.taxi);
       break;
     }
     case 'cable': // cables del puente

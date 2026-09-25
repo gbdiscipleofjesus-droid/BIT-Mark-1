@@ -71,6 +71,13 @@ La versión 2.5D imita el aspecto y el manejo de los beat 'em up de Spider-Man d
 - **Diálogos de cómic:** viñeta con el retrato, bocadillo blanco y recuadros amarillos para la narración.
 - **Personajes en alta definición:** los sprites se pintan a medio píxel de pantalla y un 20 % más grandes, con degradado suave, luz de contorno y detalles: Venom con la araña blanca envolvente, ojos dentados, boca con colmillos y lengua, garras y brillo azulado; matones con cremallera, cinturón, suelas, gorras, pañuelos, cadenas, gafas, bates y pistolas dibujados con detalle; jefes con alas de plumas, cola segmentada, cuernos, hombreras y guanteletes. En monitores grandes el juego usa más resolución (hasta 4K).
 
+## Capa artística
+
+- **Portada pintada:** noche de Nueva York con luna gigante, nubes a pinceladas, rascacielos (Empire State y Chrysler), reflectores, lluvia, trama de puntos de cómic y Spider-Man agazapado en una azotea. Logotipo con relieve, degradado y telaraña dentro de las letras.
+- **Atmósfera por universo:** halos y conos de luz en las farolas, reflejos en el asfalto mojado (también de los personajes), lluvia, polvo, brasas o chispas según el universo, gradación de color y viñeta.
+- **Golpes de cómic:** estallidos con onomatopeyas (¡POW!, ¡WHAM!, ¡KRAK!…) y chispas redondas con estela.
+- **Objetos detallados:** coches y taxis con curvas, reflejos y llantas; farolas de hierro; bocas de incendio; redes, balas, rayos, orbes, bombas, plumas y ácido con brillo; botiquines y engranajes; drones con rotores.
+
 ## Estilo PlayStation (versión 2.5D)
 
 - **Menú de pausa con pestañas** (L1 / R1 o Q / E): MAPA, HABILIDADES, ARTILUGIOS, TRAJES, RÉCORDS, MULTIJUGADOR y SISTEMA.

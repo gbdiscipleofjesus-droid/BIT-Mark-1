@@ -259,7 +259,7 @@ class World {
     this.combo.n++; this.combo.t = 2.2;
     Progress.rec('maxCombo', this.combo.n, 'max');
     this.stats.hits++;
-    if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
+    if ((heavy && Math.random() < 0.7) || (this.level.comic && Math.random() < 0.6) || Math.random() < 0.15) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWACK!', '¡KRAK!', '¡ZAS!', '¡WHAM!', '¡PAF!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
   }
 
@@ -1054,9 +1054,17 @@ class World {
     for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
     for (const q of this.players) ents.push({ z: q.z || 0, o: q, k: 3 });
     ents.sort((a, b) => b.z - a.z || a.k - b.k);
+    const wet = !lv.indoor && (Art.GRADES[lv.sky] || Art.GRADES.night).fx === 'rain';
     for (const en of ents) {
       const o = en.o, zo = Math.round(en.z);
       ctx.save(); ctx.translate(0, -zo);
+      // reflejo en el asfalto mojado
+      if (wet && en.k >= 2 && onStreet(o) && !o.dead) {
+        const fy = (en.k === 3 ? o.feet : o.y + o.h) - cam.y;
+        ctx.save(); ctx.globalAlpha = 0.17; ctx.translate(0, fy * 2); ctx.scale(1, -1);
+        o.draw(ctx, cam, t);
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
       if (en.k === 3) lv.shadow(ctx, o.cx, o.feet, cam, 12);
       else if (en.k === 2 && !o.dead && this.onScreen(o)) lv.shadow(ctx, o.cx, o.y + o.h, cam, o.w + 4);
       o.draw(ctx, cam, t);
@@ -1066,16 +1074,15 @@ class World {
     for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
     for (const f of this.fx) f.draw(ctx, cam, t);
     if (this.slowEnemiesT > 0) { ctx.fillStyle = 'rgba(80,120,255,0.08)'; ctx.fillRect(0, 0, W, H); }
+    Art.worldLights(ctx, this, cam, t);
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic
-    for (const pp of this.pops) {
-      const s2 = pp.t < 0.1 ? 2 : 1;
-      Font.draw(ctx, pp.text, Math.round(pp.x - cam.x), Math.round(pp.y - cam.y - pp.t * 20), pp.c, { align: 'center', scale: s2, outline: '#000000' });
-    }
+    for (const pp of this.pops) Art.pop(ctx, pp.x - cam.x, pp.y - cam.y - pp.t * 12, pp.text, pp.t, pp.c);
     // vuelta a coordenadas de pantalla para los efectos y la interfaz
     ctx.setTransform(RES, 0, 0, RES, 0, 0);
     Rig.ws = 1;
+    Art.screenGrade(ctx, this, t);
     // tinte del universo
     if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     if (lv.comic) {

@@ -441,16 +441,10 @@ class Enemy {
   drawDrone(ctx, x, y, t) {
     const f = this.flash > 0;
     const body = f ? '#ffffff' : this.type === 'ultron' ? '#a8b0bc' : (this.type === 'decoy' || this.mysterio ? '#4a6a5a' : '#5a606c');
-    const bx = x - 6, by = Math.round(y);
-    ctx.fillStyle = '#140a12'; ctx.fillRect(bx - 1, by + 1, 14, 7);
-    ctx.fillStyle = body; ctx.fillRect(bx, by + 2, 12, 5);
-    ctx.fillStyle = shade(body, 0.3); ctx.fillRect(bx + 1, by + 2, 10, 1);
+    const by = Math.round(y);
     const blink = Math.floor(t * 30) % 2;
-    ctx.fillStyle = '#9aa0a8';
-    ctx.fillRect(bx - 3 + (blink ? 0 : 1), by, 6, 1); ctx.fillRect(bx + 9 + (blink ? 1 : 0), by, 6, 1);
-    ctx.fillRect(bx, by + 1, 1, 1); ctx.fillRect(bx + 11, by + 1, 1, 1);
     const eye = this.state === 'windup' ? (blink ? '#ffffff' : '#ff3030') : (this.mysterio || this.type === 'decoy' ? '#60ff90' : '#ff5050');
-    ctx.fillStyle = eye; ctx.fillRect(bx + 5 + this.facing, by + 4, 2, 2);
+    Art.drone(ctx, x, by, body, eye, t, this.facing || 1);
     if (this.webbed > 0) drawWebWrap(ctx, x, by + 8, 12, 8, this.id);
   }
 }
@@ -1225,7 +1219,9 @@ class Proj {
     if (dist(this.x, this.y, p.cx, p.cy) < 28 && Math.abs((this.z || 0) - p.z) < 16) world.damagePlayer(this.dmg, this.x);
   }
   draw(ctx, cam, t) {
-    const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y);
+    const x = this.x - cam.x, y = this.y - cam.y;
+    if (x < -20 || x > VW + 20 || y < -20 || y > VH + 20) return;
+    if (Art.proj(ctx, this, x, y, t)) return;
     switch (this.kind) {
       case 'web':
         ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, 5, 5);
@@ -1336,10 +1332,7 @@ class Pickup {
   draw(ctx, cam, t) {
     if (this.life < 3 && Math.floor(t * 10) % 2) return;
     const x = Math.round(this.x - cam.x), y = Math.round(this.y - cam.y + Math.sin(t * 5) * 1);
-    if (this.kind === 'health') {
-      ctx.fillStyle = '#140a12'; ctx.fillRect(x - 1, y - 1, 8, 8);
-      ctx.fillStyle = '#40e060'; ctx.fillRect(x + 2, y, 2, 6); ctx.fillRect(x, y + 2, 6, 2);
-    } else drawTechIcon(ctx, x, y, t);
+    Art.pickup(ctx, this.kind, x, y, t);
   }
 }
 
@@ -1384,10 +1377,15 @@ class Particles {
   }
   draw(ctx, cam) {
     for (const p of this.list) {
-      const x = Math.round(p.x - cam.x), y = Math.round(p.y - cam.y);
+      const x = p.x - cam.x, y = p.y - cam.y;
       if (x < -4 || x > VW + 4 || y < -4 || y > VH + 4) continue;
+      // chispas redondas que se encogen y dejan estela
+      const k = Math.max(0.25, p.life / p.max), r = 0.35 + p.size * 0.35 * k;
+      ctx.globalAlpha = Math.min(1, 0.4 + k);
       ctx.fillStyle = p.color;
-      ctx.fillRect(x, y, p.size, p.size);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+      if (Math.abs(p.vx) + Math.abs(p.vy) > 60) { ctx.strokeStyle = p.color; ctx.lineWidth = r; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - p.vx * 0.012, y - p.vy * 0.012); ctx.stroke(); }
+      ctx.globalAlpha = 1;
     }
   }
 }

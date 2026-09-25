@@ -242,15 +242,14 @@ class TitleScene {
     if (this.t > 0.4 && (Input.anyPressed() || tap)) { Input.clearAny(); Audio2.unlock(); Audio2.sfx('select'); Game.change(() => new MenuScene()); }
   }
   draw(ctx) {
-    Scenery.drawBackground(ctx, 'night', this.t * 30, 264, 480);
-    drawSwinger(ctx, this.t);
-    drawLogo(ctx, this.t, 40);
-    if (Math.floor(this.t * 2) % 2) Font.draw(ctx, 'PULSA CUALQUIER BOTÓN', W / 2, 140, UI.paper, { align: 'center', shadow: UI.ink });
+    Art.cover(ctx, this.t, 0, 74);
+    Art.logo(ctx, this.t, 14);
+    if (Math.floor(this.t * 2) % 2) Font.draw(ctx, 'PULSA CUALQUIER BOTÓN', W / 2 + 50, 130, UI.paper, { align: 'center', outline: '#000000' });
     let padMsg = 'Teclado · Mando · Pantalla táctil', padCol = '#9aa0c0';
     if (Input.padBlocked) { padMsg = 'Este navegador bloquea el mando aquí: descarga el juego'; padCol = '#ff9080'; }
     else if (Input.padConnected) { padMsg = 'Mando listo: ' + (Input.padName || '').replace(/\(.*$/, '').trim().slice(0, 30); padCol = '#80ff80'; }
     else padMsg = '¿Mando? Pulsa cualquier botón del mando para activarlo';
-    Font.draw(ctx, padMsg, W / 2, 172, padCol, { align: 'center', shadow: UI.ink });
+    Font.wrap(padMsg, 190).forEach((ln, i) => Font.draw(ctx, ln, W / 2 + 90, 148 + i * 10, padCol, { align: 'center', outline: '#000000' }));
     Font.draw(ctx, 'Juego de fans no oficial y sin fines de lucro.', W / 2, 192, '#7a7a98', { align: 'center', shadow: UI.ink });
     Font.draw(ctx, 'Spider-Man y sus personajes son propiedad de Marvel.', W / 2, 203, '#7a7a98', { align: 'center', shadow: UI.ink });
   }
@@ -274,8 +273,8 @@ class MenuScene {
       ]),
       update(dt) { const r = this.menu.update(dt); return r === 'back' ? null : r; },
       draw: (ctx, t) => {
-        drawLogo(ctx, t, 30);
-        root.menu.draw(ctx, W / 2, 90, t, { lh: 12 });
+        Art.logo(ctx, t, 4);
+        root.menu.draw(ctx, W / 2 + 40, 90, t, { lh: 12 });
         if (Game.save.started) {
           const s = Game.save;
           const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
@@ -289,9 +288,7 @@ class MenuScene {
   }
   update(dt) { this.t += dt; this.stack.update(dt); }
   draw(ctx) {
-    Scenery.drawBackground(ctx, 'night', this.t * 30, 264, 480);
-    drawSwinger(ctx, this.t + 3);
-    ctx.fillStyle = 'rgba(8,6,16,0.35)'; ctx.fillRect(0, 0, W, H);
+    Art.cover(ctx, this.t, 0.3, 36);
     this.stack.draw(ctx, this.t);
     drawTouch(ctx);
   }
