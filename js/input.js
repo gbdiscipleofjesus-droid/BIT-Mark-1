@@ -2,23 +2,23 @@
 // ---------------------------------------------------------------------------
 // Entrada unificada: teclado, cualquier mando (Gamepad API) y pantalla táctil
 // ---------------------------------------------------------------------------
-const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'GADGET', 'NEXT_GADGET', 'POWER', 'ALLY', 'PAUSE'];
+const ACTIONS = ['LEFT', 'RIGHT', 'UP', 'DOWN', 'JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'GADGET', 'NEXT_GADGET', 'POWER', 'ALLY', 'EMOTE', 'PAUSE'];
 const ACTION_NAMES = {
   LEFT: 'Izquierda', RIGHT: 'Derecha', UP: 'Arriba', DOWN: 'Abajo', JUMP: 'Saltar',
   ATTACK: 'Golpear', WEB: 'Balancearse', SHOOT: 'Disparar red', DODGE: 'Esquivar',
-  SPECIAL: 'Especial / curar', GADGET: 'Usar artilugio', NEXT_GADGET: 'Cambiar artilugio', POWER: 'Poder del traje', ALLY: 'Refuerzo multiversal', PAUSE: 'Pausa',
+  SPECIAL: 'Especial / curar', GADGET: 'Usar artilugio', NEXT_GADGET: 'Cambiar artilugio', POWER: 'Poder del traje', ALLY: 'Refuerzo multiversal', EMOTE: 'Pose / animación', PAUSE: 'Pausa',
 };
 const DEFAULT_KEYS = {
   LEFT: ['ArrowLeft', 'KeyA'], RIGHT: ['ArrowRight', 'KeyD'], UP: ['ArrowUp', 'KeyW'], DOWN: ['ArrowDown', 'KeyS'],
   JUMP: ['Space', 'KeyZ', 'KeyK'], ATTACK: ['KeyX', 'KeyJ'], WEB: ['KeyC', 'KeyL'], SHOOT: ['KeyV', 'KeyI'],
-  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], GADGET: ['KeyG', 'KeyN'], NEXT_GADGET: ['KeyT', 'KeyM'], POWER: ['KeyH', 'KeyY'], ALLY: ['KeyE', 'KeyF'], PAUSE: ['Escape', 'KeyP'],
+  DODGE: ['ShiftLeft', 'ShiftRight', 'KeyO'], SPECIAL: ['KeyB', 'KeyU', 'KeyQ'], GADGET: ['KeyG', 'KeyN'], NEXT_GADGET: ['KeyT', 'KeyM'], POWER: ['KeyH', 'KeyY'], ALLY: ['KeyE', 'KeyF'], EMOTE: ['KeyR'], PAUSE: ['Escape', 'KeyP'],
 };
 // Mapeo "standard" del navegador (Xbox, PlayStation, Switch Pro, 8BitDo, etc.)
 const DEFAULT_PAD = {
   LEFT: [{ b: 14 }, { a: 0, d: -1 }], RIGHT: [{ b: 15 }, { a: 0, d: 1 }],
   UP: [{ b: 12 }, { a: 1, d: -1 }], DOWN: [{ b: 13 }, { a: 1, d: 1 }],
   JUMP: [{ b: 0 }], DODGE: [{ b: 1 }], ATTACK: [{ b: 2 }], SHOOT: [{ b: 3 }],
-  SPECIAL: [{ b: 4 }], GADGET: [{ b: 6 }], NEXT_GADGET: [{ b: 8 }], POWER: [{ b: 10 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], PAUSE: [{ b: 9 }],
+  SPECIAL: [{ b: 4 }], GADGET: [{ b: 6 }], NEXT_GADGET: [{ b: 8 }], POWER: [{ b: 10 }], WEB: [{ b: 5 }, { b: 7 }], ALLY: [{ b: 11 }], EMOTE: [{ b: 16 }], PAUSE: [{ b: 9 }],
 };
 const AXIS_T = 0.45;
 
@@ -452,9 +452,9 @@ const Input = {
     if (bind.a !== undefined) return 'EJE' + bind.a + (bind.d > 0 ? '+' : '-');
     const i = bind.b;
     const names = {
-      xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'LS', 'RS', 'ARRIBA', 'ABAJO', 'IZQ', 'DER'],
-      ps: ['X', 'O', 'CUADRADO', 'TRIÁNGULO', 'L1', 'R1', 'L2', 'R2', 'SHARE', 'OPTIONS', 'L3', 'R3', 'ARRIBA', 'ABAJO', 'IZQ', 'DER'],
-      nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '-', '+', 'LS', 'RS', 'ARRIBA', 'ABAJO', 'IZQ', 'DER'],
+      xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'LS', 'RS', 'ARRIBA', 'ABAJO', 'IZQ', 'DER', 'XBOX'],
+      ps: ['X', 'O', 'CUADRADO', 'TRIÁNGULO', 'L1', 'R1', 'L2', 'R2', 'SHARE', 'OPTIONS', 'L3', 'R3', 'ARRIBA', 'ABAJO', 'IZQ', 'DER', 'PS'],
+      nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '-', '+', 'LS', 'RS', 'ARRIBA', 'ABAJO', 'IZQ', 'DER', 'HOME'],
     };
     const set = names[this.padType];
     if (set && set[i] !== undefined) return set[i];

@@ -60,6 +60,21 @@ const Poses = {
   idle(t) { const b = Math.sin(t * 3); return P({ hy: b > 0.6 ? 1 : 0, a2: -35 - b * 5, b2: -50 + b * 5 }); },
   // la pose agachada clásica de Spider-Man (2 fotogramas de respiración)
   stance(t) { const b = Math.floor(t * 2.5) % 2; return P({ t: 30, h: -25, l1: -30, l2: 100, r1: 70, r2: -125, a1: 30, a2: -90, b1: 70 + b * 8, b2: -40, hy: 6 + b }); },
+  // de pie, relajado (respiración lenta en 2 fotogramas)
+  stand(t) { const b = Math.floor(t * 1.6) % 2; return P({ t: 2, h: 0, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14 - b * 6, b1: 12, b2: -16 - b * 6, hy: b }); },
+  // animaciones de espera
+  emote(kind, u, t) {
+    switch (kind) {
+      case 'wave': { const w = Math.sin(t * 14) * 30; return P({ t: 0, h: 5, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14, b1: 165, b2: -30 + w }); }
+      case 'stretch': { const e = Math.sin(Math.min(1, u * 1.4) * Math.PI); return P({ t: -8 * e, h: -15 * e, l1: -6, l2: 2, r1: 6, r2: -2, a1: 170 * e - 10 * (1 - e), a2: -20 * (1 - e), b1: 175 * e + 12 * (1 - e), b2: -16 * (1 - e), hy: -1 * e }); }
+      case 'scratch': return P({ t: 4, h: 15 + Math.sin(t * 10) * 6, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14, b1: 150, b2: -150 + Math.sin(t * 25) * 12 });
+      case 'flex': { const f = Math.floor(t * 3) % 2; return P({ t: f ? 6 : 0, l1: -18, l2: 6, r1: 18, r2: -6, a1: 95, a2: -125 - f * 15, b1: 95, b2: -125 - f * 15, hy: f }); }
+      case 'yoyo': return P({ t: 3, h: 20, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14, b1: 60, b2: -40 });
+      case 'sit': return P({ t: 0, h: Math.sin(t * 2) * 12, l1: 80, l2: -80, r1: 90, r2: -90, a1: 20, a2: -40, b1: 30, b2: -50, hy: 5 });
+      case 'look': return P({ t: 2, h: Math.sin(t * 1.5) > 0 ? 25 : -20, l1: -7, l2: 3, r1: 8, r2: -3, a1: 20, a2: -110, b1: 25, b2: -115, hy: 0 });
+      default: return this.stand(t);
+    }
+  },
   // guardia de Maximum Carnage: medio agachado, puños arriba, respiración en 2 fotogramas
   mcStance(t) { const b = Math.floor(t * 2.2) % 2; return P({ t: 18, h: -12, l1: -28, l2: 40 + b * 8, r1: 34, r2: -50 - b * 8, a1: 45, a2: -115, b1: 65 + b * 6, b2: -105, hy: 3 + b }); },
   // caminar encorvado con los puños en guardia
@@ -744,89 +759,43 @@ const BSTYLES = {
 };
 
 function renderBuilding(w, h, styleName, seed, night) {
-  // se pinta al doble de resolución (1 píxel = 1 píxel de pantalla con el zoom)
-  const Z = ZOOM, W2 = Math.ceil(w * Z), H2 = Math.ceil(h * Z);
   const st = BSTYLES[styleName] || BSTYLES.brick;
-  const c = makeCanvas(W2, H2);
+  const c = makeCanvas(w, h);
   const x = c.getContext('2d');
-  const R = (col, xx, yy, ww, hh) => { x.fillStyle = col; x.fillRect(xx, yy, ww, hh); };
+  x.fillStyle = st.base; x.fillRect(0, 0, w, h);
+  x.fillStyle = st.dark; x.fillRect(0, 0, 1, h); x.fillRect(w - 1, 0, 1, h);
   const r = makeRng(seed);
-  const ink = '#0a060c';
-  const base = night ? shade(st.base, -0.18) : st.base, dark = night ? shade(st.dark, -0.2) : st.dark;
-  const lite = shade(st.base, 0.18);
-  R(base, 0, 0, W2, H2);
-  const brick = styleName === 'brick' || styleName === 'brown' || styleName === 'ruin';
-  const glass = styleName === 'glass' || styleName === 'futuro' || styleName === 'futuro2';
-  if (brick) {
-    for (let yy = 12; yy < H2; yy += 4) {
-      R(dark, 0, yy, W2, 1);
-      const off = (yy / 4) % 2 ? 0 : 4;
-      for (let xx = off; xx < W2; xx += 8) R(dark, xx, yy - 3, 1, 3);
-      if (hash2(yy, seed) < 0.3) R(lite, Math.floor(hash2(seed, yy) * W2), yy - 3, 6, 1);
-    }
-  } else if (!glass) {
-    for (let xx = 16; xx < W2; xx += 32) R(dark, xx, 10, 1, H2);
-    for (let yy = 30; yy < H2; yy += 24) R(dark, 0, yy, W2, 1);
+  if (styleName === 'brick' || styleName === 'brown') {
+    x.fillStyle = st.dark;
+    for (let yy = 4; yy < h; yy += 3) for (let xx = (yy % 6 ? 0 : 3); xx < w; xx += 6) x.fillRect(xx, yy, 1, 1);
   }
-  // pilastras laterales con volumen
-  R(lite, 0, 0, 3, H2); R(dark, 3, 0, 2, H2); R(dark, W2 - 5, 0, 5, H2); R(ink, W2 - 1, 0, 1, H2);
-  if (glass) {
-    // muro cortina: montantes y cristales con reflejo
-    const cw = 14, ch = 16;
-    for (let yy = 14; yy < H2 - 4; yy += ch) for (let xx = 8; xx < W2 - 10; xx += cw) {
-      const lit = night && hash2(xx + seed, yy) < 0.3;
-      R(st.frame, xx - 1, yy - 1, cw, ch);
-      R(lit ? st.lit : st.win, xx, yy, cw - 2, ch - 2);
-      if (!lit) { R(shade(st.win, 0.25), xx, yy, cw - 2, 2); for (let i = 0; i < 4; i++) R(shade(st.win, 0.35), xx + cw - 5 - i, yy + 4 + i * 2, 2, 2); }
+  const ww = styleName === 'glass' ? 3 : 4, wh = styleName === 'glass' ? 4 : 6;
+  const gx = styleName === 'glass' ? 5 : 9, gy = styleName === 'glass' ? 6 : 11;
+  const litP = night ? 0.45 : 0.12;
+  for (let yy = 8; yy < h - 8; yy += gy) {
+    for (let xx = 4; xx < w - 6; xx += gx) {
+      x.fillStyle = st.frame; x.fillRect(xx - 1, yy - 1, ww + 2, wh + 2);
+      x.fillStyle = r.chance(litP) ? st.lit : st.win;
+      x.fillRect(xx, yy, ww, wh);
     }
-    if (styleName !== 'glass') { R(st.ledge, 5, 0, 2, H2); R(st.ledge, W2 - 7, 0, 2, H2); for (let yy = 24; yy < H2; yy += 48) R(st.ledge, 0, yy, W2, 1); }
-  } else {
-    const ww = styleName === 'stone' ? 12 : 10, wh = styleName === 'stone' ? 20 : 16;
-    const gx = ww + 10, gy = wh + 12;
-    const cols = Math.max(1, Math.floor((W2 - 14) / gx)), x0 = Math.floor((W2 - (cols * gx - 10)) / 2);
-    const litP = night ? 0.4 : 0.1;
-    for (let yy = 18; yy < H2 - 14; yy += gy) for (let k = 0; k < cols; k++) {
-      const xx = x0 + k * gx;
-      R(st.frame, xx - 2, yy - 3, ww + 4, 2);                          // dintel
-      R(ink, xx - 1, yy - 1, ww + 2, wh + 2);
-      if (r.chance(litP)) {
-        R(st.lit, xx, yy, ww, wh); R(shade(st.lit, -0.3), xx, yy + wh - 4, ww, 4);
-        for (let b = yy + 2; b < yy + wh - 4; b += 3) R(shade(st.lit, -0.18), xx, b, ww, 1);
-      } else {
-        R(st.win, xx, yy, ww, wh);
-        for (let i = 0; i < 4; i++) R(shade(st.win, 0.3), xx + ww - 3 - i, yy + 2 + i * 2, 2, 2);
-      }
-      R(ink, xx + (ww >> 1), yy, 1, wh); R(ink, xx, yy + (wh >> 1), ww, 1);
-      R(st.frame, xx - 2, yy + wh + 1, ww + 4, 2); R('rgba(0,0,0,0.35)', xx - 1, yy + wh + 3, ww + 2, 2); // alféizar
-    }
-    // escalera de incendios en los de ladrillo
-    if (brick && W2 > 60 && H2 > 120 && hash2(seed, 3) < 0.6) {
-      const fx = x0 + gx - 6, fw = Math.min(W2 - 20, gx * 2 + 2);
-      for (let yy = 18 + gy; yy < H2 - 20; yy += gy) {
-        const py = yy + wh + 3;
-        R(ink, fx, py, fw, 3); R('#3a3a44', fx, py, fw, 1);
-        for (let xx = fx; xx <= fx + fw; xx += 4) R(ink, xx, py - 11, 1, 11);
-        R(ink, fx, py - 12, fw, 1);
-        const dir = ((yy / gy) | 0) % 2;
-        for (let k = 0; k < 12; k++) R(ink, dir ? fx + 4 + k * 2 : fx + fw - 6 - k * 2, py + 3 + Math.floor((gy - 3) * k / 12), 2, 2);
-      }
-    }
+  }
+  if (styleName === 'futuro' || styleName === 'futuro2') {
+    // franjas de neón verticales
+    x.fillStyle = st.ledge; x.fillRect(2, 0, 1, h); x.fillRect(w - 3, 0, 1, h);
+    x.fillStyle = 'rgba(64,240,255,0.18)'; for (let yy = 12; yy < h; yy += 24) x.fillRect(0, yy, w, 1);
   }
   if (styleName === 'verse' || styleName === 'verse2') {
     x.fillStyle = 'rgba(255,255,255,0.10)';
-    for (let yy = 0; yy < H2; yy += 4) for (let xx = (yy % 8 ? 2 : 0); xx < W2; xx += 4) x.fillRect(xx, yy, 2, 2);
-    R('#000000', 0, 0, 4, H2); R('#000000', W2 - 4, 0, 4, H2);
+    for (let yy = 0; yy < h; yy += 3) for (let xx = (yy % 6 ? 1 : 0); xx < w; xx += 3) x.fillRect(xx, yy, 1, 1);
+    x.fillStyle = '#000000'; x.fillRect(0, 0, 2, h); x.fillRect(w - 2, 0, 2, h);
   }
-  // cornisa con dentículos
-  R(st.ledge, 0, 0, W2, 5); R(shade(st.ledge, 0.25), 0, 0, W2, 1); R(dark, 0, 5, W2, 2);
-  for (let xx = 2; xx < W2; xx += 6) R(dark, xx, 7, 3, 3);
-  R('rgba(0,0,0,0.35)', 0, 10, W2, 3);
+  x.fillStyle = st.ledge; x.fillRect(0, 0, w, 3);
+  x.fillStyle = st.dark; x.fillRect(0, 3, w, 1);
   if (styleName === 'ruin') {
-    for (let xx = 0; xx < W2; xx += 6) { const d = Math.floor(hash2(seed, xx) * 20); x.clearRect(xx, 0, 6, d); }
-    for (let i = 0; i < 8; i++) {
-      const bx = Math.floor(hash2(i, seed) * W2), by = Math.floor(hash2(seed, i) * H2);
-      R('rgba(0,0,0,0.45)', bx, by, 16, 26); R('rgba(255,110,30,0.5)', bx + 4, by + 20, 8, 2);
-    }
+    // tejado roto y quemaduras
+    for (let xx = 0; xx < w; xx += 4) { const d = Math.floor(hash2(seed, xx) * 10); x.clearRect(xx, 0, 4, d); }
+    x.fillStyle = 'rgba(0,0,0,0.35)';
+    for (let i = 0; i < 6; i++) x.fillRect(Math.floor(hash2(i, seed) * w), Math.floor(hash2(seed, i) * h), 8, 14);
   }
   return c;
 }

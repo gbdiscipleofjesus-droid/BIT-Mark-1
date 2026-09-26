@@ -20,34 +20,6 @@ const UI = {
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, Math.round(w * clamp(v, 0, 1)), 1);
   },
 
-  // Recuadro de narración de cómic (amarillo con borde negro)
-  caption(ctx, x, y, w, h) {
-    ctx.fillStyle = '#000000'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = '#f8e058'; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#fff4a8'; ctx.fillRect(x, y, w, 1);
-    ctx.fillStyle = '#c8a830'; ctx.fillRect(x, y + h - 1, w, 1);
-  },
-  // Bocadillo blanco redondeado con cola hacia (tx, ty)
-  balloon(ctx, x, y, w, h, tx, ty) {
-    const path = (grow) => {
-      const r = 8 + grow;
-      ctx.beginPath();
-      ctx.moveTo(x + r - grow, y - grow); ctx.lineTo(x + w - r + grow, y - grow); ctx.quadraticCurveTo(x + w + grow, y - grow, x + w + grow, y + r - grow);
-      ctx.lineTo(x + w + grow, y + h - r + grow); ctx.quadraticCurveTo(x + w + grow, y + h + grow, x + w - r + grow, y + h + grow);
-      ctx.lineTo(x + r - grow, y + h + grow); ctx.quadraticCurveTo(x - grow, y + h + grow, x - grow, y + h - r + grow);
-      ctx.lineTo(x - grow, y + r - grow); ctx.quadraticCurveTo(x - grow, y - grow, x + r - grow, y - grow); ctx.closePath();
-    };
-    const tail = (grow) => { ctx.beginPath(); ctx.moveTo(x + 14 - grow, y + h - 2); ctx.lineTo(tx, ty); ctx.lineTo(x + 30 + grow, y + h - 2); ctx.closePath(); };
-    ctx.fillStyle = '#000000'; path(1.5); ctx.fill(); tail(1.5); ctx.fill();
-    ctx.fillStyle = '#ffffff'; path(0); ctx.fill(); tail(0); ctx.fill();
-  },
-  // Viñeta de cómic con marco blanco (para retratos)
-  comicPanel(ctx, x, y, w, h) {
-    ctx.fillStyle = '#000000'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-    ctx.fillStyle = '#000000'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  },
-
   spiderIcon(ctx, x, y, col = '#140a12') {
     ctx.fillStyle = col;
     ctx.fillRect(x + 3, y, 2, 7); ctx.fillRect(x + 2, y + 2, 4, 3);
@@ -180,40 +152,35 @@ class Dialog {
     const who = WHO[cur.who] || WHO.narr;
     const text = cur.text.slice(0, Math.floor(this.chars));
     if (cur.who === 'narr') {
-      // narración: página de cómic oscura con recuadro amarillo
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
-      const lines = Font.wrap(cur.text, 280);
-      const bh = lines.length * 11 + 12, bw = 296;
-      const bx = Math.round(W / 2 - bw / 2), by = Math.round(H / 2 - bh / 2);
-      UI.caption(ctx, bx, by, bw, bh);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
+      const lines = Font.wrap(cur.text, 300);
+      const y0 = Math.round(H / 2 - lines.length * 6);
       let left = Math.floor(this.chars);
       lines.forEach((ln, i) => {
         const part = ln.slice(0, Math.max(0, left));
         left -= ln.length + 1;
-        Font.draw(ctx, part, bx + 8, by + 7 + i * 11, '#1a1008');
+        const x0 = Math.round(W / 2 - Font.width(ln) / 2);
+        Font.draw(ctx, part, x0, y0 + i * 12, UI.paper, { shadow: UI.ink });
       });
     } else {
-      // diálogo: viñeta con el retrato y bocadillo blanco
-      const px = 10, py = 150, ps = 48;
+      const bx = 8, by = 148, bw = W - 16, bh = 60;
+      UI.panel(ctx, bx, by, bw, bh);
+      let tx = bx + 8;
       if (who.portrait) {
-        UI.comicPanel(ctx, px, py, ps, ps);
-        ctx.drawImage(Portraits.get(who.portrait), px, py, ps, ps);
+        ctx.drawImage(Portraits.get(who.portrait), bx + 6, by + 8, 24, 24);
+        tx = bx + 38;
       }
-      const bx = who.portrait ? px + ps + 16 : 16, bw = W - bx - 12;
-      const lines = Font.wrap(cur.text, bw - 16).slice(0, 4);
-      const bh = Math.max(36, lines.length * 10 + 22), by = H - bh - 12;
-      UI.balloon(ctx, bx, by, bw, bh, who.portrait ? px + ps + 2 : bx + 10, who.portrait ? py + 18 : by + bh + 8);
-      UI.caption(ctx, bx + 6, by - 7, Font.width(who.name) + 8, 11);
-      Font.draw(ctx, who.name, bx + 10, by - 5, '#1a1008');
+      Font.draw(ctx, who.name, tx, by + 7, UI.gold, { shadow: UI.ink });
+      const lines = Font.wrap(cur.text, bw - (tx - bx) - 10);
       let left = Math.floor(this.chars);
-      lines.forEach((ln, i) => {
+      lines.slice(0, 4).forEach((ln, i) => {
         const part = ln.slice(0, Math.max(0, left));
         left -= ln.length + 1;
-        Font.draw(ctx, part, bx + 8, by + 10 + i * 10, '#101018');
+        Font.draw(ctx, part, tx, by + 20 + i * 10, UI.paper);
       });
     }
     if (this.chars >= cur.text.length && Math.floor(t * 3) % 2) {
-      ctx.fillStyle = UI.red; ctx.fillRect(W - 26, H - 20, 5, 2); ctx.fillRect(W - 25, H - 18, 3, 1); ctx.fillRect(W - 24, H - 17, 1, 1);
+      ctx.fillStyle = UI.gold; ctx.fillRect(W - 20, 200, 5, 2); ctx.fillRect(W - 19, 202, 3, 1); ctx.fillRect(W - 18, 203, 1, 1);
     }
     Font.draw(ctx, '[' + Input.label('PAUSE') + '] SALTAR', W - 6, 4, '#8a8aa0', { align: 'right', shadow: UI.ink });
   }
@@ -222,41 +189,22 @@ class Dialog {
 // ---------------------------------------------------------------------------
 // HUD
 // ---------------------------------------------------------------------------
-// Barra de 16 bits: marco negro, relleno con brillo y marcas cada 8 píxeles
-function mcBar(ctx, x, y, w, h, v, col, hi) {
-  ctx.fillStyle = '#000000'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  ctx.fillStyle = '#3a1418'; ctx.fillRect(x, y, w, h);
-  const f = Math.round(w * clamp(v, 0, 1));
-  ctx.fillStyle = col; ctx.fillRect(x, y, f, h);
-  ctx.fillStyle = hi; ctx.fillRect(x, y, f, 1);
-  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + h - 1, f, 1);
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  for (let i = 8; i < w; i += 8) ctx.fillRect(x + i, y, 1, h);
-}
-const GRUNT_NAMES = { thug: ['PANDILLERO', 'MATÓN', 'CARTERISTA', 'PUNK', 'GORILA', 'MALEANTE'], gunner: ['PISTOLERO', 'TIRADOR'], brute: ['GRANDULLÓN', 'TORO'], zombie: ['ZOMBI'], chitauri: ['CHITAURI'], bat: ['BATEADOR'] };
-function enemyLabel(e) {
-  if (e.name) return e.name;
-  const L = GRUNT_NAMES[e.type];
-  return L ? L[e.id % L.length] : String(e.type || 'ENEMIGO').toUpperCase();
-}
 function drawHUD(ctx, w, t) {
   const p = w.player;
-  // Vida (estilo Maximum Carnage: cara, nombre y barras largas)
-  UI.comicPanel(ctx, 6, 6, 20, 20);
-  ctx.drawImage(Portraits.get('spidey'), 6, 6, 20, 20);
-  Font.draw(ctx, 'SPIDER-MAN', 32, 4, '#ffffff', { outline: '#000000' });
-  const low = p.hp / p.maxHp < 0.3 && Math.floor(t * 6) % 2;
-  mcBar(ctx, 32, 14, 84, 6, p.hp / p.maxHp, low ? '#ff9090' : '#e82828', '#ff8a6a');
-  Font.draw(ctx, 'RED', 32, 22, '#9ad8ff', { outline: '#000000' });
+  // Vida
+  UI.panel(ctx, 3, 3, 96, 24, 'rgba(12,10,24,0.7)');
+  ctx.drawImage(Portraits.get('spidey'), 6, 6, 18, 18);
+  UI.bar(ctx, 28, 7, 66, 5, p.hp / p.maxHp, p.hp / p.maxHp < 0.3 && Math.floor(t * 6) % 2 ? '#ff8080' : UI.red);
+  UI.bar(ctx, 28, 15, 66, 3, p.focus / 100, p.focus >= 50 ? UI.gold : '#b09030');
+  ctx.fillStyle = UI.ink; ctx.fillRect(28 + 33, 14, 1, 5);
   for (let i = 0; i < p.maxWebs; i++) {
-    ctx.fillStyle = '#000000'; ctx.fillRect(51 + i * 6, 22, 5, 5);
-    ctx.fillStyle = i < p.webs ? '#e8f4ff' : '#2a2a3a'; ctx.fillRect(52 + i * 6, 23, 3, 3);
+    ctx.fillStyle = i < p.webs ? '#ffffff' : '#3a3a4a';
+    ctx.fillRect(28 + i * 5, 21, 3, 3);
   }
-  mcBar(ctx, 32 + 52, 23, 32, 3, p.focus / 100, p.focus >= 50 ? '#ffd040' : '#b08a30', '#fff0a0');
   // Nivel y experiencia
   const sv = Game.save;
-  UI.bar(ctx, 6, 31, 110, 1, (sv.xp || 0) / Progress.xpNeed(sv.level || 1), '#60c0ff');
-  Font.draw(ctx, 'NV ' + (sv.level || 1) + (sv.skillPts ? '  +' + sv.skillPts + ' PH' : ''), 6, 34, sv.skillPts ? UI.gold : '#a0c8ff', { outline: '#000000' });
+  UI.bar(ctx, 3, 28, 96, 2, (sv.xp || 0) / Progress.xpNeed(sv.level || 1), '#60c0ff');
+  Font.draw(ctx, 'NV ' + (sv.level || 1) + (sv.skillPts ? '  +' + sv.skillPts + ' PH' : ''), 4, 33, sv.skillPts ? UI.gold : '#a0c8ff', { shadow: UI.ink });
   // Compañeros (multijugador)
   if (w.coop) {
     const cols = ['#ff5060', '#40b0ff', '#60e070', '#ffd040'];
@@ -272,7 +220,7 @@ function drawHUD(ctx, w, t) {
   {
     const g = GADGETS.find((x) => x.id === Gadgets.selected(p));
     const bossOn = w.boss && !w.boss.dead && w.boss.state !== 'wait';
-    const gx = W - 133, gy = H - 26;
+    const gx = W - 133, gy = bossOn ? 30 : H - 26;
     if (g && Progress.gadgetUnlocked(g) && !w.dialog) {
       UI.panel(ctx, gx, gy, 128, 22, 'rgba(12,10,24,0.7)');
       ctx.fillStyle = g.color; ctx.fillRect(gx + 3, gy + 3, 7, 7); ctx.fillStyle = UI.ink; ctx.fillRect(gx + 5, gy + 5, 3, 3);
@@ -288,7 +236,7 @@ function drawHUD(ctx, w, t) {
   // Refuerzo multiversal
   if (w.allyList && w.allyList().length) {
     const ready = w.allyCd <= 0 && !w.ally;
-    const ix = w.mode === "city" ? 272 : 122, iy = 6;
+    const ix = 104, iy = 8;
     ctx.fillStyle = UI.ink; ctx.fillRect(ix - 1, iy - 1, 16, 16);
     ctx.fillStyle = ready ? (Math.floor(t * 3) % 2 ? '#60ffe0' : '#ff40c0') : '#2a2a3a'; ctx.fillRect(ix, iy, 14, 14);
     if (!ready) { const f = clamp(1 - w.allyCd / ALLY_CD, 0, 1); ctx.fillStyle = '#60ffe0'; ctx.fillRect(ix, iy + 14 - Math.round(14 * f), 14, Math.round(14 * f)); }
@@ -323,24 +271,21 @@ function drawHUD(ctx, w, t) {
   }
   // Objetivo
   if (w.objective) {
-    Font.draw(ctx, w.objective, 6, 44, UI.paper, { outline: '#000000' });
+    Font.draw(ctx, w.objective, 4, 42, UI.paper, { shadow: UI.ink });
   }
   if (w.crime) {
     const c = w.crime;
     const s = Math.max(0, Math.ceil(c.t));
     const lbl = 'CRIMEN: ' + c.label + '  ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
-    Font.draw(ctx, lbl, 6, w.objective ? 55 : 44, '#ff6060', { outline: '#000000' });
+    Font.draw(ctx, lbl, 4, w.objective ? 53 : 42, '#ff6060', { shadow: UI.ink });
   }
   // Jefe
-  // enemigo actual: nombre y barra arriba a la derecha (como en Maximum Carnage)
-  {
-    const bossOn = w.boss && !w.boss.dead && w.boss.state !== 'wait';
-    const e = bossOn ? w.boss : (w.lastHitT > 0 && w.lastHitE && !w.lastHitE.remove ? w.lastHitE : null);
-    if (e) {
-      const bw = bossOn ? 130 : 84, bx = W - bw - 8, by = 32;
-      Font.draw(ctx, enemyLabel(e), W - 8, by - 10, bossOn ? '#ffd040' : '#ffffff', { align: 'right', outline: '#000000' });
-      mcBar(ctx, bx, by, bw, bossOn ? 6 : 4, Math.max(0, e.hp) / e.maxHp, e.phase === 2 ? '#ff7020' : '#e0c020', '#fff0a0');
-    }
+  if (w.boss && !w.boss.dead && w.boss.state !== 'wait') {
+    const b = w.boss;
+    const bw = 200, bx = (W - bw) / 2, by = H - 14;
+    Font.draw(ctx, b.name, W / 2, by - 10, UI.paper, { align: 'center', shadow: UI.ink });
+    UI.bar(ctx, bx, by, bw, 5, b.hp / b.maxHp, b.phase === 2 ? '#ff6020' : '#c02030');
+    ctx.fillStyle = UI.ink; ctx.fillRect(bx + bw / 2, by - 1, 1, 7);
   }
   // Consejo
   if (w.tip) {
@@ -348,8 +293,8 @@ function drawHUD(ctx, w, t) {
     const bh = lines.length * 10 + 8;
     const by = w.mode === 'city' ? 50 : 40;
     ctx.globalAlpha = Math.min(1, w.tip.t * 3, (w.tip.dur - w.tip.t + 0.3) * 3);
-    UI.caption(ctx, W / 2 - 132, by + 20, 264, bh);
-    lines.forEach((ln, i) => Font.draw(ctx, ln, W / 2, by + 25 + i * 10, '#1a1008', { align: 'center' }));
+    UI.panel(ctx, W / 2 - 132, by, 264, bh, 'rgba(20,24,60,0.9)', '#9ab0ff');
+    lines.forEach((ln, i) => Font.draw(ctx, ln, W / 2, by + 5 + i * 10, UI.paper, { align: 'center' }));
     ctx.globalAlpha = 1;
   }
   // Radio / comunicaciones (no bloquea)
@@ -366,7 +311,7 @@ function drawHUD(ctx, w, t) {
   }
   // Textos flotantes
   for (const f of w.floats) {
-    const x = Math.round((f.x - w.cam.x) * ZOOM), y = Math.round((f.y - w.cam.y) * ZOOM);
+    const x = Math.round(f.x - w.cam.x), y = Math.round(f.y - w.cam.y);
     ctx.globalAlpha = Math.min(1, f.life * 2);
     Font.draw(ctx, f.text, x, y, f.color, { align: 'center', outline: UI.ink });
     ctx.globalAlpha = 1;

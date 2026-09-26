@@ -44,7 +44,7 @@ class Level {
 
   addBuilding(x, w, h, style, seed) {
     const s = this.addSolid(x, this.groundY - h, w, h + (this.height - this.groundY) + 60, 'building', style);
-    s.seed = seed || (x * 7 + h); s.canvas = null; // se pinta al verse por primera vez
+    s.canvas = renderBuilding(w, h, style, seed || (x * 7 + h), this.night);
     s.vis = h;
     return s;
   }
@@ -71,8 +71,6 @@ class Level {
     };
     this.solids.forEach(addTo);
     this.oneways.forEach(addTo);
-    // fila de fachadas detrás de la calle (solo en exteriores con calle)
-    this.facadeRow = !this.indoor && this.solids.some((o) => o.kind === 'ground' && (o.style === 'street' || o.style === 'stone'));
     return this;
   }
 
@@ -202,27 +200,27 @@ class Level {
 
   // ---------------- Dibujo ----------------
   draw(ctx, cx, cy, t) {
-    const x0 = cx - 60, x1 = cx + VW + 60;
+    const x0 = cx - 60, x1 = cx + W + 60;
     // agua o vacío
     if (this.water) {
       const wy = Math.round(this.water - cy);
-      if (wy < VH) {
+      if (wy < H) {
         if (this.sky === 'ruin') {
-          ctx.fillStyle = '#0a0204'; ctx.fillRect(0, wy - 20, VW, VH - wy + 20);
-          ctx.fillStyle = 'rgba(255,70,20,0.18)'; ctx.fillRect(0, wy - 20, VW, 6);
+          ctx.fillStyle = '#0a0204'; ctx.fillRect(0, wy - 20, W, H - wy + 20);
+          ctx.fillStyle = 'rgba(255,70,20,0.18)'; ctx.fillRect(0, wy - 20, W, 6);
           for (let i = 0; i < 24; i++) {
-            const xx = (i * 61 + Math.floor(t * 12) - Math.floor(cx * 0.6)) % (VW + 20);
+            const xx = (i * 61 + Math.floor(t * 12) - Math.floor(cx * 0.6)) % (W + 20);
             ctx.fillStyle = i % 3 ? '#8a2a0c' : '#ff7020';
-            ctx.fillRect((xx + VW + 20) % (VW + 20) - 10, wy - 10 + ((i * 13 + Math.floor(t * 20)) % 40), 1, 1);
+            ctx.fillRect((xx + W + 20) % (W + 20) - 10, wy - 10 + ((i * 13 + Math.floor(t * 20)) % 40), 1, 1);
           }
         } else {
           ctx.fillStyle = this.sky === 'rift' ? '#0a2a2a' : (this.night ? '#0c1838' : '#1c4a7a');
-          ctx.fillRect(0, wy, VW, VH - wy);
+          ctx.fillRect(0, wy, W, H - wy);
           ctx.fillStyle = this.sky === 'rift' ? '#2a6a50' : (this.night ? '#2a4a80' : '#4a8ac0');
           for (let i = 0; i < 40; i++) {
-            const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (VW + 40)) - 20;
-            const yy = wy + 3 + (i * 7) % Math.max(1, VH - wy);
-            ctx.fillRect(VW - xx, yy, 6, 1);
+            const xx = ((i * 53 + Math.floor(t * 20) + Math.floor(cx * 0.9)) % (W + 40)) - 20;
+            const yy = wy + 3 + (i * 7) % Math.max(1, H - wy);
+            ctx.fillRect(W - xx, yy, 6, 1);
           }
         }
       }
@@ -239,7 +237,7 @@ class Level {
     const ext = [];
     for (const s of vis) {
       const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
-      if (sx > VW + 40 || sx + s.w < -40 || sy > VH) continue;
+      if (sx > W + 40 || sx + s.w < -40 || sy > H) continue;
       ext.push({ s, sx, sy, d: Math.abs(sx + s.w / 2 - VP.x) });
     }
     ext.sort((a, b) => b.d - a.d);
@@ -251,10 +249,9 @@ class Level {
         continue;
       }
       const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
-      if (sx > VW || sx + s.w < 0 || sy > VH) continue;
-      if (s.kind === 'building') {
-        if (!s.canvas) { s.canvas = renderBuilding(s.w, s.vis, s.style, s.seed, this.night); (this.painted = this.painted || []).push(s); }
-        ctx.drawImage(s.canvas, sx, sy, s.w, s.vis);
+      if (sx > W || sx + s.w < 0 || sy > H) continue;
+      if (s.kind === 'building' && s.canvas) {
+        ctx.drawImage(s.canvas, sx, sy);
       } else if (s.kind === 'ground') {
         drawGround(ctx, s, sx, sy, this, cx);
       } else {
@@ -265,14 +262,10 @@ class Level {
     for (const s of vis) {
       if (s.kind !== 'ground') continue;
       const sx = Math.round(s.x - cx), sy = Math.round(s.y - cy);
-      if (sx > VW + 40 || sx + s.w < -40 || sy - STREET_D > VH) continue;
+      if (sx > W + 40 || sx + s.w < -40 || sy - STREET_D > H) continue;
       drawStreetBand(ctx, s, sx, sy, cx);
     }
     for (const d of streetDecor) drawDecor(ctx, d, cx, cy + STREET_D - 2, t, this);
-    // libera la memoria de los edificios lejanos (se vuelven a pintar si hace falta)
-    if (this.painted && this.painted.length > 14) {
-      this.painted = this.painted.filter((s) => { if (s.x + s.w < cx - 700 || s.x > cx + VW + 700) { s.canvas = null; return false; } return true; });
-    }
   }
 
   // Sombra en el suelo bajo un personaje (efecto de profundidad)
@@ -290,14 +283,14 @@ class Level {
 
   drawFront(ctx, cx, cy, t) {
     for (const d of this.front) {
-      if (d.x + (d.w || 100) < cx - 40 || d.x > cx + VW + 40) continue;
+      if (d.x + (d.w || 100) < cx - 40 || d.x > cx + W + 40) continue;
       drawDecor(ctx, d, cx, cy, t, this);
     }
   }
 }
 
 // ---------------- 2.5D ----------------
-const VP = { x: VW / 2, y: 30 };
+const VP = { x: W / 2, y: 64 };
 const DEPTH = 0.16;
 function backPt(px, py, k = DEPTH) { return [px + (VP.x - px) * k, py + (VP.y - py) * k]; }
 function poly(ctx, col, pts) {
@@ -331,9 +324,9 @@ function drawExtrusion(ctx, s, sx, sy, lv, cx) {
   } else {
     const c = EXT_COLS[s.kind] || ['#3a3e48', '#6a7280'];
     side = c[0]; top = c[1];
-    h = Math.min(s.h, VH + 40);
+    h = Math.min(s.h, H + 40);
   }
-  const x1 = sx, x2 = sx + s.w, y1 = sy, y2 = sy + Math.min(h, VH - sy + 20);
+  const x1 = sx, x2 = sx + s.w, y1 = sy, y2 = sy + Math.min(h, H - sy + 20);
   if (y1 > VP.y) {
     const [a, b] = backPt(x1, y1), [c, d] = backPt(x2, y1);
     poly(ctx, top, [x1, y1, x2, y1, c, d, a, b]);
@@ -360,7 +353,7 @@ function facadeBottom(s, lv) { return Math.min(s.y + (s.vis || s.h), lv.groundY)
 
 function drawStreetBand(ctx, s, sx, sy, cx) {
   const c = BAND_COLS[s.style] || BAND_COLS.street;
-  const x1 = Math.max(sx, -80), x2 = Math.min(sx + s.w, VW + 80);
+  const x1 = Math.max(sx, -80), x2 = Math.min(sx + s.w, W + 80);
   const top = sy - STREET_D;
   const k = 0.10;
   const tx1 = x1 + (VP.x - x1) * k, tx2 = x2 + (VP.x - x2) * k;
@@ -391,7 +384,7 @@ function drawStreetBand(ctx, s, sx, sy, cx) {
 
 function drawGround(ctx, s, sx, sy, lv, cx) {
   const type = s.style;
-  const w = s.w, h = VH;
+  const w = s.w, h = H;
   if (type === 'street') {
     ctx.fillStyle = '#9a9aa2'; ctx.fillRect(sx, sy, w, 4);
     ctx.fillStyle = '#6a6a72'; ctx.fillRect(sx, sy + 4, w, 2);
@@ -400,17 +393,17 @@ function drawGround(ctx, s, sx, sy, lv, cx) {
     ctx.fillStyle = '#5a5e66'; ctx.fillRect(sx, sy, w, 3);
     ctx.fillStyle = '#3a3e46'; ctx.fillRect(sx, sy + 3, w, h);
     ctx.fillStyle = '#e0b020';
-    for (let xx = -(Math.floor(s.x) % 24); xx < w; xx += 24) if (sx + xx > -20 && sx + xx < VW) ctx.fillRect(sx + xx, sy + 5, 12, 2);
+    for (let xx = -(Math.floor(s.x) % 24); xx < w; xx += 24) if (sx + xx > -20 && sx + xx < W) ctx.fillRect(sx + xx, sy + 5, 12, 2);
   } else if (type === 'bridge') {
     ctx.fillStyle = '#7a8088'; ctx.fillRect(sx, sy, w, 3);
     ctx.fillStyle = '#44484e'; ctx.fillRect(sx, sy + 3, w, 10);
     ctx.fillStyle = '#2a2e34';
-    for (let xx = -(Math.floor(s.x) % 16); xx < w; xx += 16) if (sx + xx > -20 && sx + xx < VW) { ctx.fillRect(sx + xx, sy + 13, 2, 14); ctx.fillRect(sx + xx, sy + 13, 16, 2); }
+    for (let xx = -(Math.floor(s.x) % 16); xx < w; xx += 16) if (sx + xx > -20 && sx + xx < W) { ctx.fillRect(sx + xx, sy + 13, 2, 14); ctx.fillRect(sx + xx, sy + 13, 16, 2); }
   } else if (type === 'stone') {
     ctx.fillStyle = '#8a8672'; ctx.fillRect(sx, sy, w, 3);
     ctx.fillStyle = '#5e5a4a'; ctx.fillRect(sx, sy + 3, w, h);
     ctx.fillStyle = '#4a4638';
-    for (let xx = -(Math.floor(s.x) % 20); xx < w; xx += 20) if (sx + xx > -20 && sx + xx < VW) ctx.fillRect(sx + xx, sy + 8, 1, 10);
+    for (let xx = -(Math.floor(s.x) % 20); xx < w; xx += 20) if (sx + xx > -20 && sx + xx < W) ctx.fillRect(sx + xx, sy + 8, 1, 10);
   } else {
     ctx.fillStyle = '#444'; ctx.fillRect(sx, sy, w, h);
   }
@@ -460,7 +453,7 @@ function drawBlock(ctx, s, sx, sy, lv) {
 
 function drawOneway(ctx, p, cx, cy, lv) {
   const sx = Math.round(p.x - cx), sy = Math.round(p.y - cy);
-  if (sx > VW || sx + p.w < 0 || sy < -10 || sy > VH) return;
+  if (sx > W || sx + p.w < 0 || sy < -10 || sy > H) return;
   if (p.kind === 'catwalk') {
     ctx.fillStyle = '#8a8e96'; ctx.fillRect(sx, sy, p.w, 2);
     ctx.fillStyle = '#4a4e56';
@@ -528,13 +521,18 @@ function drawDecor(ctx, d, cx, cy, t, lv) {
       break;
     }
     case 'lamp':
-      Art.lamp(ctx, sx, sy, lv.night);
+      ctx.fillStyle = '#2a2e36'; ctx.fillRect(sx, sy - 34, 2, 34); ctx.fillRect(sx, sy - 34, 8, 2);
+      ctx.fillStyle = lv.night ? '#fff0a0' : '#d0d0c0'; ctx.fillRect(sx + 6, sy - 32, 3, 2);
+      if (lv.night) { ctx.fillStyle = 'rgba(255,240,160,0.08)'; ctx.fillRect(sx - 4, sy - 30, 20, 30); }
       break;
     case 'hydrant':
-      Art.hydrant(ctx, sx, sy);
+      ctx.fillStyle = '#c02020'; ctx.fillRect(sx, sy - 7, 5, 7); ctx.fillRect(sx - 1, sy - 5, 7, 2); ctx.fillRect(sx + 1, sy - 9, 3, 2);
       break;
     case 'car': {
-      Art.car(ctx, sx, sy, d.color, d.taxi);
+      ctx.fillStyle = d.color || '#c0a020'; ctx.fillRect(sx, sy - 10, 34, 7); ctx.fillRect(sx + 6, sy - 15, 20, 6);
+      ctx.fillStyle = '#9ad0f0'; ctx.fillRect(sx + 8, sy - 14, 7, 4); ctx.fillRect(sx + 17, sy - 14, 7, 4);
+      ctx.fillStyle = '#141414'; ctx.fillRect(sx + 4, sy - 4, 7, 4); ctx.fillRect(sx + 23, sy - 4, 7, 4);
+      if (d.taxi) { ctx.fillStyle = '#141414'; ctx.fillRect(sx + 1, sy - 8, 32, 1); ctx.fillStyle = '#fff'; ctx.fillRect(sx + 13, sy - 17, 6, 2); }
       break;
     }
     case 'cable': // cables del puente

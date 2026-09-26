@@ -14,8 +14,6 @@ const EMBLEMS = {
     legs: [[0.5, -1.2, 1.8, -2.4, 2.4, -1.6], [0.7, -0.5, 2.1, -0.9, 2.7, 0.3], [0.7, 0.3, 2.0, 1.1, 2.4, 2.5], [0.5, 0.9, 1.5, 2.2, 1.7, 3.6]] },
   long: { unit: 0.4, lw: 0.5, body: [[0, -1.3, 0.7, 0.8], [0, 0.2, 0.85, 1.2], [0, 2.0, 0.75, 1.5]],
     legs: [[0.5, -1.4, 2.4, -3.6, 3.8, -2.4], [0.7, -0.6, 3.2, -1.4, 4.2, 0.6], [0.7, 0.4, 3.0, 1.6, 3.6, 4.0], [0.5, 1.0, 2.0, 3.6, 2.4, 6.0]] },
-  venom: { unit: 0.42, lw: 0.7, cx: -0.05, body: [[0, -1.2, 1.35, 1.5], [0, 1.4, 1.05, 2.3], [0, -3.0, 0.7, 0.7]],
-    legs: [[0.7, -1.6, 3.0, -3.8, 5.6, -2.6], [1.0, -0.5, 3.8, -0.9, 6.0, 1.2], [1.0, 0.7, 3.4, 2.6, 4.8, 5.4], [0.7, 1.6, 2.2, 4.4, 2.6, 7.4]] },
   big: { unit: 0.62, lw: 0.7, body: [[0, -1.4, 0.9, 1.0], [0, 0.2, 1.0, 1.3], [0, 2.2, 0.9, 1.9]],
     legs: [[0.6, -1.6, 2.2, -3.2, 3.6, -2.8], [0.8, -0.6, 3.0, -1.0, 4.0, 0.8], [0.8, 0.5, 2.6, 2.4, 3.0, 4.6], [0.6, 1.3, 1.6, 3.8, 1.8, 6.4]] },
 };
@@ -33,31 +31,6 @@ function inEmblem(E, ex, ey) {
   }
   return false;
 }
-
-// Sombreado de 16 bits: las sombras tiran a morado/azul y las luces a amarillo
-function hueShade(hex, amt, hs) {
-  const n = parseInt(hex.slice(1), 16);
-  let r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-  let hh = 0, ss = 0, l = (mx + mn) / 2;
-  if (mx !== mn) {
-    const d = mx - mn; ss = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-    hh = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60;
-  }
-  const toward = (from, to, k) => { let d = ((to - from + 540) % 360) - 180; return (from + d * k + 360) % 360; };
-  if (ss > 0.08) {
-    if (amt < 0) { hh = toward(hh, 255, 0.16 * hs); ss = Math.min(1, ss * 1.1); }
-    else { hh = toward(hh, 55, 0.1 * hs); ss *= 0.9; }
-  }
-  l = amt < 0 ? l * (1 + amt) : l + (1 - l) * amt;
-  const q = l < 0.5 ? l * (1 + ss) : l + ss - l * ss, p = 2 * l - q;
-  const f = (t) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
-  const hx = (v) => ('0' + Math.round(clamp(v, 0, 1) * 255).toString(16)).slice(-2);
-  const k = hh / 360;
-  return '#' + hx(f(k + 1 / 3)) + hx(f(k)) + hx(f(k - 1 / 3));
-}
-
-const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 const Sprite = {
   size: 0, canvas: null, ctx: null, img: null, buf: null, grp: null, ramps: new Map(),
@@ -77,33 +50,27 @@ const Sprite = {
     if (!r) {
       const h = typeof hex === 'string' && hex[0] === '#' ? hex : '#808080';
       const px = (c) => { const n = parseInt(c.slice(1), 16); return ((255 << 24) | ((n & 255) << 16) | (n & 0xff00) | ((n >> 16) & 255)) >>> 0; };
-      const n = parseInt(h.slice(1), 16), lum = (((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) / 255;
-      if (lum < 0.1) r = [px('#040408'), px(shade(h, -0.35)), px(shade(h, 0.08)), px('#4a5680')]; // negro con brillo azulado (simbionte)
-      else r = [px(hueShade(h, -0.5, 1)), px(hueShade(h, -0.26, 0.55)), px(h), px(hueShade(h, 0.32, 1))];
+      r = [px(shade(h, -0.46)), px(shade(h, -0.22)), px(h), px(shade(h, 0.3))];
       this.ramps.set(hex, r);
     }
     return r;
   },
 
   // Caché de fotogramas: con las poses cuantizadas, cada fotograma se pinta una sola vez
-  cache: new Map(), palIds: new WeakMap(), nextPal: 1, lastBase: new Map(), budget: 99,
+  cache: new Map(), palIds: new WeakMap(), nextPal: 1,
   cached(pose, lp, facing, s, pal, opts) {
     let pid = this.palIds.get(pal);
     if (!pid) { pid = this.nextPal++; this.palIds.set(pal, pid); }
     const anim = pal.deco === 'ironlegs' || pal.deco === 'burn' ? Math.floor(Date.now() / 200) % 4 : 0;
     const key = pid + '|' + facing + '|' + s + '|' + (opts.bulk || 4) + '|' + anim + '|' + Q_KEYS.map((k) => pose[k]).join(',') + ',' + pose.rot + ',' + pose.hy;
     let e = this.cache.get(key);
-    const base = pid + '|' + facing + '|' + s + '|' + (opts.bulk || 4);
-    if (e) { this.cache.delete(key); this.cache.set(key, e); this.lastBase.set(base, e); return e; }
-    // límite de fotogramas nuevos por cuadro: evita tirones (se usa el anterior mientras tanto)
-    if (this.budget <= 0) { const last = this.lastBase.get(base); if (last) return last; }
-    this.budget--;
+    if (e) { this.cache.delete(key); this.cache.set(key, e); return e; }
     const img = this.render(lp, facing, s, pal, opts);
     const c = makeCanvas(img.w, img.h);
     c.getContext('2d').drawImage(img.canvas, 0, 0, img.w, img.h, 0, 0, img.w, img.h);
     e = { canvas: c, w: img.w, h: img.h, ox: img.ox, oy: img.oy };
-    this.cache.set(key, e); this.lastBase.set(base, e);
-    if (this.cache.size > 600) this.cache.delete(this.cache.keys().next().value);
+    this.cache.set(key, e);
+    if (this.cache.size > 900) this.cache.delete(this.cache.keys().next().value);
     return e;
   },
 
@@ -146,31 +113,30 @@ const Sprite = {
     const shinCol = pal.trim ? cut(0.42, pal.leg, pal.boot) : cut(0.42, pal.leg, pal.boot);
     const armCol = pal.shoulder ? cut(0.36, pal.shoulder, pal.arm) : pal.arm;
     // --- pierna y brazo traseros ---
-    add(q.hip, q.k1, 1.95 * lb, 1.3 * lb, pal.leg, 1, { back: 1, bulge: 0.3, trimT: -1 });
-    add(q.k1, q.f1, 1.35 * lb, 0.85 * lb, shinCol, 1, { back: 1, bulge: 0.42, trimT: pal.trim ? 0.42 : -1 });
-    add(q.f1, footOf(q.k1, q.f1), 1.0 * lb, 0.82 * lb, pal.boot, 1, { back: 1 });
-    add(q.sh, q.e1, 1.7 * lb, 1.2 * lb, armCol, 2, { back: 1, bulge: 0.4, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e1, q.h1, 1.3 * lb, 0.85 * lb, pal.arm2, 2, { back: 1, bulge: 0.32 });
-    add(q.h1, q.h1, 1.45 * lb, 1.45 * lb, pal.hand, 2, { back: 1 });
+    add(q.hip, q.k1, 1.75 * lb, 1.2 * lb, pal.leg, 1, { back: 1, bulge: 0.15, trimT: -1 });
+    add(q.k1, q.f1, 1.3 * lb, 0.8 * lb, shinCol, 1, { back: 1, bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
+    add(q.f1, footOf(q.k1, q.f1), 0.95 * lb, 0.78 * lb, pal.boot, 1, { back: 1 });
+    add(q.sh, q.e1, 1.38 * lb, 1.05 * lb, armCol, 2, { back: 1, bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
+    add(q.e1, q.h1, 1.12 * lb, 0.75 * lb, pal.arm2, 2, { back: 1, bulge: 0.18 });
+    add(q.h1, q.h1, 1.25 * lb, 1.25 * lb, pal.hand, 2, { back: 1 });
     // --- torso: pelvis y pecho en V ---
-    add(q.hip, q.mid, 2.2 * bulk, 2.1 * bulk, pal.torsoLow, 3, { torso: 1 });
+    add(q.hip, q.mid, 2.15 * bulk, 2.2 * bulk, pal.torsoLow, 3, { torso: 1 });
     const chestTop = [q.sh[0] * 0.8 + q.neck[0] * 0.2, q.sh[1] * 0.8 + q.neck[1] * 0.2];
-    add(q.mid, chestTop, 2.35 * bulk, 3.7 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
-    add(q.sh, q.head, 1.15 * lb, 1.1 * lb, pal.head, 4, {});
+    add(q.mid, chestTop, 2.3 * bulk, 3.15 * bulk, pal.torso, 4, { torso: 1, chest: 1 });
+    add(q.sh, q.head, 1.0 * lb, 1.0 * lb, pal.head, 4, {});
     // --- capucha / cabeza ---
     const up = norm([q.head[0] - q.neck[0], q.head[1] - q.neck[1]]);
     if (pal.deco === 'hood' && !flat) add([q.head[0] - up[0] * 1.2 * U, q.head[1] - up[1] * 1.2 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.9, 2.9, shade(pal.torso, -0.12), 5, {});
-    add([q.head[0] - up[0] * 0.35 * U, q.head[1] - up[1] * 0.35 * U], [q.head[0] + up[0] * 0.35 * U, q.head[1] + up[1] * 0.35 * U], 2.6 * (pal.headScale || 1), 2.6 * (pal.headScale || 1), pal.head, 6, { head: 1 });
+    add([q.head[0] - up[0] * 0.35 * U, q.head[1] - up[1] * 0.35 * U], [q.head[0] + up[0] * 0.3 * U, q.head[1] + up[1] * 0.3 * U], 2.35, 2.35, pal.head, 6, { head: 1 });
     // --- pierna y brazo delanteros ---
-    add(q.hip, q.k2, 1.95 * lb, 1.3 * lb, pal.leg, 7, { bulge: 0.3 });
-    add(q.k2, q.f2, 1.35 * lb, 0.85 * lb, shinCol, 7, { bulge: 0.42, trimT: pal.trim ? 0.42 : -1 });
-    add(q.f2, footOf(q.k2, q.f2), 1.0 * lb, 0.82 * lb, pal.boot, 7, {});
-    add(q.sh, q.e2, 1.7 * lb, 1.2 * lb, armCol, 8, { bulge: 0.4, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
-    add(q.e2, q.h2, 1.3 * lb, 0.85 * lb, pal.arm2, 8, { bulge: 0.32 });
-    add(q.h2, q.h2, 1.45 * lb, 1.45 * lb, pal.hand, 8, {});
+    add(q.hip, q.k2, 1.75 * lb, 1.2 * lb, pal.leg, 7, { bulge: 0.15 });
+    add(q.k2, q.f2, 1.3 * lb, 0.8 * lb, shinCol, 7, { bulge: 0.28, trimT: pal.trim ? 0.42 : -1 });
+    add(q.f2, footOf(q.k2, q.f2), 0.95 * lb, 0.78 * lb, pal.boot, 7, {});
+    add(q.sh, q.e2, 1.38 * lb, 1.05 * lb, armCol, 8, { bulge: 0.2, trimT: pal.shoulder && pal.trim ? 0.36 : -1 });
+    add(q.e2, q.h2, 1.12 * lb, 0.75 * lb, pal.arm2, 8, { bulge: 0.18 });
+    add(q.h2, q.h2, 1.25 * lb, 1.25 * lb, pal.hand, 8, {});
 
-    const human = ['human', 'beanie', 'mask', 'goggles'].includes(pal.face);
-    const ctxInfo = { q, U, up, facing, pal, flat, outline, lowres: U < 2, ow: Math.max(1, U * 0.16), human };
+    const ctxInfo = { q, U, up, facing, pal, flat, outline, lowres: U < 3 };
     for (const P of parts) this.raster(P, ctxInfo);
     this.silhouette(w, h, outline);
     this.ctx.putImageData(this.img, 0, 0, 0, 0, w, h);
@@ -183,8 +149,7 @@ const Sprite = {
     const ax = P.a[0], ay = P.a[1], dx = P.b[0] - ax, dy = P.b[1] - ay;
     const L2 = dx * dx + dy * dy, L = Math.sqrt(L2);
     const ux = L ? dx / L : 0, uy = L ? dy / L : -1;
-    const OW = I.ow || 1;
-    const rm = Math.max(P.r0, P.r1) + (P.bulge || 0) * U + OW + 0.5;
+    const rm = Math.max(P.r0, P.r1) + (P.bulge || 0) * U + 1.5;
     const bx0 = Math.max(0, Math.floor(Math.min(ax, ax + dx) - rm)), bx1 = Math.min(S - 1, Math.ceil(Math.max(ax, ax + dx) + rm));
     const by0 = Math.max(0, Math.floor(Math.min(ay, ay + dy) - rm)), by1 = Math.min(S - 1, Math.ceil(Math.max(ay, ay + dy) + rm));
     const webs = pal.webs && !flat && L > 0 && !I.lowres;
@@ -201,7 +166,7 @@ const Sprite = {
         const t = L2 ? clamp((cx * dx + cy * dy) / L2, 0, 1) : 0;
         const ex = cx - dx * t, ey = cy - dy * t;
         const d = Math.sqrt(ex * ex + ey * ey), r = P.r0 + (P.r1 - P.r0) * t + (P.bulge ? P.bulge * U * Math.sin(Math.PI * t) : 0);
-        if (d > r + OW) continue;
+        if (d > r + 1) continue;
         const idx = py * S + px;
         if (d > r) { // anillo de contorno
           if (buf[idx] === 0 || grp[idx] !== g) { buf[idx] = outline; grp[idx] = g; }
@@ -209,17 +174,14 @@ const Sprite = {
         }
         let col = typeof P.col === 'function' ? P.col(t) : P.col;
         const nx = ex / r, ny = ey / r, nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-        let tone, rim = false;
+        let tone;
         if (flat) tone = 2;
         else {
           // sombreado retro: bandas planas, sin degradados
-          // tramado ordenado entre bandas: degradado suave a alta resolución
-          const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2] + (BAYER4[(py & 3) * 4 + (px & 3)] / 16 - 0.47) * 0.08;
-          tone = I.lowres ? (li < 0.3 ? 1 : 2) : li < 0.18 ? 0 : li < 0.5 ? 1 : li < 0.9 ? 2 : 3;
-          // luz de contorno fría en el borde en sombra (aspecto HD)
-          if (!P.back && tone === 0 && d > r * 0.84 && nx * facing > 0.45 && ny < 0.4) rim = true;
+          const li = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
+          tone = I.lowres ? (li < 0.3 ? 1 : 2) : li < 0.08 ? 0 : li < 0.42 ? 1 : li < 0.95 ? 2 : 3;
           if (P.back) tone = Math.max(0, Math.min(tone, 2) - 1);
-          if (tone === 3 && !P.head && li < 0.95) tone = 2; // brillo solo en lo más abultado del músculo
+          if (tone === 3 && !P.head) tone = 2; // sin brillo de plástico en brazos y piernas
         }
         const v = (ex * -uy + ey * ux) / r; // -1..1 a lo ancho
         const u = t * L;
@@ -233,7 +195,7 @@ const Sprite = {
           if (P.trimT >= 0 && pal.trim && Math.abs(t - P.trimT) * L < Math.max(1, U * 0.28)) col = pal.trim;
           if (P.head) { const hc = this.headPixel(px + 0.5, py + 0.5, I, P, col, tone); if (hc) { color = hc; } }
           if (!color && emb) {
-            const eX = (v * r * facing) / eu - (emb.cx !== undefined ? emb.cx : 0.35) / emb.unit, eY = (embU - u) / eu;
+            const eX = (v * r * facing) / eu - 0.35 / emb.unit, eY = (embU - u) / eu;
             if (inEmblem(emb, eX, eY)) color = this.ramp(pal.emblem)[Math.max(1, tone)];
           }
           if (!color && pal.deco === 'armor' && !P.head) {
@@ -254,34 +216,10 @@ const Sprite = {
             else if (hsh > 0.985 && Math.floor(Date.now() / 160 + hsh * 50) % 3 === 0) color = this.ramp('#ff7020')[3];
           } else if (!color && pal.deco === 'stealth' && Math.abs(Math.abs(v) - 0.5) * r < 0.7) color = this.ramp('#3a4458')[tone];
         }
-        // detalles de ropa de los civiles y matones
-        if (!color && I.human && !flat && !P.head) {
-          const vf = v * facing;
-          if (P.chest) {
-            if (u > L - 1.1 * U && Math.abs(vf - 0.2) < 0.55) color = this.ramp(col)[0];                    // cuello
-            else if (Math.abs(vf - 0.5) < 0.06 + 0.4 / r) color = this.ramp('#b8b8c0')[Math.min(3, tone + 1)]; // cremallera
-            else if (u < L * 0.2 && vf > 0.1 && Math.abs(u - L * 0.12) < 0.35 * U) color = this.ramp(col)[Math.max(0, tone - 1)]; // bolsillo
-          } else if (P.torso) {
-            if (u > L * 0.62) color = Math.abs(vf - 0.55) < 0.18 && u > L * 0.7 ? this.ramp('#d8b040')[tone] : this.ramp('#2a1c14')[tone]; // cinturón y hebilla
-          } else if (col === pal.boot && ny > 0.45 && P.r0 < 1.2 * U) color = this.ramp('#d0ccc0')[Math.max(1, tone)]; // suela
-          else if (col === pal.arm2 && t > 0.84) color = this.ramp(col)[Math.max(0, tone - 1)]; // puño de la manga
-        }
-        buf[idx] = color || (rim ? this.rimCol(col) : this.ramp(col)[tone]);
+        buf[idx] = color || this.ramp(col)[tone];
         grp[idx] = g;
       }
     }
-  },
-
-  rims: new Map(),
-  rimCol(hex) {
-    let c = this.rims.get(hex);
-    if (c === undefined) {
-      const a = this.ramp(hex)[1], b = this.ramp('#8aa4ff')[2];
-      const mix = (sh) => Math.round(((a >>> sh) & 255) * 0.7 + ((b >>> sh) & 255) * 0.3);
-      c = ((255 << 24) | (mix(16) << 16) | (mix(8) << 8) | mix(0)) >>> 0;
-      this.rims.set(hex, c);
-    }
-    return c;
   },
 
   // Cara: telaraña radial, ojos de lente, pelo, visores...
@@ -295,7 +233,7 @@ const Sprite = {
     const fx = (ex * fwd[0] + ey * fwd[1]) / R, fy = -(ex * up[0] + ey * up[1]) / R; // fy +: abajo
     const R4 = (c, t) => this.ramp(c)[t];
     const eyes = (sc, fill, border) => {
-      const E = [[0.56, -0.06, 0.34, 0.27, -0.55], [0.0, -0.08, 0.38, 0.29, 0.45]];
+      const E = [[0.58, -0.04, 0.3, 0.24, -0.5], [0.02, -0.06, 0.34, 0.26, 0.4]];
       for (const e of E) {
         const rx = e[2] * sc, ry = e[3] * sc, c = Math.cos(e[4]), sn = Math.sin(e[4]);
         const lx = (fx - e[0]) * c + (fy - e[1]) * sn, ly = -(fx - e[0]) * sn + (fy - e[1]) * c;
@@ -329,18 +267,11 @@ const Sprite = {
       }
       case 'human': case 'beanie': {
         const cap = pal.face === 'beanie';
-        if (cap ? fy < -0.18 : (fy < -0.32 || (fx < -0.25 && fy < 0.35) || (fx < 0.05 && fy < -0.1))) {
-          if (cap) return R4(pal.hair, fy > -0.3 ? 1 : (Math.floor((fx + 2) * 9) % 2 ? tone : Math.max(0, tone - 1))); // punto del gorro
-          const strand = hash2(Math.floor((fx + fy * 0.6) * 14), 3) < 0.35;                     // mechones
-          return R4(pal.hair, strand ? Math.min(3, tone + 1) : tone);
-        }
-        const skin = (tt) => R4(pal.head, tt);
-        if (Math.abs(fx - 0.6) < 0.2 && Math.abs(fy + 0.22) < 0.045) return R4(pal.hair, 0);      // ceja
-        if (Math.abs(fx - 0.62) < 0.11 && Math.abs(fy + 0.04) < 0.08) return fx > 0.66 ? R4('#140a12', 2) : R4('#f0f0e8', 2); // ojo
-        if (fx > 0.78 && fy > -0.02 && fy < 0.28) return skin(fx > 0.9 ? 3 : Math.max(0, tone - 1)); // nariz
-        if (fx > 0.48 && fx < 0.82 && Math.abs(fy - 0.5) < 0.045) return R4(shade(pal.head, -0.45), 1); // boca
-        if (fx > 0.3 && fy > 0.62) return skin(Math.max(0, tone - 1));                           // mandíbula en sombra
-        if (fx < 0.0 && fx > -0.28 && Math.abs(fy - 0.1) < 0.17) return skin(Math.abs(fx + 0.14) < 0.05 ? 0 : 1); // oreja
+        if (cap ? fy < -0.18 : (fy < -0.32 || (fx < -0.25 && fy < 0.35) || (fx < 0.05 && fy < -0.1))) return R4(pal.hair, cap && fy > -0.3 ? 1 : tone);
+        if (Math.abs(fx - 0.62) < 0.1 && Math.abs(fy + 0.02) < 0.1) return R4('#140a12', 2);
+        if (Math.abs(fx - 0.6) < 0.18 && Math.abs(fy + 0.2) < 0.05) return R4(pal.hair, 1);
+        if (fx > 0.45 && fx < 0.8 && Math.abs(fy - 0.5) < 0.05) return R4(shade(pal.head, -0.4), 2);
+        if (fx < 0.0 && fx > -0.25 && Math.abs(fy - 0.1) < 0.15) return R4(pal.head, 0); // oreja
         return 0;
       }
       case 'mask': {
@@ -352,24 +283,12 @@ const Sprite = {
         if (fy > -0.28 && fy < 0.14 && fx > -0.25) return R4('#101014', 1);
         return 0;
       case 'venom': {
-        // ojos blancos enormes y dentados
-        for (const e of [[0.5, -0.2, 0.46, 0.3, -0.7], [-0.12, -0.24, 0.42, 0.3, 0.5]]) {
-          const c = Math.cos(e[4]), sn = Math.sin(e[4]);
-          const lx = (fx - e[0]) * c + (fy - e[1]) * sn, ly = -(fx - e[0]) * sn + (fy - e[1]) * c;
-          const ang = Math.atan2(ly, lx), jag = 1 + 0.12 * Math.sin(ang * 7);
-          const k = (lx / e[2]) ** 2 + (ly / e[3]) ** 2;
-          if (k <= jag * jag) return R4(pal.eye, ly < -e[3] * 0.3 ? 3 : k > 0.7 ? 1 : 2);
-        }
-        // boca enorme con colmillos y lengua
-        if (fy > 0.12 && fy < 0.95 && fx > -0.25) {
-          const top = 0.16 + (fx < 0.1 ? (0.1 - fx) * 0.6 : 0), bot = 0.92 - (fx < 0.1 ? (0.1 - fx) * 0.6 : 0);
-          if (fy < top || fy > bot) return 0;
-          const fr = Math.abs(((fx * 8) % 1 + 1) % 1 - 0.5) * 2;               // 0 en la punta del colmillo
-          if (fy < top + 0.2 * (1 - fr)) return R4('#f4f0e8', fy < top + 0.05 ? 3 : 2);   // fila de arriba
-          if (fy > bot - 0.2 * (1 - fr)) return R4('#f4f0e8', 2);               // fila de abajo
-          if (fx > 0.35 && fx < 0.95 && fy > 0.48 && fy < 0.78 + (fx - 0.35) * 0.3) return R4('#d83060', fy < 0.58 ? 3 : 2); // lengua
-          if (Math.abs(fx - 0.2) < 0.03 && fy > top + 0.15) return R4('#c8d0d8', 3); // baba
-          return R4('#5a0a1e', fy > (top + bot) / 2 ? 0 : 1);
+        const e = eyes(1.35, pal.eye, null);
+        if (e) return e;
+        if (fy > 0.3 && fy < 0.72 && fx > 0.05) {
+          const toothRow = fy < 0.4 || fy > 0.62;
+          if (toothRow && Math.floor((fx * 10) + (fy < 0.5 ? 0 : 0.5)) % 2 === 0) return R4('#f4f4f4', 2);
+          return R4('#8a1030', fy > 0.5 ? 1 : 0);
         }
         return 0;
       }

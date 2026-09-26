@@ -60,23 +60,11 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 | Refuerzo multiversal | T | R3 | R3 | R3 |
 | Menú | Esc | Options | Menú | + |
 
-## Aspecto de 16 bits (versión 2.5D)
+## Aspecto visual (versión 2.5D)
 
-La versión 2.5D imita el aspecto y el manejo de los beat 'em up de Spider-Man de 16 bits (*Maximum Carnage* / *Separation Anxiety*). Los gráficos son originales, no copiados del juego:
-
-- **Cámara cercana:** los personajes ocupan una cuarta parte de la pantalla y se dibujan al doble de detalle, con sombreado de 16 bits (sombras moradas, brillos cálidos, contorno negro y telarañas).
-- **Calles con fachadas detalladas** detrás de la acera: ladrillo, ventanas con alféizar, escaleras de incendio, tiendas con toldo, persianas con grafitis, callejones y depósitos de agua.
-- **Movimientos:** guardia medio agachado con los puños arriba, caminar encorvado y combo de 4 golpes (directo, directo, gancho y patada). **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás.
-- **HUD como el original:** cara, nombre, vida larga y cartuchos de red arriba a la izquierda; nombre y vida del enemigo al que golpeas arriba a la derecha.
-- **Diálogos de cómic:** viñeta con el retrato, bocadillo blanco y recuadros amarillos para la narración.
-- **Personajes en alta definición:** los sprites se pintan a medio píxel de pantalla y un 20 % más grandes, con degradado suave, luz de contorno y detalles: Venom con la araña blanca envolvente, ojos dentados, boca con colmillos y lengua, garras y brillo azulado; matones con cremallera, cinturón, suelas, gorras, pañuelos, cadenas, gafas, bates y pistolas dibujados con detalle; jefes con alas de plumas, cola segmentada, cuernos, hombreras y guanteletes. En monitores grandes el juego usa más resolución (hasta 4K).
-
-## Capa artística
-
-- **Portada pintada:** noche de Nueva York con luna gigante, nubes a pinceladas, rascacielos (Empire State y Chrysler), reflectores, lluvia, trama de puntos de cómic y Spider-Man agazapado en una azotea. Logotipo con relieve, degradado y telaraña dentro de las letras.
-- **Atmósfera por universo:** halos y conos de luz en las farolas, reflejos en el asfalto mojado (también de los personajes), lluvia, polvo, brasas o chispas según el universo, gradación de color y viñeta.
-- **Golpes de cómic:** estallidos con onomatopeyas (¡POW!, ¡WHAM!, ¡KRAK!…) y chispas redondas con estela.
-- **Objetos detallados:** coches y taxis con curvas, reflejos y llantas; farolas de hierro; bocas de incendio; redes, balas, rayos, orbes, bombas, plumas y ácido con brillo; botiquines y engranajes; drones con rotores.
+- **Pixel art clásico:** sprites de píxel grueso con ojos grandes, contorno negro y colores planos; cámara abierta con la ciudad al fondo.
+- **Reposo:** Spider-Man se queda de pie. Si pulsas **Pose** (R en el teclado) o no lo mueves durante unos segundos, hace animaciones: saluda, se estira, se rasca la cabeza, saca músculo, juega al yoyó con la telaraña, se sienta o mira a su alrededor. Cualquier movimiento o botón las interrumpe.
+- **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás. El combo en el suelo es de 4 golpes.
 
 ## Estilo PlayStation (versión 2.5D)
 
@@ -105,6 +93,7 @@ Todos los controles se pueden reasignar en **Controles** (teclado y mando).
 | Cambiar de artilugio | T / M | Select / View / − |
 | Poder del traje | H / Y | L3 (hundir stick izquierdo) |
 | Refuerzo multiversal (otro Spider-Man te ayuda, recarga 90 s) | E / F | R3 (hundir stick derecho) |
+| Pose / animación de espera | R | — (se activa sola si no te mueves) |
 | Menú (pestañas con Q/E o L1/R1) | Esc / P | Start / Options / + |
 
 - **Mandos:** Xbox, PlayStation, Switch Pro, 8BitDo y mandos genéricos. Los botones se muestran con el nombre de tu mando, y tienes vibración si el navegador la admite.

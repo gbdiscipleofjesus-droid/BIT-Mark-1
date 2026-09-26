@@ -171,6 +171,15 @@ class Player {
       }
     }
 
+    // ---- espera: de pie; con el botón de pose o tras un rato quieto, animaciones ----
+    const busy = ix || U || Dn || this.attack || !this.onGround || this.state !== 'normal' ||
+      ['JUMP', 'ATTACK', 'WEB', 'SHOOT', 'DODGE', 'SPECIAL', 'GADGET', 'POWER', 'ALLY'].some(pr) || Math.abs(this.vx) > 12;
+    if (busy) { this.idleT = 0; this.emote = null; }
+    else {
+      this.idleT = (this.idleT || 0) + dt;
+      if (this.emote) { this.emote.t += dt; if (this.emote.t >= this.emote.dur) { this.emote = null; this.idleT = 0; } }
+      if (pr('EMOTE') || (!this.emote && this.idleT > 5)) this.startEmote();
+    }
     switch (this.state) {
       case 'normal': this.updNormal(dt, world, ix, U, Dn, pr); break;
       case 'wall': this.updWall(dt, world, ix, U, Dn, pr); break;
@@ -548,6 +557,14 @@ class Player {
     }
   }
 
+  startEmote() {
+    const list = ['wave', 'stretch', 'scratch', 'flex', 'yoyo', 'sit', 'look'];
+    let k = pick(list);
+    if (this.emote && k === this.emote.kind) k = list[(list.indexOf(k) + 1) % list.length];
+    this.emote = { kind: k, t: 0, dur: { wave: 1.6, stretch: 2, scratch: 1.6, flex: 1.8, yoyo: 2.6, sit: 3.5, look: 2.6 }[k] };
+    this.idleT = 0;
+  }
+
   // ---------------- agarre y lanzamiento ----------------
   grabTarget(world, ix) {
     for (const e of world.enemies) {
@@ -679,14 +696,15 @@ class Player {
         else if (this.throwT > 0) pose = Poses.toss();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
-          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.mcWalk(Math.floor(this.runPhase / (TAU / 8)) * (TAU / 8)); }
+          if (Math.abs(this.vx) > 12 || this.zMoving) { this.runPhase += Math.max(Math.abs(this.vx), this.zMoving ? 80 : 0) * 0.0022 * 6; pose = Poses.run(Math.floor(this.runPhase / (TAU / 8)) * (TAU / 8)); }
           else if (this.landT > 0) pose = Poses.crouch();
-          else pose = Poses.mcStance(t);
+          else if (this.emote) pose = Poses.emote(this.emote.kind, this.emote.t / this.emote.dur, this.emote.t);
+          else pose = Poses.stand(t);
         } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
         else pose = this.vy < 0 ? Poses.jump() : Poses.fall();
     }
     // inclinación según la velocidad al correr
-    if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 4;
+    if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 6;
     // aterrizaje con peso: se hunde un poco
     if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
     const SC = 1.35;
@@ -697,6 +715,13 @@ class Player {
     }
     const wp = Rig.draw(ctx, x + dx, y, f, pose, pal, { scale: SC });
     if (cork) ctx.restore();
+    // yoyó de telaraña durante la animación de espera
+    if (this.emote && this.emote.kind === 'yoyo' && this.state === 'normal') {
+      const [hx, hy] = wp.h2, d = 4 + Math.abs(Math.sin(this.emote.t * 5)) * 12;
+      ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy + d); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(hx) - 1, Math.round(hy + d), 3, 3);
+    }
     // arco de impacto durante los golpes
     if (this.attack) {
       const d = this.attack.def, at = this.attack.t;

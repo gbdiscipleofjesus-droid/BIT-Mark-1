@@ -83,7 +83,7 @@ class World {
     this.player.lastSafe = { x: this.player.x, y: this.player.y };
     this.enemies = []; this.projs = []; this.pickups = []; this.floats = []; this.civs = []; this.fx = []; this.slowEnemiesT = 0; this.chalT = 1;
     this.particles = new Particles();
-    this.cam = { x: clamp(this.player.cx - VW / 2, 0, lv.width - VW), y: clamp(this.player.cy - VH * 0.66, 0, lv.height - VH) };
+    this.cam = { x: clamp(this.player.cx - VW / 2, 0, lv.width - VW), y: clamp(this.player.cy - VH * 0.55, 0, lv.height - VH) };
     this.shakeAmt = 0; this.hitstopT = 0; this.slowT = 0; this.senseCd = 0;
     this.dialog = null; this.pause = null; this.gameOver = null;
     this.state = 'play'; this.deadT = 0;
@@ -259,7 +259,7 @@ class World {
     this.combo.n++; this.combo.t = 2.2;
     Progress.rec('maxCombo', this.combo.n, 'max');
     this.stats.hits++;
-    if ((heavy && Math.random() < 0.7) || (this.level.comic && Math.random() < 0.6) || Math.random() < 0.15) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWACK!', '¡KRAK!', '¡ZAS!', '¡WHAM!', '¡PAF!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
+    if (this.level.comic && Math.random() < 0.6) this.pops.push({ text: pick(['¡POW!', '¡BAM!', '¡THWIP!', '¡KRAK!', '¡ZAS!']), x: e.cx + rand(-8, 8), y: e.y - 6, t: 0, c: pick(['#ffe040', '#40f0ff', '#ff4a8a']) });
     if (this.combo.n > this.stats.maxCombo) this.stats.maxCombo = this.combo.n;
   }
 
@@ -570,13 +570,13 @@ class World {
     const a = this.ally;
     const u = a.t / a.dur;
     const x = a.dir > 0 ? -30 + u * (VW + 60) : VW + 30 - u * (VW + 60);
-    const y = 30 + Math.sin(u * Math.PI) * 40;
+    const y = 60 + Math.sin(u * Math.PI) * 80;
     // portales de entrada y salida
     const px = a.dir > 0 ? 16 : VW - 16, qx = a.dir > 0 ? VW - 16 : 16;
     for (const [xx, vis] of [[px, u < 0.3], [qx, u > 0.7]]) {
       if (!vis) continue;
       const cols = ['#ffffff', '#60ffe0', '#ff40c0', '#ffe040'];
-      for (let i = 0; i < 40; i++) { ctx.fillStyle = cols[(i + Math.floor(t * 12)) % 4]; ctx.fillRect(Math.round(xx + Math.sin(i * 0.5 + t * 6) * 4), 20 + i, 3, 1); }
+      for (let i = 0; i < 40; i++) { ctx.fillStyle = cols[(i + Math.floor(t * 12)) % 4]; ctx.fillRect(Math.round(xx + Math.sin(i * 0.5 + t * 6) * 4), 40 + i * 2, 3, 2); }
     }
     const anchorX = x + a.dir * 30, anchorY = 0;
     ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
@@ -964,8 +964,8 @@ class World {
     const lv = this.level;
     const al = this.coop ? this.alivePlayers() : [];
     const p = al.length ? { cx: al.reduce((s2, q) => s2 + q.cx, 0) / al.length, cy: al.reduce((s2, q) => s2 + q.cy, 0) / al.length, vx: al.reduce((s2, q) => s2 + q.vx, 0) / al.length, z: al.reduce((s2, q) => s2 + (q.z || 0), 0) / al.length } : this.player;
-    let tx = p.cx - VW / 2 + clamp(p.vx * 0.2, -30, 30);
-    let ty = p.cy - (p.z || 0) * 0.5 - VH * 0.66;
+    let tx = p.cx - VW / 2 + clamp(p.vx * 0.25, -50, 50);
+    let ty = p.cy - (p.z || 0) * 0.5 - VH * 0.55;
     const k = Math.min(1, dt * 6);
     let minX = 0, maxX = lv.width - VW;
     if (this.arena) {
@@ -1012,8 +1012,6 @@ class World {
     if (lv.indoor) Scenery.drawIndoor(ctx, cam.x * ZOOM, cam.y * ZOOM);
     else Scenery.drawBackground(ctx, lv.sky, cam.x * ZOOM, cam.y * ZOOM, lv.height * ZOOM, lv.landmark);
     ctx.setTransform(RES * ZOOM, 0, 0, RES * ZOOM, 0, 0);
-    Rig.ws = 1.2;
-    FacadeRow.draw(ctx, lv, cam);
     if (this.boss && this.boss.drawIllusion) this.boss.drawIllusion(ctx, cam, t, this.boss.arena);
     lv.draw(ctx, cam.x, cam.y, t);
     // faro de misión
@@ -1054,17 +1052,9 @@ class World {
     for (const e of this.enemies) ents.push({ z: e.z || 0, o: e, k: 2 });
     for (const q of this.players) ents.push({ z: q.z || 0, o: q, k: 3 });
     ents.sort((a, b) => b.z - a.z || a.k - b.k);
-    const wet = !lv.indoor && (Art.GRADES[lv.sky] || Art.GRADES.night).fx === 'rain';
     for (const en of ents) {
       const o = en.o, zo = Math.round(en.z);
       ctx.save(); ctx.translate(0, -zo);
-      // reflejo en el asfalto mojado
-      if (wet && en.k >= 2 && onStreet(o) && !o.dead) {
-        const fy = (en.k === 3 ? o.feet : o.y + o.h) - cam.y;
-        ctx.save(); ctx.globalAlpha = 0.17; ctx.translate(0, fy * 2); ctx.scale(1, -1);
-        o.draw(ctx, cam, t);
-        ctx.restore(); ctx.globalAlpha = 1;
-      }
       if (en.k === 3) lv.shadow(ctx, o.cx, o.feet, cam, 12);
       else if (en.k === 2 && !o.dead && this.onScreen(o)) lv.shadow(ctx, o.cx, o.y + o.h, cam, o.w + 4);
       o.draw(ctx, cam, t);
@@ -1074,15 +1064,15 @@ class World {
     for (const pr of this.projs) { ctx.save(); ctx.translate(0, -Math.round(pr.z || 0)); pr.draw(ctx, cam, t); ctx.restore(); }
     for (const f of this.fx) f.draw(ctx, cam, t);
     if (this.slowEnemiesT > 0) { ctx.fillStyle = 'rgba(80,120,255,0.08)'; ctx.fillRect(0, 0, W, H); }
-    Art.worldLights(ctx, this, cam, t);
     this.particles.draw(ctx, cam);
     lv.drawFront(ctx, cam.x, cam.y, t);
     // onomatopeyas de cómic
-    for (const pp of this.pops) Art.pop(ctx, pp.x - cam.x, pp.y - cam.y - pp.t * 12, pp.text, pp.t, pp.c);
+    for (const pp of this.pops) {
+      const s2 = pp.t < 0.1 ? 2 : 1;
+      Font.draw(ctx, pp.text, Math.round(pp.x - cam.x), Math.round(pp.y - cam.y - pp.t * 20), pp.c, { align: 'center', scale: s2, outline: '#000000' });
+    }
     // vuelta a coordenadas de pantalla para los efectos y la interfaz
     ctx.setTransform(RES, 0, 0, RES, 0, 0);
-    Rig.ws = 1;
-    Art.screenGrade(ctx, this, t);
     // tinte del universo
     if (lv.tint) { ctx.fillStyle = lv.tint; ctx.fillRect(0, 0, W, H); }
     if (lv.comic) {

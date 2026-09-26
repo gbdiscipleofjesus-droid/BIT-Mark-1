@@ -1377,14 +1377,10 @@ class Particles {
   }
   draw(ctx, cam) {
     for (const p of this.list) {
-      const x = p.x - cam.x, y = p.y - cam.y;
+      const x = Math.round(p.x - cam.x), y = Math.round(p.y - cam.y);
       if (x < -4 || x > VW + 4 || y < -4 || y > VH + 4) continue;
-      // chispas redondas que se encogen y dejan estela
-      const k = Math.max(0.25, p.life / p.max), r = 0.35 + p.size * 0.35 * k;
-      ctx.globalAlpha = Math.min(1, 0.4 + k);
       ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
-      if (Math.abs(p.vx) + Math.abs(p.vy) > 60) { ctx.strokeStyle = p.color; ctx.lineWidth = r; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - p.vx * 0.012, y - p.vy * 0.012); ctx.stroke(); }
+      ctx.fillRect(x, y, p.size, p.size);
       ctx.globalAlpha = 1;
     }
   }
