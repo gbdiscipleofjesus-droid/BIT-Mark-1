@@ -60,6 +60,8 @@ const Poses = {
   idle(t) { const b = Math.sin(t * 3); return P({ hy: b > 0.6 ? 1 : 0, a2: -35 - b * 5, b2: -50 + b * 5 }); },
   // la pose agachada clásica de Spider-Man (2 fotogramas de respiración)
   stance(t) { const b = Math.floor(t * 2.5) % 2; return P({ t: 30, h: -25, l1: -30, l2: 100, r1: 70, r2: -125, a1: 30, a2: -90, b1: 70 + b * 8, b2: -40, hy: 6 + b }); },
+  // planeo: cuerpo en horizontal, brazos abiertos al frente y piernas estiradas atrás
+  glide(t) { const b = Math.floor(t * 4) % 2; return P({ t: 90, h: -60, l1: -100, l2: 5 + b * 5, r1: -80, r2: -5, a1: 175, a2: 0, b1: 120 + b * 5, b2: 0, hy: -4 }); },
   // de pie, relajado (respiración lenta en 2 fotogramas)
   stand(t) { const b = Math.floor(t * 1.6) % 2; return P({ t: 2, h: 0, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14 - b * 6, b1: 12, b2: -16 - b * 6, hy: b }); },
   // animaciones de espera

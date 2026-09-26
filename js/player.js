@@ -142,7 +142,7 @@ class Player {
       if (pr('POWER')) SuitPowers.use(this, world);
     }
     // ---- disparo de red ----
-    if (pr('SHOOT') && this.shootCd <= 0 && U && Progress.has('d_tiron') && this.state === 'normal' && world.yank(this)) {
+    if (pr('SHOOT') && this.shootCd <= 0 && Progress.has('d_tiron') && this.state === 'normal' && world.yank(this)) {
       this.shootCd = 0.4; this.shootPose = 0.2;
     } else if (pr('SHOOT') && this.shootCd <= 0 && ['normal', 'swing', 'wall', 'facade'].includes(this.state)) {
       if (this.webs > 0) {
@@ -598,7 +598,7 @@ class Player {
     e.x = this.cx + this.facing * 8 - e.w / 2; e.y = this.feet - e.h; e.z = this.z; e.facing = -this.facing; e.vx = 0; e.vy = 0;
     e.state = 'hurt'; e.t = 0.3;
     const away = ix && ix !== this.facing;
-    if (pr('JUMP') || (pr('ATTACK') && (away || this.knees >= 2))) { this.throwGrab(world, away ? ix : this.facing); return; }
+    if (pr('JUMP') || (pr('SHOOT') && this.grabT > 0.12) || (pr('ATTACK') && (away || this.knees >= 2))) { this.throwGrab(world, away ? ix : this.facing); return; }
     if (pr('ATTACK') && this.kneeT <= 0) {
       this.knees++; this.kneeT = 0.14;
       world.playerHits(e, 0.9 * this.dmgMul, 0, 0, false);
@@ -700,7 +700,8 @@ class Player {
           else if (this.landT > 0) pose = Poses.crouch();
           else if (this.emote) pose = Poses.emote(this.emote.kind, this.emote.t / this.emote.dur, this.emote.t);
           else pose = Poses.stand(t);
-        } else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
+        } else if (this.gliding) pose = Poses.glide(t);
+        else if (this.flipT > 0) pose = Poses.flip(0.4 - this.flipT);
         else pose = this.vy < 0 ? Poses.jump() : Poses.fall();
     }
     // inclinación según la velocidad al correr
@@ -787,6 +788,13 @@ class Player {
     if (this.shieldT > 0) { ctx.strokeStyle = Math.floor(t * 10) % 2 ? '#80e0ff' : '#ffffff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y - 14, 17, 0, TAU); ctx.stroke(); }
     if (this.furyT > 0 && Math.floor(t * 12) % 2) { ctx.fillStyle = 'rgba(255,80,40,0.25)'; ctx.fillRect(x - 9, y - 30, 18, 30); }
     if (this.shockT > 0 && Math.floor(t * 20) % 3 === 0) { ctx.fillStyle = '#a0f0ff'; ctx.fillRect(x + rand(-8, 8), y - rand(4, 28), 1, 3); }
-    if (this.gliding) { ctx.fillStyle = 'rgba(240,240,255,0.7)'; ctx.fillRect(x - 12, y - 20, 24, 1); ctx.fillRect(x - 9, y - 19, 18, 1); }
+    if (this.gliding) {
+      // ala de telaraña entre el brazo y el costado
+      const [ax, ay] = wp.sh, [bx, by] = wp.h1, [cx2, cy2] = wp.k1;
+      ctx.fillStyle = 'rgba(235,235,255,0.35)';
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.quadraticCurveTo((bx + cx2) / 2, (by + cy2) / 2 + 4, cx2, cy2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 0.4;
+      for (let i = 1; i <= 3; i++) { const u = i / 4; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx + (cx2 - bx) * u, by + (cy2 - by) * u + 2 * Math.sin(u * Math.PI)); ctx.stroke(); }
+    }
   }
 }

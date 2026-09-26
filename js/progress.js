@@ -16,7 +16,7 @@ const SKILLS = [
   { id: 'd_remate', b: 'd', name: 'Remate', desc: 'La patada final del combo hace +50% de daño.', req: 'd_foco' },
   { id: 'd_contra', b: 'd', name: 'Contraataque perfecto', desc: 'Tras una esquiva perfecta, tu siguiente golpe hace el doble y lanza.', req: 'd_vida' },
   { id: 'd_sismo', b: 'd', name: 'Impacto sísmico', desc: 'El picado crea una onda enorme que atrapa a los enemigos.', req: 'd_remate' },
-  { id: 'd_tiron', b: 'd', name: 'Tirón de red', desc: 'ARRIBA + disparo de red: atrae al enemigo hacia ti.', req: 'd_contra' },
+  { id: 'd_tiron', b: 'd', name: 'Tirón de red', desc: 'Disparo de red: atrapa al enemigo y lo trae a tus manos para lanzarlo.', req: 'd_contra' },
   { id: 'd_escudo', b: 'd', name: 'Piel dura', desc: 'Recibes un 20% menos de daño.', req: 'd_sismo' },
   { id: 'b_veloz', b: 'b', name: 'Balanceo veloz', desc: 'Te balanceas un 15% más rápido.' },
   { id: 'b_triple', b: 'b', name: 'Triple salto', desc: 'Un salto extra en el aire.' },

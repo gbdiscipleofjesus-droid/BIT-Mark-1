@@ -64,6 +64,8 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 
 - **Pixel art clásico:** sprites de píxel grueso con ojos grandes, contorno negro y colores planos; cámara abierta con la ciudad al fondo.
 - **Reposo:** Spider-Man se queda de pie. Si pulsas **Pose** (R en el teclado) o no lo mueves durante unos segundos, hace animaciones: saluda, se estira, se rasca la cabeza, saca músculo, juega al yoyó con la telaraña, se sienta o mira a su alrededor. Cualquier movimiento o botón las interrumpe.
+- **Planeo** (habilidad Alas de red): al mantener Saltar cayendo, Spider-Man se pone en horizontal con un ala de telaraña.
+- **Tirón de red** (habilidad): pulsa solo Disparar red (V/I en el teclado; X en el mando de Nintendo, Y en Xbox, △ en PlayStation) y el matón que tengas delante queda atrapado en tus manos. Vuelve a pulsar Disparar red, Saltar o Golpear hacia atrás para lanzarlo contra los demás, o Golpear para darle rodillazos. Con jefes, voladores o blindados solo los atrae y los deja enredados.
 - **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás. El combo en el suelo es de 4 golpes.
 
 ## Estilo PlayStation (versión 2.5D)

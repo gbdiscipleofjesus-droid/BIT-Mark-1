@@ -289,9 +289,12 @@ class World {
     }
     if (!best) return false;
     this.fx.push(new GBeam(p.cx, p.y + 8, best.cx, best.cy, '#ffffff'));
-    best.x = p.cx + p.facing * 16 - best.w / 2; best.vx = 0; best.web(1.4, this);
     this.particles.burst(best.cx, best.cy, 8, '#ffffff', 60);
     Audio2.sfx('thwip');
+    // lo trae a tus manos: si se puede sujetar, queda agarrado para lanzarlo
+    const canHold = p.onGround && !best.fly && !best.spec.armor && ['thug', 'gunner', 'zombie', 'bat', 'brute'].includes(best.type);
+    if (canHold) { best.onGround = true; best.vy = 0; p.startGrab(this, best); this.float('¡ATRAPADO!', p.cx, p.y - 10, '#ffffff'); }
+    else { best.x = p.cx + p.facing * 16 - best.w / 2; best.vx = 0; best.web(1.4, this); }
     return true;
   }
 
