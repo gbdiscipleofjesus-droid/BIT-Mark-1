@@ -417,6 +417,33 @@ class CoopTab {
 }
 
 // ------------------------------------------------------------------ SISTEMA
+class PosesTab {
+  constructor(M) {
+    this.M = M; this.name = 'POSES';
+    const items = [{ id: 'random', name: 'Aleatoria' }].concat(EMOTES).map((e) => ({
+      label: () => (Game.save.emote || 'random') === e.id ? '> ' + e.name.toUpperCase() : e.name.toUpperCase(),
+      act: () => { Game.save.emote = e.id; Audio2.sfx('select'); },
+    }));
+    items.push({ label: 'HACER LA POSE AHORA', act: () => { const p = M.world && M.world.player; if (p) p.poseReq = Game.save.emote || 'random'; this.res = 'close'; } });
+    this.menu = new Menu(items);
+  }
+  update(dt) { const r = this.menu.update(dt); if (this.res) { const x = this.res; this.res = null; return x; } return r === 'back' ? null : r; }
+  draw(ctx, t) {
+    Font.draw(ctx, 'POSE DEL BOTÓN ' + L('EMOTE'), 12, 27, UI.gold, {});
+    this.menu.draw(ctx, 90, 40, t, { lh: 11 });
+    // vista previa animada
+    const sel = this.menu.sel, all = [{ id: 'random' }].concat(EMOTES), e = all[Math.min(sel, all.length - 1)];
+    const id = e && e.id !== 'random' ? e.id : EMOTES[Math.floor(t / 2.5) % EMOTES.length].id;
+    const dur = (EMOTES.find((x) => x.id === id) || EMOTES[0]).dur, u = (t % dur) / dur;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(210, 30, 160, 160);
+    const pal = (SUITS.find((s) => s.id === Game.save.suit) || SUITS[0]).palObj;
+    Rig.draw(ctx, 290, 176, 1, Poses.emote(id, u, t), pal, { scale: 4 });
+    if (id === 'yoyo') { const d = 10 + Math.abs(Math.sin(t * 5)) * 30; ctx.strokeStyle = '#f0f0f0'; ctx.beginPath(); ctx.moveTo(300, 120); ctx.lineTo(300, 120 + d); ctx.stroke(); }
+    Font.draw(ctx, 'También sale sola si no te mueves unos segundos', W / 2, 196, PS_COL.dim, { align: 'center' });
+  }
+  hints() { return [L('JUMP') + ' ELEGIR', L('DODGE') + ' VOLVER']; }
+}
+
 class SystemTab {
   constructor(M) {
     this.M = M; this.name = 'SISTEMA';
@@ -448,7 +475,7 @@ class PsMenu {
     this.world = world; this.t = 0; this.sub = null;
     this.openDev = pressedDevice(['PAUSE']) || Game.p1Dev || 'kb';
     if (!Game.coop) Game.p1Dev = this.openDev;
-    this.tabs = [new MapTab(this), new SkillsTab(this), new GadgetsTab(this), new SuitsTab(this), new RecordsTab(this), new CoopTab(this), new SystemTab(this)];
+    this.tabs = [new MapTab(this), new SkillsTab(this), new GadgetsTab(this), new SuitsTab(this), new RecordsTab(this), new PosesTab(this), new CoopTab(this), new SystemTab(this)];
     this.tab = 0; this.lock = 0.15;
     Audio2.musicGain && (Audio2.musicGain.gain.value = Game.settings.music / 10 * 0.2);
   }
@@ -475,7 +502,7 @@ class PsMenu {
     // barra de pestañas
     const tw = W / this.tabs.length;
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, W, 20);
-    const short = { HABILIDADES: 'HABILID.', ARTILUGIOS: 'ARTILUG.', MULTIJUGADOR: 'MULTIJ.' };
+    const short = { HABILIDADES: 'HABIL.', ARTILUGIOS: 'ARTIL.', MULTIJUGADOR: 'MULTI', 'RÉCORDS': 'RÉCORD' };
     this.tabs.forEach((tb, i) => {
       const act = i === this.tab, x = i * tw;
       if (act) { ctx.fillStyle = 'rgba(224,32,44,0.8)'; ctx.fillRect(x, 0, tw, 20); ctx.fillStyle = '#ffffff'; ctx.fillRect(x, 18, tw, 2); }

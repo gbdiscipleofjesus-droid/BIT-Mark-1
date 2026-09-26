@@ -32,6 +32,7 @@ const TOUCH_BTNS = [
   { id: 'ALLY', x: 236, y: 178, r: 10, label: 'R3' },
   { id: 'GADGET', x: 236, y: 146, r: 10, label: 'ART' },
   { id: 'POWER', x: 304, y: 112, r: 9, label: 'POD' },
+  { id: 'EMOTE', x: 270, y: 118, r: 9, label: 'POSE' },
   { id: 'PAUSE', x: 368, y: 16, r: 10, label: 'II' },
 ];
 

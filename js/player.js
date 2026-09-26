@@ -18,6 +18,14 @@ const ATK = {
   swingkick: { dur: 0.35, act: [0.02, 0.26], box: [2, -21, 23, 21], dmg: 3, kx: 300, ky: -130, pose: 'swingkick', heavy: true },
 };
 
+// Poses disponibles (botón de pose y pestaña POSES del menú)
+const EMOTES = [
+  { id: 'wave', name: 'Saludar', dur: 1.6 }, { id: 'classic', name: 'Agachado clásico', dur: 2.4 }, { id: 'thwip', name: 'Mano de telaraña', dur: 2 },
+  { id: 'hero', name: 'Pose de héroe', dur: 2.4 }, { id: 'point', name: 'Señalar', dur: 1.8 }, { id: 'flex', name: 'Sacar músculo', dur: 1.8 },
+  { id: 'stretch', name: 'Estirarse', dur: 2 }, { id: 'scratch', name: 'Rascarse la cabeza', dur: 1.6 }, { id: 'yoyo', name: 'Yoyó de telaraña', dur: 2.6 },
+  { id: 'sit', name: 'Sentarse', dur: 3.5 }, { id: 'look', name: 'Mirar alrededor', dur: 2.6 },
+];
+
 function world_coop(p) { const w = Game.scene && Game.scene.world; return !!(w && w.coop && p.idx !== undefined); }
 
 class Player {
@@ -178,7 +186,8 @@ class Player {
     else {
       this.idleT = (this.idleT || 0) + dt;
       if (this.emote) { this.emote.t += dt; if (this.emote.t >= this.emote.dur) { this.emote = null; this.idleT = 0; } }
-      if (pr('EMOTE') || (!this.emote && this.idleT > 5)) this.startEmote();
+      if (pr('EMOTE') || this.poseReq) { this.startEmote(this.poseReq || Game.save.emote || 'random'); this.poseReq = null; }
+      else if (!this.emote && this.idleT > 5) this.startEmote();
     }
     switch (this.state) {
       case 'normal': this.updNormal(dt, world, ix, U, Dn, pr); break;
@@ -357,8 +366,9 @@ class Player {
     }
     if (pr('WEB')) { this.state = 'normal'; this.grabCd = 0.3; this.vy = -150; this.tryAttach(world, ix || this.facing); return; }
     if (ix) this.facing = ix;
-    this.vx = ix * 70 * this.climbMul;
-    this.vy = (U ? -PHYS.climb : Dn ? PHYS.climb : 0) * this.climbMul;
+    const run = this.climbRun(dt, ix || U || Dn, world);
+    this.vx = ix * 70 * this.climbMul * run;
+    this.vy = (U ? -PHYS.climb : Dn ? PHYS.climb : 0) * this.climbMul * run;
     lv.move(this, dt);
     // arriba del todo: subir al tejado
     if (this.y + this.h <= f.y + 3) {
@@ -383,7 +393,8 @@ class Player {
     const lv = world.level;
     this.facing = this.wallDir;
     let vy = 0;
-    if (U) vy = -PHYS.climb * this.climbMul; else if (Dn) vy = PHYS.climb * this.climbMul;
+    const run = this.climbRun(dt, U || Dn, world);
+    if (U) vy = -PHYS.climb * this.climbMul * run; else if (Dn) vy = PHYS.climb * this.climbMul * run;
     this.vx = this.wallDir * 40; this.vy = vy;
     const oldY = this.y;
     lv.move(this, dt);
@@ -408,6 +419,14 @@ class Player {
     if (ix === -this.wallDir) { this.state = 'normal'; this.grabCd = 0.25; this.vx = -this.wallDir * 60; return; }
     if (this.hitCeil && vy < 0) this.y = oldY;
     if (vy !== 0 && Math.floor(this.anim * 8) !== Math.floor((this.anim - dt) * 8)) Audio2.sfx('step');
+  }
+
+  // al escalar, si mantienes la dirección un momento, Spider-Man echa a correr por la pared
+  climbRun(dt, moving, world) {
+    this.climbHold = moving ? (this.climbHold || 0) + dt : 0;
+    this.wallRun = this.climbHold > 0.45;
+    if (this.wallRun && Math.floor(this.anim * 14) !== Math.floor((this.anim - dt) * 14)) world.particles.dust(this.cx + (this.state === 'wall' ? this.wallDir * 5 : 0), this.cy + 6, 1);
+    return this.wallRun ? 2.3 : 1;
   }
 
   tryAttach(world, ix) {
@@ -484,11 +503,14 @@ class Player {
       if (vr > 0) { this.vx -= vr * nx; this.vy -= vr * ny; }
     }
     const sp = Math.hypot(this.vx, this.vy), mx = PHYS.swingMax * this.swingMul;
+    // quieto colgado de la telaraña: pose clásica boca abajo
+    this.hangT = sp < 45 && !ix ? (this.hangT || 0) + dt : 0;
     if (sp > mx) { this.vx *= mx / sp; this.vy *= mx / sp; }
     if (dy < -6) this.releaseSwing();
   }
 
   releaseSwing() {
+    this.hangT = 0;
     if (this.state !== 'swing') return;
     this.state = 'normal';
     this.anchor = null;
@@ -557,11 +579,12 @@ class Player {
     }
   }
 
-  startEmote() {
-    const list = ['wave', 'stretch', 'scratch', 'flex', 'yoyo', 'sit', 'look'];
-    let k = pick(list);
-    if (this.emote && k === this.emote.kind) k = list[(list.indexOf(k) + 1) % list.length];
-    this.emote = { kind: k, t: 0, dur: { wave: 1.6, stretch: 2, scratch: 1.6, flex: 1.8, yoyo: 2.6, sit: 3.5, look: 2.6 }[k] };
+  // forced: la pose elegida en el menú (o aleatoria) al pulsar el botón de pose
+  startEmote(forced) {
+    const list = EMOTES.map((e) => e.id);
+    let k = forced && forced !== 'random' ? forced : pick(list);
+    if (!forced && this.emote && k === this.emote.kind) k = list[(list.indexOf(k) + 1) % list.length];
+    this.emote = { kind: k, t: 0, dur: (EMOTES.find((e) => e.id === k) || EMOTES[0]).dur };
     this.idleT = 0;
   }
 
@@ -678,8 +701,8 @@ class Player {
         else { pose = Poses.corkscrew(u); this.spinX = Math.cos(u * TAU * 1.5); }
         break;
       }
-      case 'wall': pose = Poses.wall(this.vy !== 0 ? this.anim : 0); f = this.wallDir; dx = f * 2; break;
-      case 'facade': pose = Poses.wall((this.vy !== 0 || this.vx !== 0) ? this.anim : 0); pose.t = 0; break;
+      case 'wall': pose = Poses.wall(this.vy !== 0 ? this.anim * (this.wallRun ? 2.4 : 1) : 0); f = this.wallDir; dx = f * 2; if (this.wallRun) pose.t = 15; break;
+      case 'facade': pose = Poses.wall((this.vy !== 0 || this.vx !== 0) ? this.anim * (this.wallRun ? 2.4 : 1) : 0); pose.t = 0; break;
       case 'charge': pose = Poses.heal(this.anim); break;
       case 'grab': pose = this.kneeT > 0.05 ? Poses.knee() : Poses.grab(); break;
       case 'special': pose = Poses.special(0.55 - this.st); break;
@@ -687,8 +710,8 @@ class Player {
         const a = this.anchor;
         const lx = (a.x - this.cx) * f, ly = a.y - (this.y + 4);
         const ang = Math.atan2(lx, -ly) / D2R;
-        pose = Poses.swing(170);
-        pose.rot = ang * 0.9;
+        if (this.hangT > 0.8) pose = Poses.hang(t);
+        else { pose = Poses.swing(170); pose.rot = ang * 0.9; }
         break;
       }
       default:
@@ -753,7 +776,8 @@ class Player {
     if (this.state === 'swing' && this.anchor) {
       ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(wp.h2[0] + 0.5, wp.h2[1] + 0.5);
+      const from = this.hangT > 0.8 ? wp.f1 : wp.h2;
+      ctx.moveTo(from[0] + 0.5, from[1] + 0.5);
       ctx.lineTo(Math.round(this.anchor.x - cam.x) + 0.5, Math.round(this.anchor.y - cam.y) + 0.5);
       ctx.stroke();
       ctx.fillStyle = '#ffffff';

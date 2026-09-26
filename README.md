@@ -64,6 +64,9 @@ Desde el menú principal, **JUGAR EN 3D**, o abre directamente `dist/spiderman3d
 
 - **Pixel art clásico:** sprites de píxel grueso con ojos grandes, contorno negro y colores planos; cámara abierta con la ciudad al fondo.
 - **Reposo:** Spider-Man se queda de pie. Si pulsas **Pose** (R en el teclado) o no lo mueves durante unos segundos, hace animaciones: saluda, se estira, se rasca la cabeza, saca músculo, juega al yoyó con la telaraña, se sienta o mira a su alrededor. Cualquier movimiento o botón las interrumpe.
+- **Correr por la pared:** al escalar (en una pared o una fachada), si mantienes la dirección un momento, Spider-Man echa a correr: sube más del doble de rápido.
+- **Colgado de la telaraña:** si te quedas quieto balanceándote, se pone boca abajo colgado del pie, la pose clásica del cómic.
+- **Poses:** botón Pose (R en el teclado, POSE en la pantalla táctil; en el mando se asigna en Controles) y pestaña **POSES** del menú de pausa para elegir cuál hace el botón (o aleatoria) y verla en grande: saludar, agachado clásico, mano de telaraña, pose de héroe, señalar, sacar músculo, estirarse, rascarse la cabeza, yoyó de telaraña, sentarse y mirar alrededor.
 - **Planeo** (habilidad Alas de red): al mantener Saltar cayendo, Spider-Man se pone en horizontal con un ala de telaraña.
 - **Tirón de red** (habilidad): pulsa solo Disparar red (V/I en el teclado; X en el mando de Nintendo, Y en Xbox, △ en PlayStation) y el matón que tengas delante queda atrapado en tus manos. Vuelve a pulsar Disparar red, Saltar o Golpear hacia atrás para lanzarlo contra los demás, o Golpear para darle rodillazos. Con jefes, voladores o blindados solo los atrae y los deja enredados.
 - **Agarre:** camina contra un matón para sujetarlo; Golpear da rodillazos, y al tercero (o con Golpear hacia atrás, o con Saltar) lo lanzas contra los demás. El combo en el suelo es de 4 golpes.

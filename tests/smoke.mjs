@@ -184,7 +184,7 @@ await sim(6);
 const hasPause = await page.evaluate(() => !!Game.scene.world.pause);
 console.log('pause open', hasPause);
 await shot('30_pause');
-for (let tab = 0; tab < 7; tab++) {
+for (let tab = 0; tab < 8; tab++) {
   await page.evaluate((tab) => { const w = Game.scene.world; if (!w.pause) w.openPause(); w.pause.lock = 0; w.pause.tab = tab; }, tab);
   await sim(4);
   // en cada pestaña: moverse y aceptar (aprender, equipar, fabricar...)

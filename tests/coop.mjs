@@ -22,7 +22,7 @@ const r = await pg.evaluate(() => {
   // J1 abre el menú con su mando (pad 0) y va a la pestaña MULTIJUGADOR
   btn(0, 9, true); step(1); btn(0, 9, false); step(12);
   out.menuOpen = !!w.pause;
-  w.pause.tab = 5; w.pause.lock = 0;
+  w.pause.tab = w.pause.tabs.findIndex((t) => t.name === 'MULTIJUGADOR'); w.pause.lock = 0;
   // los mandos 1, 2 y 3 se unen con SALTAR (A / cruz / B)
   for (const p of [1, 2, 3]) { btn(p, 0, true); step(1); btn(p, 0, false); step(2); }
   // el J2 cambia de traje con la cruceta

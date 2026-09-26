@@ -62,6 +62,8 @@ const Poses = {
   stance(t) { const b = Math.floor(t * 2.5) % 2; return P({ t: 30, h: -25, l1: -30, l2: 100, r1: 70, r2: -125, a1: 30, a2: -90, b1: 70 + b * 8, b2: -40, hy: 6 + b }); },
   // planeo: cuerpo en horizontal, brazos abiertos al frente y piernas estiradas atrás
   glide(t) { const b = Math.floor(t * 4) % 2; return P({ t: 90, h: -60, l1: -100, l2: 5 + b * 5, r1: -80, r2: -5, a1: 175, a2: 0, b1: 120 + b * 5, b2: 0, hy: -4 }); },
+  // colgado boca abajo de la telaraña (pose clásica del cómic)
+  hang(t) { return P({ t: 0, h: 0, l1: 0, l2: 0, r1: 35, r2: -95, a1: 165, a2: 5, b1: 175, b2: -10, rot: 180 + Math.round(Math.sin(t * 1.8) * 12) }); },
   // de pie, relajado (respiración lenta en 2 fotogramas)
   stand(t) { const b = Math.floor(t * 1.6) % 2; return P({ t: 2, h: 0, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14 - b * 6, b1: 12, b2: -16 - b * 6, hy: b }); },
   // animaciones de espera
@@ -74,6 +76,10 @@ const Poses = {
       case 'yoyo': return P({ t: 3, h: 20, l1: -7, l2: 3, r1: 8, r2: -3, a1: -10, a2: -14, b1: 60, b2: -40 });
       case 'sit': return P({ t: 0, h: Math.sin(t * 2) * 12, l1: 80, l2: -80, r1: 90, r2: -90, a1: 20, a2: -40, b1: 30, b2: -50, hy: 5 });
       case 'look': return P({ t: 2, h: Math.sin(t * 1.5) > 0 ? 25 : -20, l1: -7, l2: 3, r1: 8, r2: -3, a1: 20, a2: -110, b1: 25, b2: -115, hy: 0 });
+      case 'classic': return this.stance(t);
+      case 'thwip': { const k = Math.floor(t * 2) % 2; return P({ t: 6, h: -5, l1: -22, l2: 8, r1: 24, r2: -10, a1: 30, a2: -90, b1: 95, b2: k ? -8 : 0 }); }
+      case 'hero': return P({ t: -4, h: -8, l1: -16, l2: 2, r1: 16, r2: -2, a1: 35, a2: -150, b1: 40, b2: -150, hy: 0 });
+      case 'point': return P({ t: 4, h: -10, l1: -12, l2: 4, r1: 14, r2: -4, a1: -10, a2: -14, b1: 120, b2: 0 });
       default: return this.stand(t);
     }
   },
