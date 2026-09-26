@@ -26,6 +26,9 @@ const EMOTES = [
   { id: 'sit', name: 'Sentarse', dur: 3.5 }, { id: 'look', name: 'Mirar alrededor', dur: 2.6 },
 ];
 
+// Escala visual de Spider-Man (los enemigos de tamaño humano se dibujan igual)
+const PLAYER_SC = 1.35;
+
 function world_coop(p) { const w = Game.scene && Game.scene.world; return !!(w && w.coop && p.idx !== undefined); }
 
 class Player {
@@ -731,7 +734,7 @@ class Player {
     if (this.onGround && this.state === 'normal' && !this.attack && Math.abs(this.vx) > 12) pose.t += 6;
     // aterrizaje con peso: se hunde un poco
     if (this.landT > 0 && this.state === 'normal') pose.hy = (pose.hy || 0) + Math.round(this.landT * 30);
-    const SC = 1.35;
+    const SC = PLAYER_SC;
     const cork = this.state === 'dodge' && this.dodgeKind === 'corkscrew';
     if (cork) {
       const k = this.spinX || 1;

@@ -346,7 +346,7 @@ class Enemy {
     const pal = this.flash > 0 ? FLASH_PAL : this.pal;
     // temblor al recibir un golpe
     const jit = this.state === 'hurt' && this.t > 0.18 ? (Math.floor(t * 60) % 2 ? 1 : -1) : 0;
-    const sc = this.scale * 1.12;
+    const sc = Math.max(this.scale * 1.12, PLAYER_SC);
     const wp = Rig.draw(ctx, x + jit, y, this.facing, pose, pal, { scale: sc, bulk: this.type === 'brute' ? 6 : 4 });
     this.drawOutfit(ctx, wp, t, sc);
     // arco del golpe enemigo
@@ -412,7 +412,7 @@ class Enemy {
 
   drawWeapon(ctx, wp, t) {
     const [hx, hy] = wp.h2;
-    const f = this.facing, k = this.scale * 1.12 * Rig.ws;
+    const f = this.facing, k = Math.max(this.scale * 1.12, PLAYER_SC) * Rig.ws;
     if (this.spec.weapon === 'bat') {
       const up = this.state === 'windup';
       const ex = up ? hx - f * 6 * k : hx + f * 11 * k, ey = up ? hy - 10 * k : hy - 2 * k;
@@ -680,8 +680,8 @@ class Shocker extends Boss {
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 8) : Poses.idle(t);
     }
     const glow = this.state.endsWith('WU') && Math.floor(t * 20) % 2;
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
-    const k = this.scale * Rig.ws;
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC) });
+    const k = Math.max(this.scale, PLAYER_SC) * Rig.ws;
     DX.gauntlet(ctx, wp.e1, wp.h1, k, glow, this.type === 'electro' ? '#ffe040' : '#60c0ff');
     DX.gauntlet(ctx, wp.e2, wp.h2, k, glow, this.type === 'electro' ? '#ffe040' : '#60c0ff');
     this.drawStun(ctx, wp.head[0], wp.head[1] - 8, t);
@@ -706,7 +706,7 @@ class ExoBrute extends Boss {
   }
   aiExtra() { return false; }
   drawExtra(ctx, wp) {
-    const k = this.scale * Rig.ws;
+    const k = Math.max(this.scale, PLAYER_SC) * Rig.ws;
     DX.pauldron(ctx, wp.sh[0] - this.facing * 0.4 * k, wp.sh[1] + 2.2 * k, k * 0.85, this.facing, '#7a808c', '#e09020');
     DX.glow(ctx, wp.mid[0] + this.facing * 1.2 * k, wp.mid[1], 1.6 * k, '255,120,40', 0.8);
   }
@@ -792,7 +792,7 @@ class ExoBrute extends Boss {
       case 'stormWU': case 'sandwaveWU': case 'spikeWU': pose = Poses.cheer(t); break;
       case 'stompWU': pose = Poses.crouch(); break;
     }
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, bulk: 6 });
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC), bulk: 6 });
     this.drawExtra(ctx, wp, t);
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
   }
@@ -889,7 +889,7 @@ class Vulture extends Boss {
     const flap = this.state === 'stunned' || this.dead ? 0.3 : Math.sin(t * (this.state === 'swoop' ? 4 : 10));
     const neon = this.type === 'vulture2099';
     const drawWings = (c, wp, f, s) => DX.wings(c, wp.sh[0], wp.sh[1], f, s, flap, neon);
-    Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: drawWings });
+    Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC), extraBack: drawWings });
     if (this.state === 'swoopWU' && Math.floor(t * 16) % 2) { ctx.fillStyle = '#ff4040'; ctx.fillRect(x - 1, y - 34, 2, 4); }
     this.drawStun(ctx, x, y - 30, t);
   }
@@ -1137,7 +1137,7 @@ class Scorpion extends Boss {
       }
       DX.tail(c, pts, s, f, self.phase === 2 ? '#90ff90' : '#e8e0a0');
     };
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: tail });
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC), extraBack: tail });
     if (this.state === 'stabWU' || this.state === 'sweepWU') {
       if (Math.floor(t * 16) % 2) { ctx.fillStyle = '#ff4040'; ctx.fillRect(wp.head[0] - 1, wp.head[1] - 12, 2, 4); }
     }
@@ -1503,7 +1503,7 @@ class Venom extends ExoBrute {
     return true;
   }
   drawExtra(ctx, wp, t) {
-    const f = this.facing, k = this.scale * Rig.ws;
+    const f = this.facing, k = Math.max(this.scale, PLAYER_SC) * Rig.ws;
     // emblema de araña blanco que envuelve el torso (dibujado encima, como en el cómic)
     if (!this.dead && this.flash <= 0) drawSymbioteSpider(ctx, wp.mid[0] + f * 0.6 * k, wp.mid[1] - 1.6 * k, 1.05 * k, f);
     // garras blancas
@@ -1589,7 +1589,7 @@ class Rino extends ExoBrute {
     return true;
   }
   drawExtra(ctx, wp) {
-    const [hx, hy] = wp.head, f = this.facing, k = this.scale * Rig.ws;
+    const [hx, hy] = wp.head, f = this.facing, k = Math.max(this.scale, PLAYER_SC) * Rig.ws;
     DX.horn(ctx, hx + f * 2.2 * k, hy + 0.2 * k, f, 2.6 * k, '#ece6d2');
     DX.horn(ctx, hx + f * 1.2 * k, hy - 1.4 * k, f, 1.3 * k, '#d8d2bc');
     DX.pauldron(ctx, wp.sh[0] - f * 0.4 * k, wp.sh[1] + 2.2 * k, k * 0.85, f, '#8a8a92', '#5a5a62');
@@ -1754,8 +1754,8 @@ class Mancha extends Boss {
       case 'stunned': pose = Poses.hurt(); break;
       default: pose = Math.abs(this.vx) > 8 ? Poses.run(this.anim * 8) : Poses.idle(t);
     }
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
-    const k = this.scale * Rig.ws;
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC) });
+    const k = Math.max(this.scale, PLAYER_SC) * Rig.ws;
     ctx.fillStyle = '#08080a';
     for (const [pt, rx, ry, dx, dy] of [[wp.mid, 1.5, 1.9, -0.3, -0.6], [wp.mid, 0.9, 0.7, 1.1, 1.6], [wp.k2, 1.0, 1.2, 0, 0], [wp.e1, 0.8, 0.9, 0, 0.4], [wp.hip, 1.1, 0.8, 0.5, 0.4], [wp.f1, 0.7, 0.6, 0, -1.4]]) {
       ctx.beginPath(); ctx.ellipse(pt[0] + dx * k, pt[1] + dy * k, rx * k, ry * k, 0.4, 0, TAU); ctx.fill();
@@ -1837,7 +1837,7 @@ class Miguel extends Scorpion {
       c.fillStyle = this.capeCol || '#d01a2a';
       c.beginPath(); c.moveTo(wp.sh[0], wp.sh[1]); c.lineTo(wp.sh[0] - f * 10, wp.hip[1] + 6 + Math.sin(t * 6) * 2); c.lineTo(wp.sh[0] - f * 3, wp.hip[1] + 4); c.fill();
     };
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC), extraBack: cape });
     if (this.state === 'stab' || this.state === 'slash') {
       ctx.fillStyle = '#ffe0e0';
       for (let i = 0; i < 3; i++) thickLine(ctx, wp.h2[0], wp.h2[1] - 3 + i * 3, wp.h2[0] + this.facing * 26, wp.h2[1] - 6 + i * 4, 1);
@@ -1989,10 +1989,10 @@ class Desconocido extends Boss {
     }
     if (this.phase >= 2 && !this.dead) {
       ctx.globalAlpha = 0.35;
-      Rig.draw(ctx, x + Math.round(Math.sin(t * 20) * 3), y, this.facing, pose, this.pal, { scale: this.scale });
+      Rig.draw(ctx, x + Math.round(Math.sin(t * 20) * 3), y, this.facing, pose, this.pal, { scale: Math.max(this.scale, PLAYER_SC) });
       ctx.globalAlpha = 1;
     }
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale });
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC) });
     ctx.globalAlpha = 1;
     if (Math.floor(t * 6) % 2 && !this.dead) { ctx.fillStyle = '#ff8030'; ctx.fillRect(wp.mid[0] + 1, wp.mid[1] - 2, 1, 1); }
     // brasas que suben del traje quemado
@@ -2099,7 +2099,7 @@ class DoomBot extends Electro {
       c.fillStyle = '#1e4a1e';
       c.beginPath(); c.moveTo(wp.sh[0] - f * 2, wp.sh[1] - 2); c.lineTo(wp.sh[0] - f * 12, wp.hip[1] + 10 + Math.sin(t * 5) * 2); c.lineTo(wp.sh[0] + f * 2, wp.hip[1] + 8); c.fill();
     };
-    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: this.scale, extraBack: cape });
+    const wp = Rig.draw(ctx, x, y, this.facing, pose, this.flash > 0 ? FLASH_PAL : this.pal, { scale: Math.max(this.scale, PLAYER_SC), extraBack: cape });
     if (this.state.endsWith('WU') && Math.floor(t * 20) % 2) for (const h of [wp.h1, wp.h2]) DX.glow(ctx, h[0], h[1], 4, '64,255,96', 0.9);
     this.drawStun(ctx, wp.head[0], wp.head[1] - 10, t);
   }
