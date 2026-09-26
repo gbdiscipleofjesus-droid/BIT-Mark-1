@@ -170,6 +170,25 @@ const Progress = {
     Game.save.skillPts--; Game.save.skills.push(sk.id); Game.saveGame();
     return true;
   },
+  // Quitar una habilidad devuelve su punto (y los de las que dependen de ella)
+  unlearn(sk) {
+    const s = Game.save;
+    if (!this.has(sk.id)) return 0;
+    let n = 0;
+    const drop = (id) => {
+      if (!s.skills.includes(id)) return;
+      s.skills = s.skills.filter((x) => x !== id); s.skillPts++; n++;
+      for (const d of SKILLS) if (d.req === id) drop(d.id);
+    };
+    drop(sk.id);
+    Game.saveGame();
+    return n;
+  },
+  resetSkills() {
+    const s = Game.save, n = s.skills.length;
+    s.skillPts += n; s.skills = []; Game.saveGame();
+    return n;
+  },
   gadgetUnlocked(g) { return (Game.save.level || 1) >= g.lvl; },
   gadgetLevel(g) { return Game.save.gadgetLvl[g.id] || 1; },
   gadgetMax(g) { return g.charges + (this.gadgetLevel(g) - 1) + (this.has('i_ingenio') ? 1 : 0); },

@@ -117,7 +117,7 @@ class Menu {
 // ---------------------------------------------------------------------------
 class Dialog {
   constructor(lines, onDone) {
-    this.lines = lines.map(([who, text]) => ({ who, text }));
+    this.lines = lines.map(([who, text]) => ({ who, text: tr(text) }));
     this.i = 0; this.chars = 0; this.onDone = onDone; this.done = false; this.t = 0; this.spoken = -1;
   }
   get cur() { return this.lines[this.i]; }
@@ -153,14 +153,14 @@ class Dialog {
     const text = cur.text.slice(0, Math.floor(this.chars));
     if (cur.who === 'narr') {
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
-      const lines = Font.wrap(cur.text, 300);
+      const lines = Font.wrap(cur.text, 300, 1, true);
       const y0 = Math.round(H / 2 - lines.length * 6);
       let left = Math.floor(this.chars);
       lines.forEach((ln, i) => {
         const part = ln.slice(0, Math.max(0, left));
         left -= ln.length + 1;
-        const x0 = Math.round(W / 2 - Font.width(ln) / 2);
-        Font.draw(ctx, part, x0, y0 + i * 12, UI.paper, { shadow: UI.ink });
+        const x0 = Math.round(W / 2 - Font.width(ln, 1, true) / 2);
+        Font.draw(ctx, part, x0, y0 + i * 12, UI.paper, { shadow: UI.ink, raw: true });
       });
     } else {
       const bx = 8, by = 148, bw = W - 16, bh = 60;
@@ -171,12 +171,12 @@ class Dialog {
         tx = bx + 38;
       }
       Font.draw(ctx, who.name, tx, by + 7, UI.gold, { shadow: UI.ink });
-      const lines = Font.wrap(cur.text, bw - (tx - bx) - 10);
+      const lines = Font.wrap(cur.text, bw - (tx - bx) - 10, 1, true);
       let left = Math.floor(this.chars);
       lines.slice(0, 4).forEach((ln, i) => {
         const part = ln.slice(0, Math.max(0, left));
         left -= ln.length + 1;
-        Font.draw(ctx, part, tx, by + 20 + i * 10, UI.paper);
+        Font.draw(ctx, part, tx, by + 20 + i * 10, UI.paper, { raw: true });
       });
     }
     if (this.chars >= cur.text.length && Math.floor(t * 3) % 2) {

@@ -529,13 +529,16 @@ class Boss extends Enemy {
     }
   }
   onPhase2() {}
-  web(dur, world) {
+  // power: cuánto cuenta la red (disparo normal 1; las redes de habilidades cuentan más)
+  web(dur, world, power = 1) {
     if (this.dead || this.state === 'wait' || this.stun > 0) return;
-    this.webHits++;
-    world.particles.burst(this.cx, this.cy, 6, '#ffffff', 60);
+    this.webHits += power;
+    world.particles.burst(this.cx, this.cy, 6 + power * 4, '#ffffff', 60 + power * 20);
+    if (power > 1) world.float('RED x' + power, this.cx, this.y - 20, '#80e0ff');
     if (this.webHits >= this.webNeed) {
       this.webHits = 0;
-      this.stun = 1.8; this.state = 'stunned'; this.t = 1.8;
+      const st = 1.8 + (power - 1) * 0.5;
+      this.stun = st; this.state = 'stunned'; this.t = st;
       world.float('¡ATURDIDO!', this.cx, this.y - 10, '#ffe060');
       Audio2.sfx('webhit');
       this.onStun(world);

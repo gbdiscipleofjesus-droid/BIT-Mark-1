@@ -352,17 +352,21 @@ const Voice = {
     try {
       if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
       this.ok = true;
-      const pickV = () => {
-        const all = window.speechSynthesis.getVoices() || [];
-        const es = all.filter((v) => /^es([-_]|$)/i.test(v.lang || ''));
-        this.voices = es;
-        this.any = es.find((v) => /es[-_](ES|MX|US|419)/i.test(v.lang)) || es[0] || null;
-        this.female = es.find((v) => FEMALE_VOICES.test(v.name)) || null;
-        this.male = es.find((v) => MALE_VOICES.test(v.name) && v !== this.female) || null;
-      };
-      pickV();
-      window.speechSynthesis.onvoiceschanged = pickV;
+      this.pick();
+      window.speechSynthesis.onvoiceschanged = () => this.pick();
     } catch (e) { this.ok = false; }
+  },
+  // voces del idioma elegido (español, inglés o chino)
+  pick() {
+    if (!this.ok) return;
+    const lang = (typeof I18N !== 'undefined' && I18N.lang) || 'es';
+    const pref = { es: /es[-_](ES|MX|US|419)/i, en: /en[-_](US|GB)/i, zh: /zh[-_](CN|Hans)/i }[lang];
+    const all = window.speechSynthesis.getVoices() || [];
+    const es = all.filter((v) => new RegExp('^' + lang + '([-_]|$)', 'i').test(v.lang || ''));
+    this.voices = es;
+    this.any = es.find((v) => pref.test(v.lang)) || es[0] || null;
+    this.female = es.find((v) => FEMALE_VOICES.test(v.name)) || null;
+    this.male = es.find((v) => MALE_VOICES.test(v.name) && v !== this.female) || null;
   },
   clean(text) {
     return String(text)
@@ -373,7 +377,7 @@ const Voice = {
   },
   speak(who, text) {
     if (!this.ok || !Game.settings.voices) return;
-    const t = this.clean(text);
+    const t = this.clean(tr(text));
     if (!t) return;
     try {
       const synth = window.speechSynthesis;
@@ -381,7 +385,7 @@ const Voice = {
       const u = new SpeechSynthesisUtterance(t);
       const st = VOICE_STYLE[who] || { pitch: 1, rate: 1, g: 'm' };
       const v = (st.g === 'f' ? this.female : this.male) || this.any;
-      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = I18N.voice();
       u.pitch = st.pitch; u.rate = st.rate;
       u.volume = clamp(Game.settings.voices / 10, 0, 1);
       synth.speak(u);

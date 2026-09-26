@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/sitemap.xml

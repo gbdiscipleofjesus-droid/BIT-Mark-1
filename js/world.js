@@ -268,7 +268,7 @@ class World {
       if (e.dead || !e.hittable()) continue;
       if (dist(x, y, e.cx, e.cy) < r && Math.abs((e.z || 0) - ((src && src.z) || 0)) < 18) {
         this.playerHits(e, dmg, sign(e.cx - x || 1) * kx, ky, true);
-        if (web && !e.dead) e.web(2, this);
+        if (web && !e.dead) e.web(2, this, 2);
       }
     }
     this.hitObjects({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, src);
@@ -927,7 +927,7 @@ class World {
     }
     // objetivo
     if (this.mode === 'mission') {
-      if (this.boss && !this.boss.dead) this.objective = 'OBJETIVO: DERROTA ' + (this.boss.name.startsWith('EL ') ? 'AL ' + this.boss.name.slice(3) : 'A ' + this.boss.name);
+      if (this.boss && !this.boss.dead) this.objective = I18N.lang !== 'es' ? tr('OBJETIVO: DERROTA ') + tr(this.boss.name) : 'OBJETIVO: DERROTA ' + (this.boss.name.startsWith('EL ') ? 'AL ' + this.boss.name.slice(3) : 'A ' + this.boss.name);
       else if (this.arena) this.objective = 'OBJETIVO: DERROTA A LOS ENEMIGOS';
       else if (!this.boss) this.objective = 'OBJETIVO: AVANZA HACIA LA DERECHA';
       else this.objective = '';

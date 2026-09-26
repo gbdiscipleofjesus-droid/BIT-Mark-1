@@ -21,7 +21,7 @@ function defaultSave() {
   };
 }
 function defaultSettings() {
-  return { music: 6, sfx: 8, voices: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original' };
+  return { music: 6, sfx: 8, voices: 8, rumble: true, difficulty: 1, shake: true, touch: 'auto', creditsSong: 'original', lang: '' };
 }
 
 // ---------------------------------------------------------------------------
@@ -86,9 +86,14 @@ class OptionsScreen {
       { label: () => 'CONTROLES TÁCTILES: ' + { auto: 'AUTO', on: 'SÍ', off: 'NO' }[s.touch], act: () => { s.touch = { auto: 'on', on: 'off', off: 'auto' }[s.touch]; Game.applySettings(); } },
       { label: () => 'CANCIÓN DE CRÉDITOS: ' + (s.creditsSong === 'custom' && CustomSong.url ? 'TU ARCHIVO' : 'ORIGINAL'), act: () => { s.creditsSong = s.creditsSong === 'custom' ? 'original' : 'custom'; if (s.creditsSong === 'custom' && !CustomSong.url) this.msg = 'Primero carga una canción.'; Game.applySettings(); } },
       { label: () => CustomSong.url ? 'CAMBIAR MI CANCIÓN (' + CustomSong.name.slice(0, 16) + ')' : 'CARGAR MI CANCIÓN (MP3)', act: () => CustomSong.pickFile((ok) => { if (ok) { s.creditsSong = 'custom'; Game.applySettings(); this.msg = 'Canción cargada.'; } }) },
+      { label: () => 'IDIOMA / LANGUAGE: ' + (I18N.LANGS.find((l) => l.id === I18N.lang) || I18N.LANGS[0]).name, left: () => this.cycleLang(-1), right: () => this.cycleLang(1), act: () => this.cycleLang(1) },
       { label: 'PANTALLA COMPLETA', act: () => Game.toggleFullscreen() },
       { label: 'VOLVER', act: () => { this.done = true; } },
     ]);
+  }
+  cycleLang(d) {
+    const L = I18N.LANGS, i = L.findIndex((l) => l.id === I18N.lang);
+    Game.setLang(L[(i + d + L.length) % L.length].id);
   }
   update(dt) {
     const r = this.menu.update(dt);
@@ -234,6 +239,47 @@ function drawPadToast(ctx) {
   ctx.globalAlpha = 1;
 }
 
+// Selección de idioma (la primera vez que se abre el juego, o desde OPCIONES)
+class LangScene {
+  constructor(next) {
+    this.t = 0; this.next = next || (() => new TitleScene());
+    const nav = (navigator.language || 'es').slice(0, 2).toLowerCase();
+    this.sel = Math.max(0, I18N.LANGS.findIndex((l) => l.id === (Game.settings.lang || nav)));
+    Input.clearAny();
+  }
+  update(dt) {
+    this.t += dt;
+    const n = I18N.LANGS.length;
+    if (Input.menu('up', dt)) { this.sel = (this.sel + n - 1) % n; Audio2.sfx('select'); }
+    if (Input.menu('down', dt)) { this.sel = (this.sel + 1) % n; Audio2.sfx('select'); }
+    const tap = Input.takeTap();
+    if (tap) {
+      const i = I18N.LANGS.findIndex((l, k) => Math.abs(tap.y - (90 + k * 24)) < 11);
+      if (i >= 0) { this.sel = i; this.pick(); return; }
+    }
+    if (this.t > 0.3 && Input.confirm()) this.pick();
+  }
+  pick() {
+    if (this.done) return;
+    this.done = true;
+    Game.setLang(I18N.LANGS[this.sel].id);
+    Audio2.unlock(); Audio2.sfx('select');
+    Game.change(this.next);
+  }
+  draw(ctx) {
+    Scenery.drawBackground(ctx, 'night', this.t * 30, 264, 480);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
+    const heads = ['IDIOMA', 'LANGUAGE', '语言'];
+    Font.draw(ctx, heads[Math.floor(this.t / 1.2) % 3], W / 2, 40, UI.gold, { align: 'center', outline: UI.ink, scale: 2, raw: true });
+    I18N.LANGS.forEach((l, i) => {
+      const y = 90 + i * 24, on = i === this.sel;
+      if (on) UI.panel(ctx, W / 2 - 70, y - 9, 140, 22);
+      Font.draw(ctx, l.name, W / 2, y - 2, on ? UI.paper : '#8a8aa0', { align: 'center', raw: true, scale: on ? 2 : 1, shadow: UI.ink });
+    });
+    Font.draw(ctx, 'ARRIBA/ABAJO + ACEPTAR  ·  UP/DOWN + CONFIRM', W / 2, H - 14, UI.dim, { align: 'center', raw: true });
+  }
+}
+
 class TitleScene {
   constructor() { this.t = 0; Audio2.music('title'); Input.clearAny(); }
   update(dt) {
@@ -278,7 +324,7 @@ class MenuScene {
         root.menu.draw(ctx, W / 2, 90, t, { lh: 12 });
         if (Game.save.started) {
           const s = Game.save;
-          const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
+          const prog = s.stage >= STORY_DONE ? 'FINALES ' + (s.endings || []).length + '/3' + (s.extraDone ? ' · EXTRA OK' : '') : I18N.lang === 'zh' ? '第' + (s.stage + 1) + '章 / 共6章' : 'CAPÍTULO ' + (s.stage + 1) + ' DE 6';
           Font.draw(ctx, prog + ' · FRAGMENTOS ' + s.tokens.length + '/' + STORY.fragments.length + ' · CÁNONES ' + canonCount() + '/' + CANON_ORDER.length, W / 2, 186, UI.dim, { align: 'center', shadow: UI.ink });
         }
         Font.draw(ctx, Audio2.ready() ? '' : 'Haz clic o pulsa una tecla para activar el sonido', W / 2, 200, '#9aa0c0', { align: 'center', shadow: UI.ink });
@@ -472,7 +518,9 @@ const Game = {
     window.addEventListener('resize', () => this.resize());
     document.addEventListener('fullscreenchange', () => this.resize());
     this.resize();
-    this.scene = new TitleScene();
+    const qs = (location.search.match(/[?&]lang=(es|en|zh)/) || [])[1];
+    if (qs) this.setLang(qs);
+    this.scene = this.settings.lang ? new TitleScene() : new LangScene();
     requestAnimationFrame((ts) => this.loop(ts));
   },
 
@@ -506,8 +554,17 @@ const Game = {
     this.settings.difficulty = clamp(parseInt(this.settings.difficulty, 10) || 0, 0, 2);
     this.settings.voices = clamp(parseInt(this.settings.voices, 10), 0, 10);
     if (Number.isNaN(this.settings.voices)) this.settings.voices = 8;
+    I18N.set(this.settings.lang || 'es');
   },
   saveGame() { Store.set('sm_save', this.save); },
+  setLang(id) {
+    I18N.set(id);
+    this.settings.lang = I18N.lang;
+    document.documentElement.lang = I18N.lang;
+    Font.textCache.clear();
+    Voice.pick();
+    Store.set('sm_settings', this.settings);
+  },
   applySettings() {
     Audio2.musicVol = this.settings.music / 10;
     Audio2.sfxVol = this.settings.sfx / 10;

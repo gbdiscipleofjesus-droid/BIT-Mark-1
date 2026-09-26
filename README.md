@@ -6,10 +6,42 @@ Videojuego de fans **no oficial** en pixel art **2.5D** para el navegador. Mezcl
 
 ## Cómo jugar
 
+- **En internet:** https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/ (cuando GitHub Pages esté activado, ver abajo).
 - **Rápido:** abre `dist/spiderman.html` en Chrome, Edge, Firefox o Safari. Es un solo archivo, sin instalar nada y sin internet.
 - **Desde el código:** abre `index.html`.
 
 La partida se guarda sola en el navegador.
+
+## Idiomas
+
+La primera vez que abres el juego eliges idioma: **español**, **inglés** o **chino**. Se puede cambiar en *OPCIONES → IDIOMA / LANGUAGE*, o con `?lang=es`, `?lang=en` o `?lang=zh` en la dirección. Se traducen menús, diálogos, consejos y las voces habladas (si el navegador tiene voces de ese idioma). El chino se dibuja con la fuente del sistema. El diccionario está en `js/i18n_data.js`. En la versión 3D se traducen los textos del juego, pero no los botones de la página.
+
+## Habilidades: quitar y recuperar puntos
+
+En el menú (pestaña *HABILIDADES*):
+
+- **Atacar** sobre una habilidad aprendida la quita y te devuelve el punto. También se quitan las que dependen de ella.
+- **Artilugio** (G / L2) dos veces reinicia todo el árbol y te devuelve todos los puntos.
+
+Así puedes gastar los puntos en otras habilidades.
+
+## Redes contra jefes
+
+Para aturdir a un jefe hay que atraparlo varias veces con red. Las redes de habilidades cuentan más que un disparo normal:
+
+- impacto, eléctrica y ataque de área: ×2
+- matriz, bomba y mina: ×3
+- ráfaga: ×4
+
+Al impactar sale el aviso **RED x2/x3/x4**. Si lo aturdes con una red fuerte, se queda aturdido más tiempo.
+
+## Publicarlo en internet (GitHub Pages)
+
+1. En GitHub, abre el repositorio y ve a **Settings → Pages**.
+2. En *Build and deployment → Source* elige **Deploy from a branch**.
+3. Elige la rama (`main` después de fusionar, o esta rama de trabajo) y la carpeta **/ (root)**. Pulsa **Save**.
+4. En uno o dos minutos el juego estará en https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/.
+5. Para que salga en Google, añade esa dirección en [Google Search Console](https://search.google.com/search-console) y envía `sitemap.xml`. La página ya lleva título, descripción, datos estructurados (`VideoGame`), `robots.txt` y `sitemap.xml`. Google suele tardar entre unos días y unas semanas en indexarla.
 
 ## Historia
 
@@ -162,4 +194,5 @@ node tests/nintendo.mjs       # mando Nintendo Pro en Chrome y Safari, y aviso s
 node tests/rebind.mjs         # reasignación de teclado y mando
 node tests/streets.mjs        # las 5 ciudades se recorren sin bloquearse y se puede trepar
 node tests/depth.mjs          # movimiento en profundidad y golpes por carril
+node tests/i18n.mjs           # selección de idioma, traducción y quitar habilidades
 ```

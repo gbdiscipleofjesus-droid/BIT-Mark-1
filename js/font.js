@@ -69,24 +69,46 @@ const Font = {
     return c;
   },
 
-  norm(str) {
-    return String(str).toUpperCase();
+  // raw: el texto ya viene traducido (diálogos)
+  norm(str, raw) {
+    return String(raw ? str : tr(str)).toUpperCase();
   },
 
-  width(str, scale = 1) {
-    const s = this.norm(str);
+  // Chino (y cualquier carácter sin glifo propio): se dibuja con la fuente del sistema
+  CJK: /[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef\u3000-\u303f]/,
+  sysFont(scale) { return (8 * scale) + 'px "Noto Sans SC","Noto Sans CJK SC","Microsoft YaHei","PingFang SC","Hiragino Sans GB","WenQuanYi Micro Hei",sans-serif'; },
+  measure(s, scale) {
+    if (!this.mctx) this.mctx = makeCanvas(4, 4).getContext('2d');
+    this.mctx.font = this.sysFont(scale);
+    return Math.ceil(this.mctx.measureText(s).width);
+  },
+
+  width(str, scale = 1, raw) {
+    const s = this.norm(str, raw);
+    if (this.CJK.test(s)) return this.measure(s, scale);
     return s.length ? (s.length * this.CW - 1) * scale : 0;
+  },
+
+  _sys(ctx, s, px, py, color, opts, scale) {
+    ctx.save();
+    ctx.font = this.sysFont(scale); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const y = py + 3.5 * scale;
+    if (opts.shadow) { ctx.fillStyle = opts.shadow; ctx.fillText(s, px + scale, y + scale); }
+    if (opts.outline) { ctx.strokeStyle = opts.outline; ctx.lineWidth = 2 * scale; ctx.lineJoin = 'round'; ctx.strokeText(s, px, y); }
+    ctx.fillStyle = color; ctx.fillText(s, px, y);
+    ctx.restore();
   },
 
   // align: 'left' | 'center' | 'right'. y es la parte superior de la letra (sin acento)
   draw(ctx, str, x, y, color = '#ffffff', opts = {}) {
     const scale = opts.scale || 1;
-    const s = this.norm(str);
-    let w = this.width(s, scale);
+    const s = this.norm(str, opts.raw);
+    let w = this.width(s, scale, true);
     let px = x;
     if (opts.align === 'center') px = x - Math.floor(w / 2);
     else if (opts.align === 'right') px = x - w;
     px = Math.round(px); const py = Math.round(y);
+    if (this.CJK.test(s)) { this._sys(ctx, s, px, py, color, opts, scale); return w; }
     // el texto con contorno se pinta una vez en un lienzo aparte y se reutiliza (9 pasadas por letra)
     if (opts.outline && s.length > 1) {
       const key = s + '|' + color + '|' + opts.outline + '|' + scale;
@@ -123,16 +145,31 @@ const Font = {
   },
 
   // Divide texto en líneas de como máximo maxW píxeles
-  wrap(str, maxW, scale = 1) {
-    const words = String(str).split(' ');
+  // (el resultado ya está traducido: dibújalo con { raw: true } o vuelve a pasar por draw sin problema)
+  wrap(str, maxW, scale = 1, raw) {
+    const src = raw ? String(str) : String(tr(str));
+    if (this.CJK.test(src)) return this.wrapCJK(src, maxW, scale);
+    const words = src.split(' ');
     const lines = [];
     let cur = '';
     for (const w of words) {
       const test = cur ? cur + ' ' + w : w;
-      if (this.width(test, scale) > maxW && cur) { lines.push(cur); cur = w; }
+      if (this.width(test, scale, true) > maxW && cur) { lines.push(cur); cur = w; }
       else cur = test;
     }
     if (cur) lines.push(cur);
+    return lines;
+  },
+  // chino: se puede cortar entre cualquier par de caracteres (sin empezar línea con puntuación)
+  wrapCJK(src, maxW, scale) {
+    const lines = [];
+    let cur = '';
+    for (const ch of src) {
+      const test = cur + ch;
+      if (cur && this.measure(test, scale) > maxW && !/[，。！？、：；）」』,.!?:;)]/.test(ch)) { lines.push(cur.trim()); cur = ch === ' ' ? '' : ch; }
+      else cur = test;
+    }
+    if (cur.trim()) lines.push(cur.trim());
     return lines;
   },
 };

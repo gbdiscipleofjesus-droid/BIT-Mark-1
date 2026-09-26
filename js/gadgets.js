@@ -62,7 +62,7 @@ const Gadgets = {
         world.fx.push(new GRing(p.cx, p.cy, 90 + lv * 10, '#c080ff', 0.5));
         for (const e of world.enemies) {
           if (e.dead || !e.hittable() || dist(e.cx, e.cy, p.cx, p.cy) > 90 + lv * 10) continue;
-          if (e.isBoss) { e.web(1, world); continue; }
+          if (e.isBoss) { e.web(1, world, 3); continue; }
           e.suspendT = 3 + lv; e.suspY = e.y; Progress.rec('gadgetHits', 1);
         }
         break;
@@ -84,10 +84,10 @@ class GShot {
       this.hits.add(e);
       Progress.rec('gadgetHits', 1);
       const f = sign(this.vx) || 1;
-      if (this.kind === 'impacto') { world.playerHits(e, 1 + this.lv * 0.4, f * 320, -120, true); if (!e.dead) e.web(3 + this.lv, world); return false; }
+      if (this.kind === 'impacto') { world.playerHits(e, 1 + this.lv * 0.4, f * 320, -120, true); if (!e.dead) e.web(3 + this.lv, world, 2); return false; }
       if (this.kind === 'electrica') {
         world.playerHits(e, 1.5 + this.lv * 0.5, f * 80, -60, false);
-        if (!e.dead) e.web(2.5 + this.lv * 0.5, world);
+        if (!e.dead) e.web(2.5 + this.lv * 0.5, world, 2);
         for (let i = 0; i < 10; i++) world.particles.spark(e.cx + rand(-8, 8), e.cy + rand(-10, 10), '#80e0ff', 1);
         Audio2.sfx('zap'); return false;
       }
@@ -126,7 +126,7 @@ class GBomb {
     for (const e of world.enemies) {
       if (e.dead || !e.hittable() || dist(e.cx, e.cy, this.x, this.y) > r) continue;
       world.playerHits(e, 0.8 + this.lv * 0.3, sign(e.cx - this.x || 1) * 120, -120, false);
-      if (!e.dead) e.web(3.5 + this.lv * 0.5, world);
+      if (!e.dead) e.web(3.5 + this.lv * 0.5, world, 3);
       Progress.rec('gadgetHits', 1);
     }
     return false;
@@ -152,7 +152,7 @@ class GMine {
         for (const o of world.enemies) {
           if (o.dead || !o.hittable() || dist(o.cx, o.cy, this.x, this.y) > 40 + this.lv * 8) continue;
           world.playerHits(o, 1.5 + this.lv * 0.4, sign(o.cx - this.x || 1) * 60, -80, false);
-          if (!o.dead) o.web(3 + this.lv * 0.5, world);
+          if (!o.dead) o.web(3 + this.lv * 0.5, world, 3);
           Progress.rec('gadgetHits', 1);
         }
         return false;
@@ -260,7 +260,7 @@ const SuitPowers = {
     switch (id) {
       case 'furia': p.furyT = 10; break;
       case 'rafaga':
-        for (const e of world.enemies) if (onScreen(e)) { e.web(4, world); world.fx.push(new GBeam(p.cx, p.cy, e.cx, e.cy, '#ffffff')); }
+        for (const e of world.enemies) if (onScreen(e)) { e.web(4, world, 4); world.fx.push(new GBeam(p.cx, p.cy, e.cx, e.cy, '#ffffff')); }
         break;
       case 'hermano': world.fx.push(new GDrone(p, 15, true)); break;
       case 'invisible': p.cloakT = 8; break;

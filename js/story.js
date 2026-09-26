@@ -73,7 +73,7 @@ const MISSIONS = [
 ];
 const FINAL_MISSION = 5, EXTRA_MISSION = 6, STORY_DONE = 6;
 const MISSION_SUIT = ['sigilo', 'raimi', 'tasm', 'verse', 'sociedad', 'cero', 'tierra0'];
-function chapterLabel(i) { return i === EXTRA_MISSION ? 'CAPÍTULO EXTRA' : 'CAPÍTULO ' + (i + 1); }
+function chapterLabel(i) { return i === EXTRA_MISSION ? 'CAPÍTULO EXTRA' : I18N.lang === 'zh' ? '第' + (i + 1) + '章' : 'CAPÍTULO ' + (i + 1); }
 
 // ---------------- Eventos canónicos ----------------
 const CANONS = {
@@ -586,7 +586,7 @@ const STORY = {
     tip_web: '{SHOOT} dispara una bola de red que inmoviliza enemigos. Los enemigos atrapados reciben más daño.',
     tip_brute: 'Los enemigos grandes llevan blindaje: atrápalos con red ({SHOOT}) para romper su guardia.',
     tip_special: 'Golpear llena la barra de foco. {SPECIAL}: ataque giratorio. Mantén {SPECIAL} en el suelo para curarte.',
-    tip_boss: 'Consejo: atrapa a los jefes con {SHOOT} varias veces para aturdirlos.',
+    tip_boss: 'Consejo: atrapa a los jefes con {SHOOT} varias veces para aturdirlos. ¡Las redes de habilidades cuentan más!',
     tip_ally: '¡Nuevo! Pulsa {ALLY} para llamar a un Spider-Man de otro universo: golpea a todos los enemigos de la pantalla.',
     tip_city: 'Ciudad libre: detén crímenes (!), busca 5 fragmentos del multiverso y ve al faro azul para seguir. {PAUSE}: menú, taller, trajes y viajes.',
     tip_canon: 'Eventos canónicos: puedes salvar a quien el canon condena. Pero cada canon roto agrieta el multiverso.',
@@ -608,11 +608,11 @@ const STORY = {
 };
 
 function fillTip(text) {
-  return text.replace(/\{(\w+)\}/g, (m, a) => {
+  return tr(text).replace(/\{(\w+)\}/g, (m, a) => {
     if (a === 'MOVE') {
-      if (Input.lastDevice === 'pad') return 'el stick o la cruceta';
-      if (Input.lastDevice === 'touch') return 'el joystick';
-      return 'las flechas o WASD';
+      if (Input.lastDevice === 'pad') return tr('el stick o la cruceta');
+      if (Input.lastDevice === 'touch') return tr('el joystick');
+      return tr('las flechas o WASD');
     }
     return '[' + Input.label(a) + ']';
   });
@@ -650,7 +650,7 @@ function prepLines(lines) {
       }
       continue;
     }
-    out.push([ln[0], ln[1].replace('{N}', String(n))]);
+    out.push([ln[0], tr(ln[1]).replace('{N}', String(n))]);
   }
   return out;
 }

@@ -113,9 +113,26 @@ class SkillsTab {
     if (Input.menu('down', dt)) { this.row = (this.row + 1) % C[this.col].length; Audio2.sfx('menu'); }
     if (Input.confirm()) {
       const sk = C[this.col][this.row];
-      if (Progress.learn(sk)) { Audio2.sfx('heal'); this.flash = 0.4; for (const q of this.M.world.players) q.refreshStats(); }
+      if (Progress.learn(sk)) { Audio2.sfx('heal'); this.flash = 0.4; this.msg = null; for (const q of this.M.world.players) q.refreshStats(); }
       else Audio2.sfx('back');
     }
+    // quitar la habilidad seleccionada y recuperar el punto
+    if (Input.pressed('ATTACK')) {
+      const sk = C[this.col][this.row];
+      const n = Progress.unlearn(sk);
+      if (n) { Audio2.sfx('select'); this.msg = '+' + n + (n > 1 ? ' PUNTOS RECUPERADOS' : ' PUNTO RECUPERADO'); this.msgT = 2; for (const q of this.M.world.players) q.refreshStats(); }
+      else Audio2.sfx('back');
+    }
+    // reiniciar todo el árbol (hay que pulsar dos veces)
+    if (Input.pressed('GADGET') && Game.save.skills.length) {
+      if (this.resetArm > 0) {
+        const n = Progress.resetSkills(); this.resetArm = 0;
+        Audio2.sfx('heal'); this.msg = '+' + n + (n > 1 ? ' PUNTOS RECUPERADOS' : ' PUNTO RECUPERADO'); this.msgT = 2;
+        for (const q of this.M.world.players) q.refreshStats();
+      } else { this.resetArm = 2; this.msg = 'PULSA OTRA VEZ PARA REINICIAR TODO'; this.msgT = 2; Audio2.sfx('menu'); }
+    }
+    if (this.resetArm > 0) this.resetArm -= dt;
+    if (this.msgT > 0 && (this.msgT -= dt) <= 0) this.msg = null;
     if (this.flash > 0) this.flash -= dt;
     return null;
   }
@@ -138,18 +155,18 @@ class SkillsTab {
         if (sel && this.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x, y - 2, cw - 6, 11); }
         ctx.fillStyle = has ? UI.gold : can ? '#ffffff' : '#3a3a50'; ctx.fillRect(x + 2, y + 1, 5, 5);
         if (has) { ctx.fillStyle = UI.ink; ctx.fillRect(x + 3, y + 3, 1, 1); ctx.fillRect(x + 4, y + 4, 1, 1); ctx.fillRect(x + 5, y + 2, 1, 2); }
-        let nm = sk.name.toUpperCase(); while (Font.width(nm) > cw - 18) nm = nm.slice(0, -1);
+        let nm = tr(sk.name).toUpperCase(); while (Font.width(nm) > cw - 18) nm = nm.slice(0, -1);
         Font.draw(ctx, nm, x + 10, y, has ? UI.gold : locked ? PS_COL.dim : UI.paper, {});
       });
     });
     const sk = C[this.col][this.row];
     UI.panel(ctx, 10, 152, W - 20, 40, 'rgba(20,24,48,0.9)');
-    Font.draw(ctx, sk.name.toUpperCase(), 16, 157, SKILL_BRANCHES[this.col].color, {});
+    Font.draw(ctx, tr(sk.name).toUpperCase(), 16, 157, SKILL_BRANCHES[this.col].color, {});
     Font.wrap(sk.desc, W - 40).slice(0, 2).forEach((ln, i) => Font.draw(ctx, ln, 16, 168 + i * 10, UI.paper, {}));
-    const st = Progress.has(sk.id) ? 'APRENDIDA' : sk.req && !Progress.has(sk.req) ? 'REQUIERE: ' + SKILLS.find((x) => x.id === sk.req).name.toUpperCase() : Game.save.skillPts ? 'COSTE: 1 PUNTO' : 'SIN PUNTOS: SUBE DE NIVEL';
-    Font.draw(ctx, st, W - 16, 157, Progress.has(sk.id) ? '#80ff80' : UI.dim, { align: 'right' });
+    const st = this.msg ? this.msg : Progress.has(sk.id) ? 'APRENDIDA · ' + L('ATTACK') + ' QUITAR' : sk.req && !Progress.has(sk.req) ? 'REQUIERE: ' + SKILLS.find((x) => x.id === sk.req).name.toUpperCase() : Game.save.skillPts ? 'COSTE: 1 PUNTO' : 'SIN PUNTOS: SUBE DE NIVEL';
+    Font.draw(ctx, st, W - 16, 157, this.msg ? UI.gold : Progress.has(sk.id) ? '#80ff80' : UI.dim, { align: 'right' });
   }
-  hints() { return [L('JUMP') + ' APRENDER', L('DODGE') + ' VOLVER']; }
+  hints() { return [L('JUMP') + ' APRENDER', L('ATTACK') + ' QUITAR', L('GADGET') + ' REINICIAR', L('DODGE') + ' VOLVER']; }
 }
 
 // ------------------------------------------------------------------ ARTILUGIOS
@@ -285,7 +302,7 @@ class SuitsTab {
     const s = SUITS[this.sel], st = this.status(s), px = 244;
     UI.panel(ctx, px, 38, W - px - 6, 162, 'rgba(20,24,48,0.9)');
     Rig.draw(ctx, px + 67, 110, Math.sin(t * 0.8) > 0 ? 1 : -1, Poses.idle(t), st.own || st.craft ? s.palObj : FLASH_PAL, { scale: 2.6 });
-    let nm = s.name.toUpperCase(); while (Font.width(nm) > W - px - 12) nm = nm.slice(0, -1);
+    let nm = tr(s.name).toUpperCase(); while (Font.width(nm) > W - px - 12) nm = nm.slice(0, -1);
     Font.draw(ctx, nm, px + 67, 116, st.own ? UI.gold : UI.paper, { align: 'center' });
     Font.wrap(s.desc, W - px - 16).slice(0, 2).forEach((ln, i) => Font.draw(ctx, ln, px + 6, 128 + i * 9, '#b8b8d0', {}));
     const P = SUIT_POWERS[s.power];
@@ -403,7 +420,7 @@ class CoopTab {
       }
       const s = SUITS.find((q) => q.id === sl.suit) || SUITS[0];
       Rig.draw(ctx, x + sw / 2, 150, 1, i % 2 ? Poses.idle(t + i) : Poses.guard ? Poses.guard() : Poses.idle(t), s.palObj, { scale: 2.4 });
-      const fit = (txt, wmax) => { let q = txt; while (Font.width(q) > wmax) q = q.slice(0, -1); return q; };
+      const fit = (txt, wmax) => { let q = tr(txt); while (Font.width(q) > wmax) q = q.slice(0, -1); return q; };
       const dev = i === 0 ? (Game.coop ? Input.devName(Game.p1Dev || 'kb') : 'TODOS') : sl.devs.map((d) => Input.devName(d)).join(' ');
       Font.draw(ctx, fit(dev, sw - 10), x + sw / 2, 68, UI.dim, { align: 'center' });
       Font.draw(ctx, '<', x + 6, 158, UI.gold, {}); Font.draw(ctx, '>', x + sw - 6, 158, UI.gold, { align: 'right' });
