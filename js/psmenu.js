@@ -275,8 +275,6 @@ class SuitsTab {
         else { Game.save.tech -= s.tech; Game.save.suits.push(s.id); Game.save.suit = s.id; Game.saveGame(); this.msg = '¡' + s.name + ' fabricado!'; Audio2.sfx('win'); this.M.world.particles.burst(this.M.world.player.cx, this.M.world.player.cy, 20, UI.gold, 90); }
       } else { this.msg = 'Se consigue en ' + st.story.toLowerCase() + '.'; Audio2.sfx('back'); }
     }
-    if (Input.pressed('ATTACK') && st.own) { Game.save.power = s.power; Game.saveGame(); this.msg = 'Poder equipado: ' + SUIT_POWERS[s.power].name + '.'; Audio2.sfx('select'); }
-    if (Input.pressed('SHOOT')) { Game.save.power = null; Game.saveGame(); this.msg = 'Poder: el de cada traje.'; Audio2.sfx('menu'); }
     return null;
   }
   draw(ctx, t) {
@@ -310,11 +308,11 @@ class SuitsTab {
     Font.wrap(P.desc, W - px - 16).slice(0, 3).forEach((ln, i) => Font.draw(ctx, ln, px + 6, 157 + i * 8, '#b8b8d0', {}));
     const stTxt = st.own ? (Game.save.suit === s.id ? 'PUESTO' : L('JUMP') + ' PONER') : st.craft ? 'CREAR: ' + s.tech + ' TEC NV' + s.lvl : st.story;
     Font.draw(ctx, stTxt, px + 6, 186, st.own ? '#80ff80' : st.craft && st.ok ? UI.gold : PS_COL.dim, {});
-    const eq = Game.save.power ? SUIT_POWERS[Game.save.power].name : 'EL DEL TRAJE';
+    const eq = SUIT_POWERS[SuitPowers.current(this.M.world.player)].name;
     Font.draw(ctx, 'PODER EQUIPADO: ' + eq.toUpperCase(), 10, 176, UI.gold, {});
     if (this.msg) Font.draw(ctx, this.msg, 10, 188, '#80ff80', {});
   }
-  hints() { return [L('JUMP') + ' PONER / FABRICAR', L('ATTACK') + ' EQUIPAR PODER', L('SHOOT') + ' PODER DEL TRAJE', L('DODGE') + ' VOLVER']; }
+  hints() { return [L('JUMP') + ' PONER / FABRICAR', 'PODERES: PESTAÑA PODERES', L('DODGE') + ' VOLVER']; }
 }
 
 // ------------------------------------------------------------------ RÉCORDS
@@ -434,6 +432,70 @@ class CoopTab {
 }
 
 // ------------------------------------------------------------------ SISTEMA
+// ------------------------------------------------------------------ PODERES
+// Los poderes se desbloquean con su traje, pero se equipan por separado
+class PowersTab {
+  constructor(M) {
+    this.M = M; this.name = 'PODERES'; this.scroll = 0;
+    this.rows = [null].concat(SUITS.map((s) => s.id));
+    const cur = Game.save.power;
+    this.sel = Math.max(0, this.rows.indexOf(cur));
+  }
+  suitOf(id) { return SUITS.find((s) => s.power === id); }
+  update(dt) {
+    const n = this.rows.length;
+    if (Input.menu('up', dt)) { this.sel = (this.sel + n - 1) % n; Audio2.sfx('menu'); this.msg = null; }
+    if (Input.menu('down', dt)) { this.sel = (this.sel + 1) % n; Audio2.sfx('menu'); this.msg = null; }
+    if (Input.menu('left', dt)) { this.sel = Math.max(0, this.sel - 10); Audio2.sfx('menu'); }
+    if (Input.menu('right', dt)) { this.sel = Math.min(n - 1, this.sel + 10); Audio2.sfx('menu'); }
+    if (this.sel < this.scroll) this.scroll = this.sel;
+    if (this.sel > this.scroll + 12) this.scroll = this.sel - 12;
+    if (Input.confirm()) {
+      const id = this.rows[this.sel];
+      if (!id) { Game.save.power = null; Game.saveGame(); this.msg = 'Poder: el del traje que lleves.'; Audio2.sfx('select'); }
+      else if (!SuitPowers.unlocked(id)) { this.msg = 'Consigue su traje para desbloquearlo.'; Audio2.sfx('back'); }
+      else { Game.save.power = id; Game.saveGame(); this.msg = 'Poder equipado: ' + SUIT_POWERS[id].name + '.'; Audio2.sfx('select'); }
+    }
+    return null;
+  }
+  draw(ctx, t) {
+    const own = SUITS.filter((s) => Progress.suitOwned(s)).length;
+    Font.draw(ctx, 'PODERES ' + own + '/' + SUITS.length, 10, 27, UI.gold, {});
+    const eqId = Game.save.power;
+    for (let i = 0; i < 13; i++) {
+      const k = this.scroll + i; if (k >= this.rows.length) break;
+      const id = this.rows[k], y = 40 + i * 11, sel = k === this.sel;
+      const un = !id || SuitPowers.unlocked(id), eq = (id || null) === (eqId || null);
+      ctx.fillStyle = sel ? PS_COL.sel : eq ? 'rgba(255,208,64,0.18)' : 'rgba(255,255,255,0.05)';
+      ctx.fillRect(10, y - 2, 170, 10);
+      let nm = id ? tr(SUIT_POWERS[id].name).toUpperCase() : tr('AUTOMÁTICO: EL DEL TRAJE');
+      while (Font.width(nm) > 150) nm = nm.slice(0, -1);
+      ctx.fillStyle = eq ? UI.gold : un ? '#80e0ff' : '#3a3a50'; ctx.fillRect(13, y + 1, 4, 4);
+      Font.draw(ctx, nm, 21, y, !un ? PS_COL.dim : eq ? UI.gold : UI.paper, {});
+    }
+    // barra de desplazamiento
+    ctx.fillStyle = '#2a2a40'; ctx.fillRect(182, 38, 2, 143);
+    ctx.fillStyle = UI.gold; ctx.fillRect(182, 38 + this.scroll / this.rows.length * 143, 2, 13 / this.rows.length * 143);
+    // ficha del poder
+    const id = this.rows[this.sel], px = 190;
+    UI.panel(ctx, px, 36, W - px - 6, 150, 'rgba(20,24,48,0.9)');
+    const suit = id ? this.suitOf(id) : SUITS.find((s) => s.id === Game.save.suit) || SUITS[0];
+    const un = !id || SuitPowers.unlocked(id);
+    const pid = id || suit.power, D = POWER_DEFS[pid];
+    const dur = 1.4, a = { kind: D.pose || 'roar', t: (t % dur) * (D.pose === 'slam' ? 0.9 : 0.6) / dur, dur: D.pose === 'slam' ? 0.9 : 0.6 };
+    ctx.fillStyle = 'rgba(255,208,64,' + (0.08 + 0.06 * Math.sin(t * 4)) + ')'; ctx.beginPath(); ctx.ellipse(px + 40, 108, 26, 5, 0, 0, TAU); ctx.fill();
+    Rig.draw(ctx, px + 40, 108, 1, powerPose(a, t), un ? (SUITS.find((s) => s.id === Game.save.suit) || SUITS[0]).palObj : FLASH_PAL, { scale: 2.4 });
+    Font.draw(ctx, SUIT_POWERS[pid].name.toUpperCase(), px + 80, 44, un ? UI.gold : PS_COL.dim, {});
+    Font.wrap(SUIT_POWERS[pid].desc, W - px - 92).slice(0, 7).forEach((ln, i) => Font.draw(ctx, ln, px + 80, 56 + i * 9, '#b8b8d0', {}));
+    Font.draw(ctx, tr('TRAJE: ') + tr(suit.name).toUpperCase(), px + 6, 120, '#80e0ff', {});
+    const st = !un ? (suit.craft ? 'SE FABRICA EN TRAJES · NV ' + suit.lvl : 'SE CONSIGUE EN LA HISTORIA') : (id || null) === (eqId || null) ? 'EQUIPADO' : L('JUMP') + ' EQUIPAR';
+    Font.draw(ctx, st, px + 6, 132, !un ? PS_COL.dim : '#80ff80', {});
+    Font.wrap('Puedes llevar cualquier traje con cualquier poder desbloqueado.', W - px - 16).slice(0, 3).forEach((ln, i) => Font.draw(ctx, ln, px + 6, 146 + i * 9, PS_COL.dim, {}));
+    if (this.msg) Font.draw(ctx, this.msg, W / 2, 190, '#80ff80', { align: 'center' });
+  }
+  hints() { return [L('JUMP') + ' EQUIPAR', L('DODGE') + ' VOLVER']; }
+}
+
 class PosesTab {
   constructor(M) {
     this.M = M; this.name = 'POSES';
@@ -492,7 +554,7 @@ class PsMenu {
     this.world = world; this.t = 0; this.sub = null;
     this.openDev = pressedDevice(['PAUSE']) || Game.p1Dev || 'kb';
     if (!Game.coop) Game.p1Dev = this.openDev;
-    this.tabs = [new MapTab(this), new SkillsTab(this), new GadgetsTab(this), new SuitsTab(this), new RecordsTab(this), new PosesTab(this), new CoopTab(this), new SystemTab(this)];
+    this.tabs = [new MapTab(this), new SkillsTab(this), new GadgetsTab(this), new SuitsTab(this), new PowersTab(this), new RecordsTab(this), new PosesTab(this), new CoopTab(this), new SystemTab(this)];
     this.tab = 0; this.lock = 0.15;
     Audio2.musicGain && (Audio2.musicGain.gain.value = Game.settings.music / 10 * 0.2);
   }

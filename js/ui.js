@@ -229,7 +229,8 @@ function drawHUD(ctx, w, t) {
       for (let i = 0; i < max; i++) { ctx.fillStyle = i < ch ? g.color : '#3a3a4a'; ctx.fillRect(gx + 124 - (max - i) * 5, gy + 4, 3, 4); }
       // poder del traje
       const pw = SUIT_POWERS[SuitPowers.current(p)], rdy = !(p.powerCd > 0);
-      Font.draw(ctx, (rdy ? '' : Math.ceil(p.powerCd) + 's ') + pw.name.toUpperCase(), gx + 13, gy + 13, rdy ? UI.gold : UI.dim, {});
+      let pwn = (rdy ? '' : Math.ceil(p.powerCd) + 's ') + tr(pw.name).toUpperCase(); while (Font.width(pwn) > 110) pwn = pwn.slice(0, -1);
+      Font.draw(ctx, pwn, gx + 13, gy + 13, rdy ? UI.gold : UI.dim, {});
       ctx.fillStyle = rdy ? UI.gold : '#3a3a4a'; ctx.fillRect(gx + 4, gy + 14, 5, 5);
     }
   }

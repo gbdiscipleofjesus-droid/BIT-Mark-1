@@ -47,22 +47,8 @@ const GADGETS = [
 ];
 const GADGET_COST = [0, 20, 40];   // tecnología para subir a nivel 2 y 3
 
-// ---- Poderes de traje ----
-const SUIT_POWERS = {
-  furia: { name: 'Furia de batalla', desc: '10 s: el foco se llena solo y golpeas un 50% más fuerte.' },
-  rafaga: { name: 'Explosión de red', desc: 'Atrapa con red a todos los enemigos de la pantalla.' },
-  hermano: { name: 'Spider-Bro', desc: 'Un dron amigo lucha contigo durante 15 s.' },
-  invisible: { name: 'Camuflaje', desc: '8 s invisible: no te pueden dañar y tus golpes hacen el doble.' },
-  brazos: { name: 'Brazos de hierro', desc: '12 s: patas mecánicas golpean a los enemigos cercanos.' },
-  escudo: { name: 'Barrera', desc: '6 s de invulnerabilidad total.' },
-  electrico: { name: 'Puños eléctricos', desc: '12 s: tus golpes electrocutan y aturden.' },
-  sismo: { name: 'Terremoto', desc: 'Un golpe al suelo que derriba a todos los enemigos cercanos.' },
-  tiempo: { name: 'Velocidad', desc: '6 s: el mundo va a cámara lenta, tú no.' },
-  negativo: { name: 'Onda negativa', desc: 'Una onda que empuja, daña y atrapa a los enemigos.' },
-};
+// ---- Poderes de traje: cada traje tiene el suyo (powers.js) ----
 const POWER_CD = 45;
-// poder de los trajes de la historia
-const STORY_SUIT_POWERS = { bnd: 'furia', nwh: 'rafaga', casero: 'hermano', sigilo: 'invisible', stark: 'electrico', ffh: 'escudo', iron: 'brazos', raimi: 'sismo', tasm: 'electrico', verse: 'invisible', avanzado: 'rafaga', sociedad: 'tiempo', tierra0: 'furia', cero: 'negativo' };
 
 // ---- Trajes fabricables (estilo PlayStation) ----
 // lvl = nivel mínimo, tech = coste de fabricación
@@ -106,7 +92,7 @@ const EXTRA_SUITS = [
 for (const [id, name, desc, power, lvl, tech, pal] of EXTRA_SUITS) {
   SUITS.push({ id, name, desc, pal, power, lvl, tech, craft: true, palObj: makePal(Object.assign({ outline: '#140a12' }, pal)) });
 }
-for (const s of SUITS) if (!s.power) s.power = STORY_SUIT_POWERS[s.id] || 'furia';
+for (const s of SUITS) s.power = s.id;
 
 // ---- Retos (bronce, plata, oro) ----
 const CHALLENGES = [
@@ -137,7 +123,7 @@ const Progress = {
     if (!s.records || typeof s.records !== 'object') s.records = {};
     if (!s.medals || typeof s.medals !== 'object') s.medals = {};
     if (!s.bestTimes || typeof s.bestTimes !== 'object') s.bestTimes = {};
-    if (s.power && !SUIT_POWERS[s.power]) s.power = null;
+    if (s.power && typeof SUIT_POWERS !== 'undefined' && !SUIT_POWERS[s.power]) s.power = null;
     // partidas antiguas: experiencia según lo ya conseguido
     if (!s.xpInit) {
       s.xpInit = true;

@@ -25,6 +25,19 @@ En el menú (pestaña *HABILIDADES*):
 
 Así puedes gastar los puntos en otras habilidades.
 
+## Poderes de traje
+
+Cada uno de los 49 trajes tiene **su propio poder**, con su animación. Algunos ejemplos:
+
+- **Terremoto** (lucha libre): saltas y caes, el suelo se agrieta, saltan rocas, la pantalla tiembla y los enemigos salen volando.
+- **Tormenta eléctrica**: rayos caen del cielo sobre cada enemigo.
+- **Tentáculos simbionte**: púas negras brotan bajo los enemigos.
+- **Grieta multiversal**: un portal que se traga a los enemigos.
+- **Distorsión temporal**: reloj de 2099 y cámara lenta.
+- **Cañón de brazo**, **Láser de lentes**, **Acorde de poder**, **¡KA-POW!**, **Clones de sombra**...
+
+Los poderes se desbloquean al conseguir su traje, pero se **equipan aparte**, en la pestaña **PODERES** del menú de pausa. Puedes llevar cualquier traje con cualquier poder desbloqueado. La opción *AUTOMÁTICO* usa el poder del traje que lleves.
+
 ## Redes contra jefes
 
 Para aturdir a un jefe hay que atraparlo varias veces con red. Las redes de habilidades cuentan más que un disparo normal:
@@ -195,4 +208,5 @@ node tests/rebind.mjs         # reasignación de teclado y mando
 node tests/streets.mjs        # las 5 ciudades se recorren sin bloquearse y se puede trepar
 node tests/depth.mjs          # movimiento en profundidad y golpes por carril
 node tests/i18n.mjs           # selección de idioma, traducción y quitar habilidades
+node tests/suitpowers.mjs     # los 49 poderes de traje (cada uno propio, animado y equipable aparte)
 ```

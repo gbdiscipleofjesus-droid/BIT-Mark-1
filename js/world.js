@@ -860,13 +860,13 @@ class World {
     const p = this.player;
     if (this.slowEnemiesT > 0) this.slowEnemiesT -= dt;
     const edt = this.slowEnemiesT > 0 ? gdt * 0.35 : gdt;
-    for (const e of this.enemies) { this.emitterZ = e.z || 0; this._focus = this.nearestPlayer(e.cx, e.cy); e.update(edt, this); }
+    for (const e of this.enemies) { if (e.frozenT > 0 && !e.dead) { e.frozenT -= edt; continue; } this.emitterZ = e.z || 0; this._focus = this.nearestPlayer(e.cx, e.cy); e.update(edt, this); }
     this.emitterZ = 0;
     this.enemies = this.enemies.filter((e) => !e.remove);
     for (const pr of this.projs) { this._focus = pr.owner === 'e' ? this.nearestPlayer(pr.x, pr.y) : null; pr.update(pr.owner === 'e' ? edt : gdt, this); }
     this._focus = null;
     this.projs = this.projs.filter((pr) => !pr.dead);
-    this.fx = this.fx.filter((f) => f.update(gdt, this));
+    { const cur = this.fx; this.fx = []; const keep = cur.filter((f) => f.update(gdt, this)); this.fx = keep.concat(this.fx); } // los efectos pueden crear otros
     // retos: se comprueban cada segundo
     this.chalT -= dt;
     if (this.chalT <= 0) { this.chalT = 1; Progress.checkChallenges(this); }
@@ -889,6 +889,7 @@ class World {
     if (this.inputEnabled && this.players.some((q) => q.state !== 'dead' && (q.input || Input).pressed('ALLY'))) this.callAlly();
     if (this.ally) this.updateAlly(gdt);
     if (this.combo.t > 0) { this.combo.t -= dt; if (this.combo.t <= 0) this.combo.n = 0; }
+    if (this.quakeT > 0) { this.quakeT -= dt; this.shake(this.quakeAmp || 4); }
     if (this.shakeAmt > 0) this.shakeAmt = Math.max(0, this.shakeAmt - dt * 20);
 
     // consejos y puntos de control

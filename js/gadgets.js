@@ -18,8 +18,9 @@ const Gadgets = {
       if (p.gch[g.id] > max) p.gch[g.id] = max;
     }
     if (p.powerCd > 0) p.powerCd -= dt;
-    for (const k of ['furyT', 'cloakT', 'armsT', 'shieldT', 'shockT', 'counterT']) if (p[k] > 0) p[k] = Math.max(0, p[k] - dt);
+    for (const k of ['furyT', 'cloakT', 'armsT', 'shieldT', 'shockT', 'counterT', 'armorT', 'reactT', 'unstopT', 'senseT']) if (p[k] > 0) p[k] = Math.max(0, p[k] - dt);
     if (p.furyT > 0) p.focus = Math.min(100, p.focus + 20 * dt);
+    if (p.powAnim && (p.powAnim.t += dt) >= p.powAnim.dur) p.powAnim = null;
   },
   selected(p) { return p.idx > 0 ? (p.gadgetSel || 'impacto') : Game.save.gadget; },
   cycle(p, world) {
@@ -240,42 +241,4 @@ class GArms {
   }
 }
 
-// ---- Poderes de traje ----
-const SuitPowers = {
-  current(p) {
-    if (p.idx > 0) { const s = SUITS.find((x) => x.id === p.suitId); return (s && s.power) || 'furia'; }
-    if (Game.save.power) return Game.save.power;
-    const s = SUITS.find((x) => x.id === (p.suitId || Game.save.suit));
-    return (s && s.power) || 'furia';
-  },
-  use(p, world) {
-    if (p.powerCd > 0) { world.float('PODER EN ' + Math.ceil(p.powerCd) + ' s', p.cx, p.y - 12, '#c0c0d0'); Audio2.sfx('back'); return; }
-    const id = this.current(p), P = SUIT_POWERS[id];
-    p.powerCd = POWER_CD * (Progress.has('i_poder') ? 0.6 : 1);
-    Progress.rec('powers', 1);
-    world.float(P.name.toUpperCase() + '!', p.cx, p.y - 20, '#ffd040');
-    Audio2.sfx('special'); world.shake(4); Input.rumble(0.7, 0.7, 250);
-    world.particles.burst(p.cx, p.cy, 24, '#ffd040', 120);
-    const onScreen = (e) => !e.dead && e.hittable() && world.onScreen(e);
-    switch (id) {
-      case 'furia': p.furyT = 10; break;
-      case 'rafaga':
-        for (const e of world.enemies) if (onScreen(e)) { e.web(4, world, 4); world.fx.push(new GBeam(p.cx, p.cy, e.cx, e.cy, '#ffffff')); }
-        break;
-      case 'hermano': world.fx.push(new GDrone(p, 15, true)); break;
-      case 'invisible': p.cloakT = 8; break;
-      case 'brazos': p.armsT = 12; world.fx.push(new GArms(p)); break;
-      case 'escudo': p.shieldT = 6; p.inv = Math.max(p.inv, 6); break;
-      case 'electrico': p.shockT = 12; break;
-      case 'sismo':
-        world.shake(8); world.fx.push(new GRing(p.cx, p.feet, 140, '#e0c080', 0.6));
-        world.areaHit(p.cx, p.feet - 6, 140, 2.2 * p.dmgMul, 260, -300, p);
-        break;
-      case 'tiempo': world.slowEnemiesT = 6; break;
-      case 'negativo':
-        world.fx.push(new GRing(p.cx, p.cy, 110, '#ffffff', 0.5)); world.fx.push(new GRing(p.cx, p.cy, 80, '#101010', 0.5));
-        world.areaHit(p.cx, p.cy, 110, 1.6 * p.dmgMul, 320, -200, p, true);
-        break;
-    }
-  },
-};
+// (los poderes de traje están en powers.js)

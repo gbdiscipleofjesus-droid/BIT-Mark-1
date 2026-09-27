@@ -665,8 +665,14 @@ class Player {
   takeDamage(dmg, srcX, world) {
     if (this.inv > 0 || this.state === 'dodge' || this.state === 'dead' || this.state === 'cutscene') return false;
     if (this.cloakT > 0 || this.shieldT > 0) return false;
+    // sentido perfecto: esquiva solo
+    if (this.senseT > 0) { this.inv = 0.5; world.float('¡ESQUIVA!', this.cx, this.y - 10, '#ffe040'); world.particles.burst(this.cx, this.cy, 8, '#ffe040', 80); Audio2.sfx('dodge'); return false; }
     if (this.grabE) this.releaseGrab(false);
-    this.hp -= Math.round(dmg * (this.armor || 1));
+    this.hp -= Math.round(dmg * (this.armor || 1) * (this.armorT > 0 ? 0.5 : 1));
+    // blindaje reactivo: el golpe recibido explota
+    if (this.reactT > 0) { world.particles.burst(this.cx, this.cy, 16, '#d0d4dc', 140); world.areaHit(this.cx, this.cy, 50, 1.2 * this.dmgMul, 240, -180, this); world.shake(4); }
+    // último bastión: nada te derriba
+    if (this.unstopT > 0 && this.hp > 0) { this.inv = 0.6; this.hurtT = 0.3; Audio2.sfx('hurt'); world.shake(2); return true; }
     this.inv = 1.0; this.hurtT = 1.0;
     this.anchor = null; this.attack = null;
     const dir = this.cx >= srcX ? 1 : -1;
@@ -718,7 +724,8 @@ class Player {
         break;
       }
       default:
-        if (this.attack) pose = Poses[this.attack.def.pose]();
+        if (this.powAnim && !this.attack) pose = powerPose(this.powAnim, t);
+        else if (this.attack) pose = Poses[this.attack.def.pose]();
         else if (this.throwT > 0) pose = Poses.toss();
         else if (this.shootPose > 0) pose = Poses.shoot();
         else if (this.onGround) {
@@ -823,5 +830,20 @@ class Player {
       ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 0.4;
       for (let i = 1; i <= 3; i++) { const u = i / 4; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx + (cx2 - bx) * u, by + (cy2 - by) * u + 2 * Math.sin(u * Math.PI)); ctx.stroke(); }
     }
+  }
+}
+
+// Animación del jugador al activar un poder
+function powerPose(a, t) {
+  const u = clamp(a.t / a.dur, 0, 1);
+  switch (a.kind) {
+    case 'thwip': return Poses.emote('thwip', u, a.t);
+    case 'point': return Poses.emote('point', u, a.t);
+    case 'flex': return Poses.emote('flex', u, a.t);
+    case 'cast': return Poses.heal(a.t * 4);
+    case 'spin': return Poses.special(u * 0.55);
+    case 'crouch': return Poses.stance(t);
+    case 'slam': return u < 0.45 ? Poses.flip(u * 0.8) : Poses.emote('hero', 0.5, 0.5);
+    default: return Poses.emote('flex', Math.min(u * 1.5, 0.6), a.t);
   }
 }
