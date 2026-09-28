@@ -64,11 +64,16 @@ cp include/secrets.example.h include/secrets.h   # fill in real Wi-Fi/Hub values
 pio run
 ```
 
-Pinned versions (dossier section 7.2 — don't bump without re-verifying):
-PlatformIO Core 6.2.0, `espressif32@53.3.11`, Arduino-ESP32 3.1.1, LVGL
-8.4.0, `links2004/WebSockets@2.7.3` (resolves from a `^2.4.1`-style
-declaration), `ESP32_Display_Panel@1.0.5`, `ESP32_IO_Expander@1.1.1`,
-`esp-lib-utils@0.2.3`.
+Pinned versions — don't bump without re-verifying against PlatformIO's
+real registry (`pio pkg search <name>`), the way the two mistakes below
+were actually caught, not guessed at from the dossier:
+PlatformIO Core 6.2.0, `platformio/espressif32@7.1.3` (the dossier's
+`espressif32@53.3.11` doesn't exist), Arduino-ESP32 (resolved
+transitively via `framework-arduinoespressif32`), LVGL 8.4.0,
+`links2004/WebSockets@2.7.3`, `lzw655/ESP32_Display_Panel@1.1.1` and
+`lzw655/ESP32_IO_Expander@1.1.0` (the dossier's `esp-arduino-libs` owner
+is the GitHub org, not the PlatformIO registry owner — real registry
+owner is `lzw655`), `esp-arduino-libs/esp-lib-utils@0.3.0`.
 
 ## Bring-up checklist (once hardware is in hand)
 
