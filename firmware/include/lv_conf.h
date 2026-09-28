@@ -41,6 +41,14 @@
 #define LV_USE_LIST 0
 #define LV_USE_TABLE 0
 #define LV_USE_CHART 0
+/* Not set anywhere above, so LVGL's internal default (enabled) applied
+ * -- and lv_canvas.h unconditionally embeds an lv_img_t, so it failed
+ * to compile with LV_USE_IMG off above. bit_display.cpp doesn't use
+ * canvas at all (verified: no canvas/lv_img references in this
+ * firmware), so disable it explicitly instead of turning IMG back on
+ * for a widget nothing needs. Caught by a real `pio run` build on real
+ * hardware, not guessed at. */
+#define LV_USE_CANVAS 0
 
 #define LV_USE_ANIMIMG 0
 #define LV_USE_FLEX 1
