@@ -41,14 +41,19 @@ project's "don't fabricate an API you haven't verified" rule:
   into `ESP32_Display_Panel` to push pixels to the real ST77916 panel.
   LVGL renders correctly into its own buffer; getting it onto the
   physical screen needs that library's real, installed API inspected
-  first (`platformio.ini` pins `esp-arduino-libs/ESP32_Display_Panel @
-  1.0.5` and `ESP32_IO_Expander @ 1.1.1`, matching the dossier's
-  verified versions — the exact call signatures haven't been).
+  first. Not currently in `lib_deps` at all (see `platformio.ini`'s
+  header comment, 2026-09-29): a real `pio run` on real hardware showed
+  this library's registry version (`lzw655/ESP32_Display_Panel@1.1.1`,
+  not the dossier's fabricated `esp-arduino-libs@1.0.5`) only supports
+  LCD_NAME in {ST7262, ST7789, GC9503, GC9A01} — not our real ST77916 at
+  all — so it's pulled out until a version that actually supports it is
+  found, rather than compiling it against fabricated config.
 - **`bit_touch.cpp`**: reads the CST816 over I2C using the register
   layout common to most open-source CST816 drivers, but `TOUCH_RST`
-  lives behind the board's IO expander (EXIO1), which also needs
-  `ESP32_IO_Expander` wired in for a real reset pulse. Untested against
-  this specific board's schematic.
+  lives behind the board's IO expander (EXIO1), which needs
+  `ESP32_IO_Expander` wired in for a real reset pulse — also pulled from
+  `lib_deps` for now, same reasoning as above (nothing calls it yet).
+  Untested against this specific board's schematic.
 - **`bit_motion.cpp`**: joint routing, name lookup and angle clamping
   are real; the actual write to a PCA9685 servo driver in `begin()`/
   `setJointAngle()` is a TODO because this sandbox has no PlatformIO
@@ -65,15 +70,15 @@ pio run
 ```
 
 Pinned versions — don't bump without re-verifying against PlatformIO's
-real registry (`pio pkg search <name>`), the way the two mistakes below
-were actually caught, not guessed at from the dossier:
+real registry (`pio pkg search <name>`), the way every mistake below
+was actually caught, not guessed at from the dossier:
 PlatformIO Core 6.2.0, `platformio/espressif32@7.1.3` (the dossier's
 `espressif32@53.3.11` doesn't exist), Arduino-ESP32 (resolved
 transitively via `framework-arduinoespressif32`), LVGL 8.4.0,
-`links2004/WebSockets@2.7.3`, `lzw655/ESP32_Display_Panel@1.1.1` and
-`lzw655/ESP32_IO_Expander@1.1.0` (the dossier's `esp-arduino-libs` owner
-is the GitHub org, not the PlatformIO registry owner — real registry
-owner is `lzw655`), `esp-arduino-libs/esp-lib-utils@0.3.0`.
+`links2004/WebSockets@2.7.3`. `ESP32_Display_Panel`/`ESP32_IO_Expander`/
+`esp-lib-utils` are NOT currently pinned/built at all — see the "known
+gaps" above and `platformio.ini`'s header comment for why they were
+pulled back out after getting them to actually build.
 
 ## Bring-up checklist (once hardware is in hand)
 
