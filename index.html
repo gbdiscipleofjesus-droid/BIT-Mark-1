@@ -2,58 +2,236 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Spider-Man: Rompecánones — juego gratis de Spider-Man en el navegador</title>
-<meta name="description" content="Spider-Man: Rompecánones (Rompecanones) es un juego de fans gratis de Spider-Man para jugar en el navegador: balanceo con telarañas, combos, jefes como Venom, Rino y Electro, multiverso, trajes, cooperativo hasta 4 jugadores y versión 3D. En español, inglés y chino.">
-<meta name="keywords" content="spiderman rompecanones, spider-man rompecánones, rompecanones, juego de spiderman, spiderman juego gratis, spider-man browser game, spiderman online, juego de fans">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BIT-MARK · Juegos gratis en el navegador</title>
+<meta name="description" content="BIT-MARK: todos mis juegos gratis para jugar en el navegador, sin instalar nada. Incluye Spider-Man: Rompecánones (2D y 3D), un juego de fans de Spider-Man.">
+<meta name="keywords" content="juegos gratis, juegos de navegador, spiderman rompecanones, spider-man rompecánones, juego de spiderman, BIT-MARK">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/">
-<link rel="alternate" hreflang="es" href="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/?lang=es">
-<link rel="alternate" hreflang="en" href="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/?lang=en">
-<link rel="alternate" hreflang="zh" href="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/?lang=zh">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Spider-Man: Rompecánones">
-<meta property="og:description" content="Juego de fans gratis de Spider-Man en el navegador: multiverso, jefes, trajes, cooperativo y versión 3D.">
+<meta property="og:title" content="BIT-MARK · Juegos gratis">
+<meta property="og:description" content="Juegos gratis para jugar en el navegador. Spider-Man: Rompecánones y más.">
 <meta property="og:url" content="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/">
-<meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#c0182a">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23c0182a'/%3E%3Cpath d='M8 2v12M2 8h12M3.5 3.5l9 9M12.5 3.5l-9 9' stroke='%23000' stroke-width='1'/%3E%3Cellipse cx='5.3' cy='7' rx='1.8' ry='2.4' fill='%23fff'/%3E%3Cellipse cx='10.7' cy='7' rx='1.8' ry='2.4' fill='%23fff'/%3E%3C/svg%3E">
+<meta property="og:image" content="https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/rompecanones/cover-title.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0a18">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b0a18'/%3E%3Crect x='3' y='3' width='4' height='10' fill='%23ff3b5c'/%3E%3Crect x='9' y='3' width='4' height='4' fill='%2340e0ff'/%3E%3Crect x='9' y='9' width='4' height='4' fill='%23ffd040'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"Spider-Man: Rompecánones","alternateName":["Spider-Man Rompecanones","Spiderman Rompecanones","Rompecanones"],"url":"https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/","description":"Juego de fans gratis de Spider-Man para el navegador, con historia multiversal, jefes, trajes, cooperativo y versión 3D.","genre":["Acción","Plataformas","Beat 'em up"],"gamePlatform":["Web browser","PC","Mobile"],"applicationCategory":"Game","operatingSystem":"Any","inLanguage":["es","en","zh"],"playMode":["SinglePlayer","CoOp"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+{"@context":"https://schema.org","@type":"ItemList","name":"BIT-MARK · Juegos","url":"https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/","itemListElement":[
+ {"@type":"ListItem","position":1,"item":{"@type":"VideoGame","name":"Spider-Man: Rompecánones","alternateName":["Spider-Man Rompecanones","Spiderman Rompecanones"],"url":"https://gbdiscipleofjesus-droid.github.io/BIT-Mark-1/rompecanones/","gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}}
+]}
 </script>
 <style>
-  html, body { margin: 0; height: 100%; background: #07060e; overflow: hidden; }
-  body { display: flex; align-items: center; justify-content: center; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-  #game { image-rendering: pixelated; image-rendering: crisp-edges; display: block; background: #000; outline: none; }
+  :root {
+    --bg: #0b0a18; --bg2: #141228; --card: #1a1733; --line: #2c2850;
+    --ink: #f4f2ff; --dim: #a39fc4; --red: #ff3b5c; --cyan: #40e0ff; --gold: #ffd040;
+    --pixel: 'Press Start 2P', ui-monospace, monospace;
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.5;
+    background-image:
+      radial-gradient(1200px 500px at 80% -10%, rgba(255,59,92,.18), transparent 60%),
+      radial-gradient(900px 500px at -10% 20%, rgba(64,224,255,.12), transparent 60%);
+    min-height: 100vh;
+  }
+  /* estrellas pixeladas del fondo */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .5;
+    background-image: radial-gradient(#fff 1px, transparent 1px), radial-gradient(#8fdcff 1px, transparent 1px);
+    background-size: 97px 89px, 151px 137px; background-position: 13px 7px, 60px 40px;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 0 10px; }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+  .logo-mark { width: 38px; height: 38px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 4px; background: var(--bg2); border: 2px solid var(--line); border-radius: 6px; }
+  .logo-mark i { display: block; border-radius: 1px; }
+  .logo-mark i:nth-child(1) { background: var(--red); grid-row: span 2; }
+  .logo-mark i:nth-child(2) { background: var(--cyan); }
+  .logo-mark i:nth-child(3) { background: var(--gold); }
+  .logo-text { font-family: var(--pixel); font-size: 18px; letter-spacing: 2px; text-shadow: 3px 3px 0 #000; }
+  .logo-text b { color: var(--red); font-weight: normal; }
+  .langs { display: flex; gap: 4px; background: var(--bg2); border: 2px solid var(--line); border-radius: 8px; padding: 3px; }
+  .langs button { font: 600 13px var(--sans); color: var(--dim); background: none; border: 0; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+  .langs button[aria-pressed="true"] { background: var(--red); color: #fff; }
+
+  .intro { padding: 18px 0 26px; }
+  .intro h1 { font-family: var(--pixel); font-size: clamp(18px, 3.4vw, 30px); line-height: 1.5; margin: 0 0 12px; text-shadow: 4px 4px 0 #000; }
+  .intro h1 span { color: var(--cyan); }
+  .intro p { color: var(--dim); max-width: 640px; margin: 0; font-size: 16px; }
+
+  /* juego destacado */
+  .hero { display: grid; grid-template-columns: 1.35fr 1fr; gap: 0; background: var(--card); border: 2px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,59,92,.1); }
+  .hero-media { position: relative; aspect-ratio: 16/9; background: #000; overflow: hidden; }
+  .hero-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; transition: opacity .6s; }
+  .hero-media img.alt { opacity: 0; }
+  .hero:hover .hero-media img.alt { opacity: 1; }
+  .badge { position: absolute; top: 12px; left: 12px; font: 10px var(--pixel); background: var(--gold); color: #000; padding: 6px 8px; border-radius: 4px; box-shadow: 2px 2px 0 #000; }
+  .hero-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .hero-body h2 { font-family: var(--pixel); font-size: 17px; line-height: 1.6; margin: 0; color: var(--red); text-shadow: 3px 3px 0 #000; }
+  .hero-body h2 small { display: block; color: var(--cyan); font-size: 12px; margin-top: 4px; }
+  .hero-body p { margin: 0; color: var(--dim); font-size: 15px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font: 600 12px var(--sans); color: var(--ink); background: var(--bg2); border: 1px solid var(--line); padding: 3px 9px; border-radius: 999px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 6px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 12px var(--pixel); text-decoration: none; padding: 13px 16px; border-radius: 8px; border: 2px solid #000; box-shadow: 4px 4px 0 #000; transition: transform .08s, box-shadow .08s; }
+  .btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #000; }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #000; }
+  .btn:focus-visible, .card:focus-visible, .langs button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  .btn.play { background: var(--red); color: #fff; }
+  .btn.alt { background: var(--cyan); color: #000; }
+  .btn.ghost { background: var(--bg2); color: var(--ink); border-color: var(--line); box-shadow: 4px 4px 0 #000; }
+  .dl { font-size: 13px; color: var(--dim); }
+  .dl a { color: var(--cyan); }
+
+  h3.section { font-family: var(--pixel); font-size: 13px; letter-spacing: 1px; color: var(--gold); margin: 40px 0 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .card { display: flex; flex-direction: column; background: var(--card); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; transition: transform .12s, border-color .12s; }
+  .card:hover { transform: translateY(-3px); border-color: var(--red); }
+  .card .thumb { aspect-ratio: 16/9; background: #000 center/cover no-repeat; image-rendering: pixelated; }
+  .card .body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .card h4 { margin: 0; font-size: 16px; font-weight: 800; }
+  .card p { margin: 0; font-size: 14px; color: var(--dim); }
+  .card .go { margin-top: auto; font: 10px var(--pixel); color: var(--red); }
+  .card.soon { border-style: dashed; cursor: default; }
+  .card.soon:hover { transform: none; border-color: var(--line); }
+  .card.soon .thumb { display: grid; place-items: center; background: repeating-linear-gradient(45deg, #15132a 0 12px, #1b1836 12px 24px); font: 28px var(--pixel); color: var(--line); }
+
+  footer { margin: 50px 0 30px; padding-top: 18px; border-top: 2px solid var(--line); color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+
+  @media (max-width: 780px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-body { padding: 18px; }
+    .logo-text { font-size: 14px; }
+    .btn { font-size: 11px; padding: 12px 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
-<div id="seo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">
-<h1>Spider-Man: Rompecánones</h1>
-<p>Juego de fans gratis de Spider-Man para jugar en el navegador. Free Spider-Man fan game you can play in your browser. 免费的蜘蛛侠同人网页游戏。</p>
-<p><a href="3d/index.html">Versión 3D</a> · <a href="dist/spiderman.html">Descargar versión 2D</a> · <a href="dist/spiderman3d.html">Descargar versión 3D</a></p>
+<div class="wrap">
+  <header>
+    <a class="logo" href="./" aria-label="BIT-MARK">
+      <span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="logo-text">BIT<b>-</b>MARK</span>
+    </a>
+    <nav class="langs" aria-label="Idioma / Language">
+      <button data-lang="es">ES</button><button data-lang="en">EN</button><button data-lang="zh">中文</button>
+    </nav>
+  </header>
+
+  <section class="intro">
+    <h1 data-t="h1">Mis juegos, <span>gratis</span> en el navegador</h1>
+    <p data-t="intro">Sin descargar ni instalar nada. Funcionan en ordenador, móvil y con mando. Elige uno y a jugar.</p>
+  </section>
+
+  <main id="games"></main>
+
+  <footer>
+    <span data-t="foot">Juegos de fans sin fines de lucro. Los personajes pertenecen a sus dueños.</span>
+    <span>BIT-MARK · <span id="year"></span></span>
+  </footer>
 </div>
-<noscript><p style="color:#fff;font-family:sans-serif">Spider-Man: Rompecánones necesita JavaScript para jugar.</p></noscript>
-<canvas id="game" width="384" height="216" tabindex="0" aria-label="Spider-Man: Rompecánones"></canvas>
-<script src="js/util.js"></script>
-<script src="js/i18n_data.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/font.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/input.js"></script>
-<script src="js/gfx.js"></script>
-<script src="js/sprite.js"></script>
-<script src="js/level.js"></script>
-<script src="js/player.js"></script>
-<script src="js/enemies.js"></script>
-<script src="js/gadgets.js"></script>
-<script src="js/story.js"></script>
-<script src="js/progress.js"></script>
-<script src="js/powers.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/art.js"></script>
-<script src="js/psmenu.js"></script>
-<script src="js/world.js"></script>
-<script src="js/main.js"></script>
+
+<script>
+// ---------------------------------------------------------------------------
+// Lista de juegos: para añadir uno nuevo, copia una entrada y cambia los datos.
+// ---------------------------------------------------------------------------
+const GAMES = [
+  {
+    id: 'rompecanones',
+    featured: true,
+    title: 'Spider-Man: Rompecánones',
+    sub: { es: 'Juego de fans · 2D y 3D', en: 'Fan game · 2D & 3D', zh: '同人游戏 · 2D 与 3D' },
+    desc: {
+      es: 'Balancéate por el multiverso después de Brand New Day. 7 capítulos, jefes como Venom, Rino y Electro, 49 trajes con su propio poder, cooperativo para 4 jugadores y versión 3D.',
+      en: 'Swing through the multiverse after Brand New Day. 7 chapters, bosses like Venom, Rhino and Electro, 49 suits with their own power, 4-player co-op and a 3D version.',
+      zh: '在《全新的一天》之后穿梭多元宇宙。7个章节，毒液、犀牛人、电光人等首领，49套各有专属能力的战衣，最多4人合作，还有3D版本。',
+    },
+    tags: { es: ['Acción', 'Plataformas', '1-4 jugadores', 'Mando', 'ES · EN · 中文'], en: ['Action', 'Platformer', '1-4 players', 'Gamepad', 'ES · EN · 中文'], zh: ['动作', '平台', '1-4人', '手柄', 'ES · EN · 中文'] },
+    play: 'rompecanones/index.html',
+    play3d: 'rompecanones/3d/index.html',
+    img: 'rompecanones/cover-title.png',
+    img2: 'rompecanones/cover.png',
+    img3d: 'rompecanones/cover-3d.png',
+    downloads: [['2D', 'rompecanones/dist/spiderman.html'], ['3D', 'rompecanones/dist/spiderman3d.html']],
+  },
+];
+
+const TXT = {
+  h1: { es: 'Mis juegos, <span>gratis</span> en el navegador', en: 'My games, <span>free</span> in your browser', zh: '我的游戏，<span>免费</span>在浏览器里玩' },
+  intro: { es: 'Sin descargar ni instalar nada. Funcionan en ordenador, móvil y con mando. Elige uno y a jugar.', en: 'Nothing to download or install. They work on computer, phone and with a gamepad. Pick one and play.', zh: '无需下载或安装。电脑、手机和手柄都能玩。选一个开始吧。' },
+  foot: { es: 'Juegos de fans sin fines de lucro. Los personajes pertenecen a sus dueños.', en: 'Non-profit fan games. Characters belong to their owners.', zh: '非营利同人游戏。角色版权归其所有者。' },
+  new: { es: 'NUEVO', en: 'NEW', zh: '新' },
+  play: { es: '▶ JUGAR', en: '▶ PLAY', zh: '▶ 开始' },
+  play3d: { es: '3D', en: '3D', zh: '3D' },
+  dl: { es: 'Descargar para jugar sin internet:', en: 'Download to play offline:', zh: '下载离线游玩：' },
+  all: { es: 'TODOS LOS JUEGOS', en: 'ALL GAMES', zh: '全部游戏' },
+  soonT: { es: 'Próximamente', en: 'Coming soon', zh: '即将推出' },
+  soonD: { es: 'El siguiente juego está en camino.', en: 'The next game is on its way.', zh: '下一款游戏正在路上。' },
+  open: { es: 'JUGAR →', en: 'PLAY →', zh: '开始 →' },
+  v3d: { es: 'Versión 3D', en: '3D version', zh: '3D 版本' },
+  v3dD: { es: 'La misma historia en una Nueva York en 3D.', en: 'The same story in a 3D New York.', zh: '同样的故事，3D纽约。' },
+};
+
+let lang = 'es';
+try { lang = localStorage.getItem('bitmark_lang') || ''; } catch (e) {}
+if (!['es', 'en', 'zh'].includes(lang)) { const n = (navigator.language || 'es').slice(0, 2); lang = ['en', 'zh'].includes(n) ? n : 'es'; }
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// el juego abre directamente en el idioma elegido aquí
+const withLang = (url) => url + (url.includes('?') ? '&' : '?') + 'lang=' + lang;
+
+function render() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-t]').forEach((el) => { el.innerHTML = TXT[el.dataset.t][lang]; });
+  document.querySelectorAll('.langs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+  const T = (k) => TXT[k][lang];
+  const f = GAMES.find((g) => g.featured) || GAMES[0];
+  let html = `
+  <article class="hero">
+    <a class="hero-media" href="${withLang(f.play)}" aria-label="${esc(f.title)}">
+      <img src="${f.img}" alt="${esc(f.title)}" loading="eager">
+      ${f.img2 ? `<img class="alt" src="${f.img2}" alt="" aria-hidden="true">` : ''}
+      <span class="badge">${T('new')}</span>
+    </a>
+    <div class="hero-body">
+      <h2>${esc(f.title)}<small>${esc(f.sub[lang])}</small></h2>
+      <p>${esc(f.desc[lang])}</p>
+      <div class="tags">${f.tags[lang].map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+      <div class="actions">
+        <a class="btn play" href="${withLang(f.play)}">${T('play')}</a>
+        ${f.play3d ? `<a class="btn alt" href="${f.play3d}">${T('play3d')}</a>` : ''}
+      </div>
+      ${f.downloads ? `<div class="dl">${T('dl')} ${f.downloads.map(([n, u]) => `<a href="${u}" download>${n}</a>`).join(' · ')}</div>` : ''}
+    </div>
+  </article>
+  <h3 class="section">${T('all')}</h3>
+  <div class="grid">`;
+  for (const g of GAMES) {
+    html += card(withLang(g.play), g.img2 || g.img, g.title, g.desc[lang]);
+    if (g.play3d) html += card(g.play3d, g.img3d || g.img, g.title + ' — ' + T('v3d'), T('v3dD'));
+  }
+  html += `<div class="card soon" aria-hidden="true"><div class="thumb">?</div><div class="body"><h4>${T('soonT')}</h4><p>${T('soonD')}</p></div></div></div>`;
+  document.getElementById('games').innerHTML = html;
+  function card(url, img, title, desc) {
+    return `<a class="card" href="${url}"><div class="thumb" style="background-image:url('${img}')"></div><div class="body"><h4>${esc(title)}</h4><p>${esc(desc)}</p><span class="go">${T('open')}</span></div></a>`;
+  }
+}
+document.querySelectorAll('.langs button').forEach((b) => b.addEventListener('click', () => {
+  lang = b.dataset.lang;
+  try { localStorage.setItem('bitmark_lang', lang); } catch (e) {}
+  render();
+}));
+document.getElementById('year').textContent = new Date().getFullYear();
+render();
+</script>
+<noscript><p style="padding:16px"><a href="rompecanones/index.html" style="color:#40e0ff">Spider-Man: Rompecánones</a></p></noscript>
 </body>
 </html>
