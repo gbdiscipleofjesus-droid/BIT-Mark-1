@@ -1,0 +1,3 @@
+Pon aqui tus canciones en MP3 (128 kbps, nombres cortos sin tildes ni simbolos, por ejemplo 01_cumbia.mp3).
+Para convertir una cancion:  ffmpeg -i entrada.mp3 -b:a 128k -ar 44100 -ac 2 01_cumbia.mp3
+Maximo 60 canciones.

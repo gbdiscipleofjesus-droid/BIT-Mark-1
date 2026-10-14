@@ -1,0 +1,6 @@
+# NUNCA subas claves ni contraseñas
+Robit_Mark_1/secrets.h
+*.key
+.env
+*.bak
+__pycache__/
