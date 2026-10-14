@@ -1,6 +1,6 @@
 # Robit Mark 1
 
-Robot de escritorio parlante con una **cara animada en una pantalla redonda**. Lo llamas con **"hey buddy"**, conversa contigo en español o inglés, muestra emociones, abre su menú cuando se lo pides, busca en internet, te muestra mapas, te dice la hora y el clima, toca canciones y reproduce videos (con sonido) desde una tarjeta microSD.
+Robot de escritorio parlante con una **cara animada en una pantalla redonda**. Lo llamas con **"hey robit"** u **"oye robit"**, conversa contigo en español o inglés, muestra emociones, abre su menú cuando se lo pides, busca en internet, te muestra mapas, te dice la hora y el clima, toca canciones y reproduce videos (con sonido) desde una tarjeta microSD.
 
 > **Estado del proyecto (octubre 2026):** hoy es una **cabeza parlante**. Todavía **no tiene servos (no camina ni mueve brazos) ni cámara**; los planos del cuerpo están en `hardware/` para cuando se construya. El firmware funciona sin ellos: el robot no habla de piernas ni brazos mientras no los tenga.
 
@@ -32,7 +32,7 @@ Robot de escritorio parlante con una **cara animada en una pantalla redonda**. L
 ## 1. Qué hace
 
 - **Conversa por voz** en español chileno o inglés (sigue el idioma en que le hablas).
-- **Palabra de activación "hey buddy"**: en modo automático solo responde si oye la frase (también entiende variantes como "hey body" o "ey badi"). Después sigue conversando **12 segundos** sin que la repitas.
+- **Palabra de activación "hey robit" / "oye robit"**: en modo automático solo responde si oye la frase (también entiende variantes como "robbit", "rovit" o "hola robit"; para volver a "hey buddy" pon `WAKE_PHRASE` en 0). Después sigue conversando **12 segundos** sin que la repitas.
 - **Cara con emociones**: ojos grandes y redondeados, lisos (sin mejillas ni brillos), y boca con volumen que se abre con la voz. 17 expresiones, elegidas por Claude según lo que dice. **Canta** (cierra los ojos, se balancea y salen notas) cuando suena una canción.
 - **Menú por voz**: "abre el menú", "abre las canciones", "abre los videos", "cierra el menú"...
 - **Búsqueda en internet** (noticias, resultados, precios, datos recientes).
@@ -47,7 +47,7 @@ Robot de escritorio parlante con una **cara animada en una pantalla redonda**. L
 ```
  tú ──voz──> micrófono ──> OpenAI gpt-4o-mini-transcribe (voz a texto)
                                    │
-                          ¿dijiste "hey buddy"?
+                          ¿dijiste "hey robit"?
                                    │ sí
                                    ▼
               Claude Haiku 4.5 (cerebro, respuesta en streaming)
@@ -156,18 +156,18 @@ Dentro del `.ino`, en `YOUR SETTINGS`, también puedes cambiar `CITY_NAME`, `CIT
    - la conexión Wi-Fi,
    - `SD card: ... -> mounted`, `SD read test ... OK`, `SD card: N songs in /music` y `SD card: N videos in /video`,
    - `servo driver (PCA9685) NOT found ... movements disabled`: **es normal**, todavía no tiene servos.
-4. Di **"hey buddy, hola"**.
+4. Di **"oye Robit, hola"**.
 
-### Probar solo el wake word "hey buddy"
+### Probar solo el wake word ("hey robit" / "hey buddy")
 
 Antes de armar todo, sube el sketch **`Hey_Buddy_Test`** (carpeta `Hey_Buddy_Test/`, con tu `secrets.h` al lado; solo necesita la clave de OpenAI y el Wi-Fi). No responde ni habla: escucha, y cada frase que oye la compara con "hey buddy". Si la detecta, la cara se pone feliz y suena un pitido doble. En el Monitor Serie ves:
 
 ```
-[WAKE TEST] heard: "hey buddy what time is it"  ->  HEY BUDDY DETECTED   (hits 3 of 5 phrases)
+[WAKE TEST] heard: "oye robit que hora es"  ->  WAKE WORD DETECTED   (hits 3 of 5 phrases)
 [WAKE TEST] heard: "good morning"                ->  no wake word
 ```
 
-Ojo: este detector **no es un modelo en la placa**. Oye la frase con el reconocimiento de voz de OpenAI y busca "hey buddy" en el texto, tolerando errores como "hay body" o "ey buddy". Por eso necesita Wi-Fi y tarda un poco; es el mismo detector que usa el robot. El detector que sí corre dentro de la placa, sin internet (microWakeWord), está en el sketch `Hey_Buddy_MicroWakeWord/` (ver su `LEEME.md`).
+Ojo: este detector **no es un modelo en la placa**. Oye la frase con el reconocimiento de voz de OpenAI y busca la frase ("hey robit" por defecto) en el texto, tolerando errores como "hay body" o "ey buddy". Por eso necesita Wi-Fi y tarda un poco; es el mismo detector que usa el robot. El detector que sí corre dentro de la placa, sin internet (microWakeWord), está en el sketch `Hey_Buddy_MicroWakeWord/` (ver su `LEEME.md`).
 
 Comandos del Monitor Serie (con "Newline"): `faces` (muestra todas las expresiones, 3 s cada una), `face happy` (una), `face idle` (vuelve a la normal).
 
@@ -205,7 +205,7 @@ ffmpeg -i pelicula.mp4 \
 ## 9. Paso 6: usar a Robit
 
 ### Hablarle
-- Di **"hey buddy"** y habla: *"hey buddy, ¿qué hora es?"*. También puedes decirlo solo y esperar su saludo.
+- Di **"hey robit"** u **"oye robit"** y habla: *"oye Robit, ¿qué hora es?"*. También puedes decirlo solo y esperar su saludo.
 - Después de cada respuesta tienes **12 segundos** para seguir sin repetir la frase (`WAKE_FOLLOWUP_MS`).
 - Para interrumpirlo: botón **BOOT**, o di "para", "stop", "alto", "basta" o "silencio".
 - El botón **BOOT** también sirve para hablarle sin decir la frase (útil con música o video, que mientras suenan le tapan el oído).
@@ -250,7 +250,8 @@ Arriba del `.ino`:
 
 | Ajuste | Qué hace |
 |---|---|
-| `WAKE_HEYBUDDY` | 1 = solo responde tras "hey buddy". 0 = responde a todo |
+| `WAKE_HEYBUDDY` | 1 = solo responde tras la frase de activación. 0 = responde a todo |
+| `WAKE_PHRASE` | 1 = "hey robit" / "oye robit" (por defecto). 0 = "hey buddy" |
 | `WAKE_FOLLOWUP_MS` | Cuánto sigue escuchando sin la frase después de responder (12000) |
 | `LISTEN_AUTO` | 1 = escucha siempre. 0 = solo con el botón BOOT |
 | `VAD_MIN_RMS` | Sube el valor si hay ruido y se activa solo; bájalo si no te oye |
@@ -265,7 +266,7 @@ Arriba del `.ino`:
 
 ## 12. Solución de problemas
 
-**No responde a "hey buddy".** Mira el Monitor Serie: `(heard, not for me: ...)` significa que oyó algo pero no la frase; repítela claro y cerca. Si no aparece nada, baja `VAD_MIN_RMS`. En una sala ruidosa usa el botón BOOT.
+**No responde a "hey robit".** Mira el Monitor Serie: `(heard, not for me: ...)` significa que oyó algo pero no la frase; repítela claro y cerca. Si no aparece nada, baja `VAD_MIN_RMS`. En una sala ruidosa usa el botón BOOT.
 
 **Se queda en silencio o se corta.** Revisa que el Wi-Fi sea 2.4 GHz, que las claves estén bien escritas en `secrets.h` y que las cuentas tengan crédito.
 
@@ -306,7 +307,7 @@ Cableado previsto de los servos (conector I2C de la placa, **GPIO11 = SDA, GPIO1
 │   ├── Robit_Mark_1.ino        # el firmware
 │   └── secrets.example.h       # copia a secrets.h y pon tus claves (secrets.h no se sube)
 ├── Hey_Buddy_Test/
-│   └── Hey_Buddy_Test.ino      # prueba el wake word "hey buddy" por la nube (usa el mismo secrets.h)
+│   └── Hey_Buddy_Test.ino      # prueba el wake word por la nube (usa el mismo secrets.h)
 ├── Hey_Buddy_MicroWakeWord/    # prueba del wake word local (microWakeWord, dentro de la placa); ver LEEME.md
 ├── sd_card/
 │   ├── video/Robit_demo.avi    # video de muestra con sonido

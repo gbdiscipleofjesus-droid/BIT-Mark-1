@@ -1,5 +1,5 @@
 /*
-  Robit Mark 1 - HEY BUDDY WAKE-WORD TEST (not the robot: it only listens for "hey buddy")
+  Robit Mark 1 - WAKE-WORD TEST (not the robot: it only listens for the wake word)
   Board: Waveshare ESP32-S3-Touch-LCD-1.85 (PCM5101 speaker chip + I2S microphone version)
 
   What it does
@@ -133,7 +133,8 @@ static inline uint32_t umin(uint32_t a, uint32_t b) { return a < b ? a : b; }
 #define LISTEN_AUTO    1                           // 0 = hold the BOOT button to talk, 1 = he listens all the time
 #define WAKE_WORDS     ""                          // auto listening only: e.g. "robit,robot" = answer only if you say it ("" = answer everything)
 #define WAKE_TEST      1                           // 1 = TEST ONLY: he just checks for "hey buddy" and reports it (screen + Serial), no answers. Used by the Hey_Buddy_Test sketch
-#define WAKE_HEYBUDDY  1                           // 1 = in auto listening he answers only after "hey buddy" (and keeps talking without it for WAKE_FOLLOWUP_MS). 0 = answers everything
+#define WAKE_PHRASE    1                           // which call wakes him: 1 = "hey robit" / "oye robit" (also "hola robit"), 0 = "hey buddy"
+#define WAKE_HEYBUDDY  1                           // 1 = in auto listening he answers only after the call (WAKE_PHRASE) (and keeps talking without it for WAKE_FOLLOWUP_MS). 0 = answers everything
 #define WAKE_FOLLOWUP_MS 12000                      // after an answer he keeps listening this long without the wake word
 #define REACTIONS      1                           // speak when shaken / lifted / upside down / tapped
 #define VAD_MIN_RMS    350.0f                      // auto listening: raise in a noisy room
@@ -2309,6 +2310,18 @@ static bool wakeMatch(const String& text, String& rest) {
       if (i > 0) for (const char* h : HEY) if (!strcmp(w[i - 1], h)) prevHey = true;
       if (prevHey || (levd(w[i], "buddy") <= 1 && i == 0)) match = true;
     }
+#if WAKE_PHRASE == 1
+    match = false;
+    {
+      bool prevHey = false;                                           // "hey", "oye", "hola"... right before the name
+      if (i > 0) for (const char* h : HEY) if (!strcmp(w[i - 1], h)) prevHey = true;
+      if (i > 0 && (!strcmp(w[i - 1], "hola") || !strcmp(w[i - 1], "hello"))) prevHey = true;
+      bool isRobot = !strcmp(w[i], "robot") || !strcmp(w[i], "robots") || !strcmp(w[i], "robo");
+      bool name = L >= 4 && L <= 7 && w[i][0] == 'r' && levd(w[i], "robit") <= 2;       // robit, robbit, rovit, rubit, rabit, robi...
+      bool oneWord = L >= 7 && L <= 10 && levd(w[i], "heyrobit") <= 2;                    // "heyrobit" / "oyerobit" written as one word
+      if (oneWord || (name && prevHey) || (name && !isRobot && i == 0 && levd(w[i], "robit") <= 1) || (isRobot && prevHey && i == 1 && nw <= 3)) match = true;
+    }
+#endif
     if (match) {
       rest = "";
       for (int k = i + 1; k < nw; k++) { if (rest.length()) rest += " "; rest += w[k]; }
@@ -2442,7 +2455,7 @@ static void runJob() {
     {
       static int wtTotal = 0, wtHits = 0;
       String rest; bool m = wakeMatch(text, rest); wtTotal++; if (m) wtHits++;
-      Serial.printf("[WAKE TEST] heard: \"%s\"  ->  %s   (hits %d of %d phrases)\n", clean.c_str(), m ? "HEY BUDDY DETECTED" : "no wake word", wtHits, wtTotal);
+      Serial.printf("[WAKE TEST] heard: \"%s\"  ->  %s   (hits %d of %d phrases)\n", clean.c_str(), m ? "WAKE WORD DETECTED" : "no wake word", wtHits, wtTotal);
       if (m) { setEmotion(EMO_HAPPY, 2500); beep(880, 70); beep(1175, 90); }
       return;
     }
@@ -2454,11 +2467,11 @@ static void runJob() {
 #if WAKE_HEYBUDDY
     if (autoMode && !jobPtt && (int32_t)(millis() - awakeUntilMs) > 0) {            // waiting: only "hey buddy" wakes him
       String rest;
-      if (!wakeMatch(text, rest)) { Serial.println("(heard, not for me: no \"hey buddy\")"); return; }
-      Serial.println("wake word: hey buddy");
+      if (!wakeMatch(text, rest)) { Serial.println(WAKE_PHRASE == 1 ? "(heard, not for me: no \"hey robit\" / \"oye robit\")" : "(heard, not for me: no \"hey buddy\")"); return; }
+      Serial.println(WAKE_PHRASE == 1 ? "wake word: hey robit" : "wake word: hey buddy");
       awakeUntilMs = millis() + WAKE_FOLLOWUP_MS;
       if (rest.length() < 4) {                                                       // only the call: greet and wait
-        text = "(Someone just called you by saying hey buddy. Answer with a very short, warm greeting and wait for them.)";
+        text = WAKE_PHRASE == 1 ? "(Someone just called you by saying hey robit. Answer with a very short, warm greeting and wait for them.)" : "(Someone just called you by saying hey buddy. Answer with a very short, warm greeting and wait for them.)";
         if (lastSpanish) text += " Answer in Spanish.";
       }
     }
