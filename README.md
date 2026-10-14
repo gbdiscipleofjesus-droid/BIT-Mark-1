@@ -182,10 +182,16 @@ ffmpeg -i entrada.mp3 -b:a 128k -ar 44100 -ac 2 01_cumbia.mp3
 ```
 
 ### Videos y películas (con sonido)
-Formato exacto: **AVI, video Motion-JPEG 360×360 a 24 cuadros por segundo, sonido PCM 16 bits**. La forma fácil es el script de `tools/`:
 
-- Mac/Linux: `./tools/convertir_video.sh pelicula.mp4`
-- Windows: arrastra el video sobre `tools\convertir_video.bat`
+**Robit no reproduce MP4 directamente.** El chip no puede decodificar el video de un MP4 (H.264) a esta velocidad, así que los videos deben estar en **AVI** (video Motion-JPEG 360×360 a 24 cuadros por segundo, sonido PCM 16 bits). El sonido **se conserva**: el script solo cambia el formato. Si pones un MP4 en la tarjeta, la pantalla de Videos avisa "MP4/MOV found" y explica que hay que convertirlo.
+
+La forma fácil es el script de `tools/` (necesita [ffmpeg](https://ffmpeg.org); en Mac: `brew install ffmpeg`):
+
+- **Mac/Linux, un video:** `bash tools/convertir_video.sh ~/Descargas/pelicula.mp4`
+- **Mac/Linux, una carpeta entera de MP4:** `bash tools/convertir_video.sh ~/Descargas/mis_videos/`
+- **Windows:** arrastra uno o varios videos sobre `tools\convertir_video.bat`
+
+Los `.avi` salen en una carpeta `para_la_SD` junto al original, con nombres cortos y sin tildes. Cópialos a la carpeta `video` de la tarjeta.
 
 O el comando directo (necesitas [ffmpeg](https://ffmpeg.org)):
 ```bash

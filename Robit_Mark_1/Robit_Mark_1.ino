@@ -442,6 +442,7 @@ static void songHalt();
 #define VIDEO_MAX 40
 static char vidName[VIDEO_MAX][48];
 static int vidCount = 0;
+static int vidOtherCount = 0;                       // .mp4/.mov/.mkv files in /video: the chip cannot play them, they need converting to .avi
 static volatile bool vidPlaying = false, vidStopReq = false;
 static volatile int vidReq = -1;
 static String videoPrompt();
@@ -1401,7 +1402,7 @@ static bool sdListSongs() {
 }
 static bool sdListVideos() {
 #if USE_VIDEO
-  vidCount = 0;
+  vidCount = 0; vidOtherCount = 0;
   File dir = sdOpen("/video");
   if (!dir || !dir.isDirectory()) return false;
   for (File f = dir.openNextFile(); f && vidCount < VIDEO_MAX; f = dir.openNextFile()) {
@@ -1409,6 +1410,7 @@ static bool sdListVideos() {
       String n = f.name(); int sl = n.lastIndexOf('/'); if (sl >= 0) n = n.substring(sl + 1);
       String l = n; l.toLowerCase();
       if (!n.startsWith(".") && l.endsWith(".avi") && n.length() < sizeof(vidName[0])) strlcpy(vidName[vidCount++], n.c_str(), sizeof(vidName[0]));
+      else if (!n.startsWith(".") && (l.endsWith(".mp4") || l.endsWith(".m4v") || l.endsWith(".mov") || l.endsWith(".mkv") || l.endsWith(".webm") || l.endsWith(".wmv") || l.endsWith(".flv") || l.endsWith(".mpg") || l.endsWith(".mpeg") || l.endsWith(".3gp"))) vidOtherCount++;
     }
     f.close();
   }
@@ -1443,6 +1445,7 @@ static void sdMusicInit() {
   for (int i = 0; i < songCount; i++) Serial.printf("  %d. %s\n", i + 1, songName[i]);
 #if USE_VIDEO
   Serial.printf("SD card: %d videos in /video\n", vidCount);
+  if (vidOtherCount > 0) Serial.printf("SD card: %d MP4/MOV/MKV files in /video are NOT playable (the chip plays .avi only): convert them with tools/convertir_video (README section 8)\n", vidOtherCount);
   for (int i = 0; i < vidCount; i++) Serial.printf("  %d. %s\n", i + 1, vidName[i]);
 #endif
 }
@@ -3231,6 +3234,15 @@ static void drawMenu(uint32_t now) {
 #if USE_VIDEO
       if (!sdOk || vidCount == 0) {
         txtC("Videos", 180, 40, 2, ACC);
+        if (sdOk && vidOtherCount > 0) {                                   // there are MP4/MOV files: say why they do not show up
+          snprintf(b, sizeof(b), "%d MP4/MOV found", vidOtherCount);
+          txtC(b, 180, 100, 2, WARN);
+          txtC("This chip plays AVI only.", 180, 140, 1, C_WHITE);
+          txtC("Convert the MP4 to AVI (with sound)", 180, 156, 1, C_WHITE);
+          txtC("using tools/convertir_video", 180, 172, 1, C_WHITE);
+          txtC("see the README, section 8", 180, 188, 1, C_WHITE);
+          break;
+        }
         txtC(!sdOk ? "No SD card found" : "No AVI in /video", 180, 110, 2, WARN);
         txtC("FAT32 card, folder: video", 180, 150, 1, C_WHITE);
         txtC("AVI, Motion-JPEG, 360x360", 180, 166, 1, C_WHITE);
