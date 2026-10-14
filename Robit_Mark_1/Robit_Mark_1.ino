@@ -132,6 +132,7 @@ static inline uint32_t umin(uint32_t a, uint32_t b) { return a < b ? a : b; }
 #define EXPRESSION_SECONDS 7                       // how long an expression stays when Claude picks one
 #define LISTEN_AUTO    1                           // 0 = hold the BOOT button to talk, 1 = he listens all the time
 #define WAKE_WORDS     ""                          // auto listening only: e.g. "robit,robot" = answer only if you say it ("" = answer everything)
+#define WAKE_TEST      0                           // 1 = TEST ONLY: he just checks for "hey buddy" and reports it (screen + Serial), no answers. Used by the Hey_Buddy_Test sketch
 #define WAKE_HEYBUDDY  1                           // 1 = in auto listening he answers only after "hey buddy" (and keeps talking without it for WAKE_FOLLOWUP_MS). 0 = answers everything
 #define WAKE_FOLLOWUP_MS 12000                      // after an answer he keeps listening this long without the wake word
 #define REACTIONS      1                           // speak when shaken / lifted / upside down / tapped
@@ -2306,7 +2307,7 @@ static bool wakeMatch(const String& text, String& rest) {
     if (buddy && !match) {
       bool prevHey = false;
       if (i > 0) for (const char* h : HEY) if (!strcmp(w[i - 1], h)) prevHey = true;
-      if (prevHey || (levd(w[i], "buddy") <= 1 && i <= 1)) match = true;
+      if (prevHey || (levd(w[i], "buddy") <= 1 && i == 0)) match = true;
     }
     if (match) {
       rest = "";
@@ -2437,6 +2438,15 @@ static void runJob() {
     if (gen != myGen) return;
     String clean = text; clean.trim();
     if (clean.length() < 2) return;
+#if WAKE_TEST
+    {
+      static int wtTotal = 0, wtHits = 0;
+      String rest; bool m = wakeMatch(text, rest); wtTotal++; if (m) wtHits++;
+      Serial.printf("[WAKE TEST] heard: \"%s\"  ->  %s   (hits %d of %d phrases)\n", clean.c_str(), m ? "HEY BUDDY DETECTED" : "no wake word", wtHits, wtTotal);
+      if (m) { setEmotion(EMO_HAPPY, 2500); beep(880, 70); beep(1175, 90); }
+      return;
+    }
+#endif
     if (autoMode && !jobPtt && WAKE_WORDS[0] && (int32_t)(millis() - awakeUntilMs) > 0 && !hasWord(text, WAKE_WORDS)) {
       Serial.println("(ignored, no wake word)"); return;
     }
@@ -3714,10 +3724,6 @@ static void cuteEye(int cx, int cy, int w, int h, uint16_t c) {
     gfx->fillRoundRect(cx - w / 2 - 5, cy - h / 2 - 5, w + 10, h + 10, r + 5, COL(26, 96, 126));
   }
   gfx->fillRoundRect(cx - w / 2, cy - h / 2, w, h, r, c);
-  if (h > 56) {                                                                      // two shines: it looks wet and cute
-    gfx->fillCircle(cx - w * 22 / 100, cy - h * 22 / 100, max(5, w * 11 / 100), 0xFFFF);
-    gfx->fillCircle(cx + w * 20 / 100, cy + h * 20 / 100, max(3, w * 5 / 100), COL(200, 245, 255));
-  }
 }
 static void cuteSmile(int cx, int my, int wide, uint16_t m) {                        // a soft smile
   arcLine(cx, my - wide / 2, wide / 2 + 4, 0.3f, (float)PI - 0.3f, 11, m);
@@ -3734,7 +3740,7 @@ static void volMouth(int cx, int my, float lv, uint16_t m) {                    
     gfx->fillCircle(cx, my + ih / 2 - r, r, COL(255, 105, 140));
   }
 }
-static void blush(int cx, int cy, int r) { gfx->fillRoundRect(cx - r, cy - r / 2, r * 2, r, r / 2, COL(150, 50, 85)); }
+static void blush(int cx, int cy, int r) { (void)cx; (void)cy; (void)r; }   // cheeks removed on purpose
 static void noteShape(int x, int y, int s, uint16_t c) {                              // a music note
   gfx->fillCircle(x, y, s * 55 / 100, c);
   thickLine(x + s / 2, y, x + s / 2, y - s * 19 / 10, 4, c);
@@ -3767,7 +3773,7 @@ static void drawEmotionFace(uint8_t e, uint32_t now) {
   auto eye = [&](int x, int y, int w, int h, uint16_t col, bool shine) {      // soft rounded eye, bigger than before, with two shines
     w = KS(w); h = KS(h);
     gfx->fillRoundRect(x - w / 2, y - h / 2, w, h, min(w, h) * 40 / 100, col);
-    if (shine && h > 44) { gfx->fillCircle(x - w * 22 / 100, y - h * 22 / 100, max(5, w * 10 / 100), WH); gfx->fillCircle(x + w * 20 / 100, y + h * 20 / 100, max(3, w * 5 / 100), COL(200, 245, 255)); }
+    (void)shine;
   };
   auto flat = [&](int cx, int y) { gfx->fillRoundRect(cx - 35, y - 4, 70, 8, 4, M); };     // the idle mouth
   auto smile = [&](int cx) { arcLine(cx, my - 24, 46, 0.3f, (float)PI - 0.3f, 11, M); };
@@ -3783,7 +3789,6 @@ static void drawEmotionFace(uint8_t e, uint32_t now) {
       eye(xL, ey + KS(8), 72, 64, C, false); eye(xR, ey + KS(8), 72, 64, C, false);
       gfx->fillTriangle(xL - KS(40), ey + KS(2), xL + KS(40), ey - KS(16), xL + KS(40), ey - KS(50), BG); gfx->fillTriangle(xL - KS(40), ey + KS(2), xL + KS(40), ey - KS(50), xL - KS(40), ey - KS(50), BG);
       gfx->fillTriangle(xR + KS(40), ey + KS(2), xR - KS(40), ey - KS(16), xR - KS(40), ey - KS(50), BG); gfx->fillTriangle(xR + KS(40), ey + KS(2), xR - KS(40), ey - KS(50), xR + KS(40), ey - KS(50), BG);
-      gfx->fillCircle(xL + KS(6), ey + KS(14), 6, WH); gfx->fillCircle(xR + KS(6), ey + KS(14), 6, WH);
       if (e == EMO_SAD) dropShape(xL - KS(10), ey + KS(52) + (int)((now / 45) % 34), 6, TEAR);
       else for (int k = 0; k < 2; k++) {
         int x = k ? xR + KS(6) : xL - KS(6), h = 30 + (int)(sinf(t * 6 + k) * 8);
@@ -3796,7 +3801,6 @@ static void drawEmotionFace(uint8_t e, uint32_t now) {
       gfx->fillTriangle(xL - KS(42), ey - KS(20), xL + KS(40), ey + KS(6), xL + KS(40), ey - KS(54), BG); gfx->fillTriangle(xL - KS(42), ey - KS(20), xL + KS(40), ey - KS(54), xL - KS(42), ey - KS(54), BG);
       gfx->fillTriangle(xR + KS(42), ey - KS(20), xR - KS(40), ey + KS(6), xR - KS(40), ey - KS(54), BG); gfx->fillTriangle(xR + KS(42), ey - KS(20), xR - KS(40), ey - KS(54), xR + KS(42), ey - KS(54), BG);
       thickLine(xL - KS(42), ey - KS(22), xL + KS(40), ey + KS(4), 12, C); thickLine(xR + KS(42), ey - KS(22), xR - KS(40), ey + KS(4), 12, C);
-      gfx->fillCircle(xL + KS(6), ey + KS(18), 6, WH); gfx->fillCircle(xR - KS(6), ey + KS(18), 6, WH);
       if (talking) speakMouth(180 + ox, my, M); else { thickLine(150 + ox, my + 12, 180 + ox, my - 12, 9, M); thickLine(180 + ox, my - 12, 210 + ox, my + 12, 9, M); }
       break;
     case EMO_SLEEP:                                                      // (-_- zzz)
@@ -3819,7 +3823,6 @@ static void drawEmotionFace(uint8_t e, uint32_t now) {
       eye(xL, ey + KS(8), 72, 64, C, false); eye(xR, ey + KS(8), 72, 64, C, false);
       gfx->fillRect(xL - KS(40), ey - KS(30), KS(80), KS(40), BG); gfx->fillRect(xR - KS(40), ey - KS(30), KS(80), KS(40), BG);                  // half closed lids
       thickLine(xL - KS(36), ey + KS(10), xL + KS(36), ey + KS(10), 6, C); thickLine(xR - KS(36), ey + KS(10), xR + KS(36), ey + KS(10), 6, C);
-      gfx->fillCircle(xL - KS(10), ey + KS(24), 6, WH); gfx->fillCircle(xR - KS(10), ey + KS(24), 6, WH);
       thickLine(xL - KS(32), ey - KS(20), xL + KS(30), ey - KS(28), 8, C); thickLine(xR - KS(30), ey - KS(38), xR + KS(32), ey - KS(30), 8, C);   // one eyebrow higher
       if (talking) speakMouth(180 + ox, my, M); else { thickLine(140 + ox, my + 4, 165 + ox, my + 11, 9, M); thickLine(165 + ox, my + 11, 195 + ox, my + 8, 9, M); thickLine(195 + ox, my + 8, 224 + ox, my - 12, 9, M); }
       break;
@@ -3844,7 +3847,6 @@ static void drawEmotionFace(uint8_t e, uint32_t now) {
     case EMO_LOVE: {
       int s = 32 + (int)(sinf(t * 8) * 3);
       heartShape(xL, ey + 6, s, C); heartShape(xR, ey + 6, s, C);
-      gfx->fillCircle(xL - 12, ey - 4, 5, WH); gfx->fillCircle(xR - 12, ey - 4, 5, WH);
       if (talking) speakMouth(180 + ox, my, M); else smile(180 + ox);
       for (int k = 0; k < 2; k++) { float ph = fmodf(t * 0.7f + k * 0.5f, 1.0f); heartShape(70 + k * 220 + (int)(sinf(t * 3 + k) * 8), 120 - (int)(ph * 90), 9, C); }
     } break;
@@ -4298,6 +4300,9 @@ void setup() {
   { String n = prefs.getString("name", ""); if (n.length() >= 2) robotName = n; }
   memLoad();
   autoMode = prefs.getBool("auto", LISTEN_AUTO);
+#if WAKE_TEST
+  autoMode = true;
+#endif
   if (!strncmp(OPENAI_KEY, "sk-your", 7) || !strncmp(ANTHROPIC_KEY, "sk-ant-your", 11)) Serial.println("!!! put your OpenAI and Anthropic keys in the settings at the top of the sketch");
   Serial.printf("standalone mode: name %s, listening %s\n", robotName.c_str(), autoMode ? "always" : "with the BOOT button");
 #endif

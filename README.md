@@ -33,7 +33,7 @@ Robot de escritorio parlante con una **cara animada en una pantalla redonda**. L
 
 - **Conversa por voz** en español chileno o inglés (sigue el idioma en que le hablas).
 - **Palabra de activación "hey buddy"**: en modo automático solo responde si oye la frase (también entiende variantes como "hey body" o "ey badi"). Después sigue conversando **12 segundos** sin que la repitas.
-- **Cara con emociones**: ojos grandes y redondeados con brillo, mejillas y boca con volumen que se abre con la voz. 17 expresiones, elegidas por Claude según lo que dice. **Canta** (cierra los ojos, se balancea y salen notas) cuando suena una canción.
+- **Cara con emociones**: ojos grandes y redondeados, lisos (sin mejillas ni brillos), y boca con volumen que se abre con la voz. 17 expresiones, elegidas por Claude según lo que dice. **Canta** (cierra los ojos, se balancea y salen notas) cuando suena una canción.
 - **Menú por voz**: "abre el menú", "abre las canciones", "abre los videos", "cierra el menú"...
 - **Búsqueda en internet** (noticias, resultados, precios, datos recientes).
 - **Mapas de Google** en la pantalla redonda (con zoom y arrastre), rutas y lugares cercanos. Necesita una clave de Google (opcional).
@@ -157,6 +157,17 @@ Dentro del `.ino`, en `YOUR SETTINGS`, también puedes cambiar `CITY_NAME`, `CIT
    - `SD card: ... -> mounted`, `SD read test ... OK`, `SD card: N songs in /music` y `SD card: N videos in /video`,
    - `servo driver (PCA9685) NOT found ... movements disabled`: **es normal**, todavía no tiene servos.
 4. Di **"hey buddy, hola"**.
+
+### Probar solo el wake word "hey buddy"
+
+Antes de armar todo, sube el sketch **`Hey_Buddy_Test`** (carpeta `Hey_Buddy_Test/`, con tu `secrets.h` al lado; solo necesita la clave de OpenAI y el Wi-Fi). No responde ni habla: escucha, y cada frase que oye la compara con "hey buddy". Si la detecta, la cara se pone feliz y suena un pitido doble. En el Monitor Serie ves:
+
+```
+[WAKE TEST] heard: "hey buddy what time is it"  ->  HEY BUDDY DETECTED   (hits 3 of 5 phrases)
+[WAKE TEST] heard: "good morning"                ->  no wake word
+```
+
+Ojo: este detector **no es un modelo en la placa** (como openWakeWord o microWakeWord). Oye la frase con el reconocimiento de voz de OpenAI y busca "hey buddy" en el texto, tolerando errores como "hay body" o "ey buddy". Por eso necesita Wi-Fi y tarda un poco; es el mismo detector que usa el robot.
 
 Comandos del Monitor Serie (con "Newline"): `faces` (muestra todas las expresiones, 3 s cada una), `face happy` (una), `face idle` (vuelve a la normal).
 
@@ -294,6 +305,8 @@ Cableado previsto de los servos (conector I2C de la placa, **GPIO11 = SDA, GPIO1
 ├── Robit_Mark_1/
 │   ├── Robit_Mark_1.ino        # el firmware
 │   └── secrets.example.h       # copia a secrets.h y pon tus claves (secrets.h no se sube)
+├── Hey_Buddy_Test/
+│   └── Hey_Buddy_Test.ino      # solo prueba el wake word "hey buddy" (usa el mismo secrets.h)
 ├── sd_card/
 │   ├── video/Robit_demo.avi    # video de muestra con sonido
 │   └── music/LEEME.txt
