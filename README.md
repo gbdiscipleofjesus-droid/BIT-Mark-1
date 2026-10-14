@@ -167,7 +167,7 @@ Antes de armar todo, sube el sketch **`Hey_Buddy_Test`** (carpeta `Hey_Buddy_Tes
 [WAKE TEST] heard: "good morning"                ->  no wake word
 ```
 
-Ojo: este detector **no es un modelo en la placa** (como openWakeWord o microWakeWord). Oye la frase con el reconocimiento de voz de OpenAI y busca "hey buddy" en el texto, tolerando errores como "hay body" o "ey buddy". Por eso necesita Wi-Fi y tarda un poco; es el mismo detector que usa el robot.
+Ojo: este detector **no es un modelo en la placa**. Oye la frase con el reconocimiento de voz de OpenAI y busca "hey buddy" en el texto, tolerando errores como "hay body" o "ey buddy". Por eso necesita Wi-Fi y tarda un poco; es el mismo detector que usa el robot. El detector que sí corre dentro de la placa, sin internet (microWakeWord), está en el sketch `Hey_Buddy_MicroWakeWord/` (ver su `LEEME.md`).
 
 Comandos del Monitor Serie (con "Newline"): `faces` (muestra todas las expresiones, 3 s cada una), `face happy` (una), `face idle` (vuelve a la normal).
 
@@ -306,11 +306,12 @@ Cableado previsto de los servos (conector I2C de la placa, **GPIO11 = SDA, GPIO1
 │   ├── Robit_Mark_1.ino        # el firmware
 │   └── secrets.example.h       # copia a secrets.h y pon tus claves (secrets.h no se sube)
 ├── Hey_Buddy_Test/
-│   └── Hey_Buddy_Test.ino      # solo prueba el wake word "hey buddy" (usa el mismo secrets.h)
+│   └── Hey_Buddy_Test.ino      # prueba el wake word "hey buddy" por la nube (usa el mismo secrets.h)
+├── Hey_Buddy_MicroWakeWord/    # prueba del wake word local (microWakeWord, dentro de la placa); ver LEEME.md
 ├── sd_card/
 │   ├── video/Robit_demo.avi    # video de muestra con sonido
 │   └── music/LEEME.txt
-├── tools/                      # convertir_video.sh / .bat
+├── tools/                      # convertir_video.sh / .bat, tflite_a_header.py (modelo de wake word -> model_data.h)
 ├── hardware/                   # cuerpo para cuando tenga servos
 │   ├── 3d/  2d/  carton/  camera/
 ├── docs/                       # imágenes del README
