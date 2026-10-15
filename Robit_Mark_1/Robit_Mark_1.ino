@@ -365,6 +365,45 @@ WebSocketsClient webSocket;
 WiFiMulti wifiMulti;
 I2SClass i2sMic, i2sSpk;
 
+// ---- Wi-Fi connection that never blocks the screen or the touch (and shows on the screen why it cannot connect)
+static String kS[6], kP[6]; static int kN = 0;                       // known networks: saved ones first, then the ones in secrets.h
+static void kAdd(const char* s, const char* p) {
+  if (!s || !s[0] || !strcmp(s, "YOUR_WIFI_NAME")) return;
+  for (int i = 0; i < kN; i++) if (kS[i] == s) return;
+  if (kN < 6) { kS[kN] = s; kP[kN] = p ? p : ""; kN++; }
+}
+static int wfState = 0, wfCur = 0, wfSeen = -1, wfRssi = 0, wfCode = -1, wfTries = 0;
+static uint32_t wfAt = 0;
+static void wifiTick(uint32_t now) {
+  if (kN == 0) return;
+  if (wfState == 0) { WiFi.scanNetworks(true); wfState = 1; wfAt = now; return; }          // 1) look around (does not block)
+  if (wfState == 1) {
+    int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING && now - wfAt < 8000) return;
+    int pick = -1; wfSeen = 0;
+    if (n > 0) {
+      for (int k = 0; k < kN && pick < 0; k++) {
+        int idx = (wfCur + k) % kN;
+        for (int i = 0; i < n; i++) if (WiFi.SSID(i) == kS[idx]) { pick = idx; wfRssi = WiFi.RSSI(i); break; }
+      }
+    }
+    WiFi.scanDelete();
+    if (pick < 0) pick = wfCur % kN; else wfSeen = 1;                                      // not seen (maybe hidden): try it anyway
+    wfCur = pick;
+    WiFi.disconnect();
+    WiFi.begin(kS[pick].c_str(), kP[pick].c_str());                                         // 2) connect (does not block)
+    wfTries++; wfState = 2; wfAt = now;
+    Serial.printf("Wi-Fi: trying \"%s\" (%s)\n", kS[pick].c_str(), wfSeen ? "visible" : "NOT visible in the scan");
+    return;
+  }
+  if (WiFi.status() == WL_CONNECTED) { wfState = 0; return; }
+  if (now - wfAt > 12000) {                                                                  // 3) no luck: next network, look again
+    wfCode = (int)WiFi.status();
+    Serial.printf("Wi-Fi: \"%s\" failed (status %d: 1 = not found, 4 = wrong password, 6 = dropped)\n", kS[wfCur].c_str(), wfCode);
+    wfCur = (wfCur + 1) % kN; wfState = 0;
+  }
+}
+
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(21 /*cs*/, 40 /*sck*/, 46, 45, 42, 41, false);
 // This screen needs the "150" start-up table, a moderate data speed, and picture data sent in small pieces
 // (the driver ignores the 2nd+ chunk of a big transfer on this board), see flushScreen() below.
@@ -3017,7 +3056,7 @@ static void saveWifi(const String& ssid, const String& pass) {
 static void loadSavedWifi() {
   for (int i = 0; i < 3; i++) {
     String s = prefs.getString(wkey('s', i), ""), p = prefs.getString(wkey('p', i), "");
-    if (s.length()) { wifiMulti.addAP(s.c_str(), p.c_str()); Serial.printf("saved Wi-Fi: %s\n", s.c_str()); }
+    if (s.length()) { kAdd(s.c_str(), p.c_str()); Serial.printf("saved Wi-Fi: %s\n", s.c_str()); }
   }
 }
 static void forgetWifi() { for (int i = 0; i < 3; i++) { prefs.putString(wkey('s', i), ""); prefs.putString(wkey('p', i), ""); } }
@@ -3984,6 +4023,35 @@ static void drawSleepFace(uint32_t now) {
   }
 }
 
+// While there is no Wi-Fi: say which network it tries, whether it can see it, and the error, so nobody needs the Serial Monitor
+static void drawWifiWait(uint32_t now) {
+  const uint16_t ACCc = COL(80, 220, 255), OKc = COL(90, 230, 130), WARNc = COL(255, 190, 60), DIMc = COL(210, 225, 235);
+  char b[40];
+  float a = now / 250.0f;
+  for (int i = 0; i < 8; i++) {                                                       // small spinner
+    float ang = a + i * 0.785f;
+    gfx->fillCircle(180 + cosf(ang) * 26, 252 + sinf(ang) * 26, (i == (int)(a) % 8) ? 5 : 3, gfx->color565(255, 150, 30));
+  }
+  txtC("Wi-Fi", 180, 52, 3, ACCc);
+  if (kN == 0) {
+    txtC("No network saved", 180, 100, 2, WARNc);
+    txtC("Join  Robit-Setup  with", 180, 135, 2, C_WHITE);
+    txtC("another phone, then open", 180, 160, 2, C_WHITE);
+    txtC("192.168.4.1", 180, 190, 3, OKc);
+    return;
+  }
+  snprintf(b, sizeof(b), "%.16s", kS[wfCur % kN].c_str());
+  txtC(b, 180, 92, 2, C_WHITE);
+  if (wfSeen == 1) { snprintf(b, sizeof(b), "found  %d dBm", wfRssi); txtC(b, 180, 122, 2, OKc); }
+  else if (wfSeen == 0) { txtC("NOT FOUND", 180, 122, 2, WARNc); txtC("2.4 GHz? name? hotspot on?", 180, 146, 1, DIMc); }
+  else txtC("looking...", 180, 122, 2, DIMc);
+  snprintf(b, sizeof(b), "try %d   last error %d", wfTries, wfCode);
+  txtC(b, 180, 172, 1, DIMc);
+  if (wfCode == 4) txtC("wrong password?", 180, 192, 2, WARNc);
+  else if (wfCode == 1) txtC("network not found", 180, 192, 2, WARNc);
+  if (!portalOn && now < 25000) { snprintf(b, sizeof(b), "setup page in %ds", (int)((25000 - now) / 1000)); txtC(b, 180, 214, 1, DIMc); }
+}
+
 static void drawFace(uint32_t now) {
   static bool blinking = false;
   static uint32_t blinkStart = 0, nextBlink = 2500;
@@ -3996,7 +4064,7 @@ static void drawFace(uint32_t now) {
 #endif
   if (menuOpen) { drawMenu(now); return; }
   gfx->fillScreen(BG);
-  if (WiFi.status() != WL_CONNECTED) { drawStatus(now, "Wi-Fi..."); return; }
+  if (WiFi.status() != WL_CONNECTED) { drawWifiWait(now); return; }
   if (!wsUp) { drawStatus(now, "Server..."); return; }
   if (cardActive(now)) { drawCard(now); return; }
   if (sleeping && botState == ST_IDLE) { drawEmotionFace(EMO_SLEEP, now); return; }
@@ -4334,11 +4402,11 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
-  wifiMulti.addAP(WIFI_SSID, WIFI_PASS);
-  if (WIFI_SSID2[0]) wifiMulti.addAP(WIFI_SSID2, WIFI_PASS2);
-  if (WIFI_SSID3[0]) wifiMulti.addAP(WIFI_SSID3, WIFI_PASS3);
-  loadSavedWifi();                                      // networks added through the setup page
-  wifiMulti.run(8000);
+  loadSavedWifi();                                      // networks added through the setup page (they go first)
+  kAdd(WIFI_SSID, WIFI_PASS);
+  kAdd(WIFI_SSID2, WIFI_PASS2);
+  kAdd(WIFI_SSID3, WIFI_PASS3);
+  Serial.printf("Wi-Fi: %d known network(s); first: \"%s\"\n", kN, kN ? kS[0].c_str() : "(none: use the Robit-Setup page)");
 
 #if !STANDALONE
   webSocket.onEvent(wsEvent);
@@ -4351,10 +4419,9 @@ void loop() {
   uint32_t now = millis();
 
   if (WiFi.status() != WL_CONNECTED) {                 // lost the network or not found yet: look for any known one
-    static uint32_t nextTry = 0;
-    if (now > nextTry && !portalOn) { nextTry = now + 10000; wifiMulti.run(4000); }
-    if (!portalAutoDone && now > 60000 && !portalOn) { portalAutoDone = true; portalBegin(); }   // nothing found in a minute: offer the setup page
-  }
+    if (!portalOn) wifiTick(now);
+    if (!portalAutoDone && now > 25000 && !portalOn) { portalAutoDone = true; portalBegin(); }   // nothing found in 25 s: offer the setup page
+  } else wfState = 0;
 
 #if STANDALONE
   {
